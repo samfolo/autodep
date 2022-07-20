@@ -2,6 +2,7 @@ import * as path from 'path';
 import {readFileSync} from 'fs';
 import precinct from 'precinct';
 import {createRequire} from 'node:module';
+import {parse} from 'yaml';
 
 import {DeAliasingClient} from '../clients/deAliasing/deAlias';
 import {createConfig} from '../common/config';
@@ -25,16 +26,21 @@ export class DependencyResolver {
   }
 
   loadConfigFromWorkspace = (rootPath: string) => {
-    const configPath = this.findFirstValidPath(rootPath, this.generateRequirePaths(rootPath, ['.autodep.json']));
-
+    const configPath = this.findFirstValidPath(rootPath, this.generateRequirePaths(rootPath, ['.autodep.yaml']));
     if (configPath) {
       try {
-        const configInputFile = readFileSync(configPath, {encoding: 'utf-8', flag: 'r'});
-        const configInput: WorkspacePluginConfigInput = JSON.parse(configInputFile);
+        const configInputFile = readFileSync(configPath, {
+          encoding: 'utf-8',
+          flag: 'r',
+        });
+        const configInput: WorkspacePluginConfigInput = parse(configInputFile);
+        console.log(configInput);
         this._config = createConfig(configInput);
         return this._config;
       } catch (error) {
-        console.warn(`[DependencyResolver::loadConfigFromWorkspace]: could not resolve config file at ${configPath}`);
+        console.warn(
+          `[DependencyResolver::loadConfigFromWorkspace]: could not resolve config file at ${configPath}: ${error}`
+        );
       }
     }
 
@@ -56,7 +62,10 @@ export class DependencyResolver {
       rootDirName: rootDir,
       config: this.config,
     });
-    const fileContent = readFileSync(filePath, {encoding: 'utf-8', flag: 'r'});
+    const fileContent = readFileSync(filePath, {
+      encoding: 'utf-8',
+      flag: 'r',
+    });
 
     const deps = this.collectImports(fileContent, [
       {

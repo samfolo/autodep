@@ -30,7 +30,7 @@ export class DependencyFileBuilder {
     } else if (this.config.match.isModule(this.rootPath)) {
       this.initialRuleType = 'module';
     } else {
-      const error = `[DependencyFileBuilder::init]: unsupported file type: ${this.rootPath}`;
+      const error = `[DependencyFileBuilder::init]: unsupported file type: ${this.rootPath}. Check your settings at <config>.match.(module|test). Note, you don't have to double-escape your regex matchers`;
       console.error(error);
       throw new Error(error);
     }
