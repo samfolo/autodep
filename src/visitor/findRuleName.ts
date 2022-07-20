@@ -1,5 +1,6 @@
 import minimatch from 'minimatch';
 import path from 'path';
+import {DEFAULT_MODULE_RULE_NAME, DEFAULT_TEST_RULE_NAME, SUPPORTED_MANAGED_BUILTINS} from '../common/const';
 import {WorkspacePluginConfig} from '../common/types';
 import {
   ASTNode,
@@ -124,7 +125,7 @@ export class BuildRuleNameVisitor {
 
   private visitRootNode = (node: RootNode) => {
     node.statements = node.statements.map((statement) => {
-      if (this.ruleName === null) {
+      if (this._ruleName === null) {
         return this.visitStatementNode(statement);
       }
       return statement;
@@ -141,6 +142,17 @@ export class BuildRuleNameVisitor {
   };
 
   private visitCallExpressionNode = (node: CallExpression) => {
+    const functionName = String(node.functionName?.getTokenLiteral() ?? '');
+
+    const isManagedRule = this.config.manage.rules.has(functionName);
+    const isManagedBuiltin = SUPPORTED_MANAGED_BUILTINS.some((builtin) => functionName === builtin);
+    const isDefaultModuleRule = this.ruleType === 'module' && functionName === DEFAULT_MODULE_RULE_NAME;
+    const isDefaultTestRule = this.ruleType === 'test' && functionName !== DEFAULT_TEST_RULE_NAME;
+
+    if (!isManagedRule && !isManagedBuiltin && !isDefaultModuleRule && !isDefaultTestRule) {
+      return node;
+    }
+
     if (node.args?.elements && node.args.elements.length > 0) {
       const isTargetRule = node.args.elements.some((element) => {
         if (element.kind === 'KeywordArgumentExpression') {
