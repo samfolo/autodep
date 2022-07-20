@@ -109,12 +109,27 @@ export class RuleInsertionVisitor {
 
   private visitCallExpressionNode = (node: CallExpression) => {
     if (node.functionName?.getTokenLiteral() === SUPPORTED_MANAGED_BUILTINS_LOOKUP.subinclude) {
-      const subincludes = this.config.onUpdate[this.ruleType].subinclude;
+      const newSubincludes = this.config.onUpdate[this.ruleType].subinclude;
 
-      if (Array.isArray(subincludes)) {
-        for (const target of subincludes) {
-          node.args?.elements.push(this.builder.buildStringLiteralNode(target));
+      if (node.args?.elements && node.args.elements.length > 0 && Array.isArray(newSubincludes)) {
+        const seen = new Set();
+        const uniqueSubincludes: Expression[] = [];
+
+        for (const originalSubinclude of node.args.elements) {
+          if (originalSubinclude.kind === 'StringLiteral' && !seen.has(originalSubinclude.value)) {
+            seen.add(originalSubinclude.value);
+          }
+          uniqueSubincludes.push(originalSubinclude);
         }
+
+        for (const newSubinclude of newSubincludes) {
+          if (!seen.has(newSubinclude)) {
+            uniqueSubincludes.push(this.builder.buildStringLiteralNode(newSubinclude));
+            seen.add(newSubinclude);
+          }
+        }
+
+        node.args.elements = uniqueSubincludes;
       }
     }
 

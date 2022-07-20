@@ -132,7 +132,7 @@ export class DependencyUpdateVisitor {
     const managedSchema = this.config.manage.schema[functionName];
     const srcsSchemaFieldEntries = managedSchema?.srcs ?? [SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES.SRCS];
 
-    if (node.args && managedSchema) {
+    if (node.args?.elements && node.args.elements.length > 0) {
       const isTargetRule = node.args.elements.some((element) => {
         if (element.kind === 'KeywordArgumentExpression') {
           for (const srcsAlias of srcsSchemaFieldEntries) {

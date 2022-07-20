@@ -66,7 +66,7 @@ export class BuildRuleNameVisitor {
         break;
       default:
         this.status = 'passthrough';
-        this.reason = 'irrelevant node type passed to `getRuleName()`';
+        this.reason = 'irrelevant node type passed to `locateRuleName()`';
         return node;
     }
 
@@ -141,7 +141,7 @@ export class BuildRuleNameVisitor {
   };
 
   private visitCallExpressionNode = (node: CallExpression) => {
-    if (node.args) {
+    if (node.args?.elements && node.args.elements.length > 0) {
       const isTargetRule = node.args.elements.some((element) => {
         if (element.kind === 'KeywordArgumentExpression') {
           switch (element.key.getTokenLiteral()) {

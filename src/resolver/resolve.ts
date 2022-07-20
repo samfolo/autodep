@@ -235,18 +235,16 @@ export class DependencyResolver {
     return nearestBuildFilePaths;
   };
 
-  getBuildRuleTarget = (dep: string, buildFilePath: string) => {
+  getBuildRuleTarget = (path: string, buildFilePath: string) => {
     try {
       const buildFile = readFileSync(buildFilePath, 'utf-8');
-
       const tokeniser = new Tokeniser(buildFile, this.config);
       const tokens = tokeniser.tokenise();
-
       const parser = new Parser(tokens);
       const ast = parser.parse();
 
-      const ruleNameVisitor = new BuildRuleNameVisitor(path.basename(dep));
-      ruleNameVisitor.getRuleName(ast);
+      const ruleNameVisitor = new BuildRuleNameVisitor({config: this._config, rootPath: path});
+      ruleNameVisitor.locateRuleName(ast);
 
       return ruleNameVisitor.ruleName;
     } catch (error) {
