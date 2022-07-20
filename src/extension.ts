@@ -6,9 +6,10 @@ import {Tokeniser} from './language/tokeniser/tokenise';
 import {Parser} from './language/parser/parse';
 import {Dependency} from './models/dependency';
 import {DependencyResolver} from './resolver/resolve';
-import {DependencyUpdateVisitor} from './visitor/dependencyUpdates';
+import {DependencyUpdateVisitor} from './visitor/updateDeps';
 import {createConfig} from './common/config';
-import {DependencyFileBuilder} from './language/builder/build';
+import {DependencyBuilder} from './language/builder/build';
+import {RuleInsertionVisitor} from './visitor/insertRule';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -38,63 +39,120 @@ export function activate(context: vscode.ExtensionContext) {
         const depToBuildFileMap = depResolver.getNearestBuildFilePaths(uniqueDeps);
 
         if (targetBuildFilePath) {
-          const buildRuleNames = [];
+          const buildRuleTargets = [];
           for (const dep in depToBuildFileMap) {
-            const buildRuleName = depResolver.getBuildRuleName(dep, depToBuildFileMap[dep]);
+            const buildRuleTarget = depResolver.getBuildRuleTarget(dep, depToBuildFileMap[dep]);
 
-            if (buildRuleName) {
-              const dependencyObject = new Dependency({
-                ruleName: buildRuleName,
-                buildFilePath: depToBuildFileMap[dep],
-                targetBuildFilePath,
-                rootDirName: 'core3',
-              });
-
-              buildRuleNames.push(dependencyObject.toBuildDep());
+            if (buildRuleTarget) {
+              buildRuleTargets.push(
+                new Dependency({
+                  ruleName: buildRuleTarget,
+                  buildFilePath: depToBuildFileMap[dep],
+                  targetBuildFilePath,
+                  rootDirName: 'core3',
+                }).toBuildTarget()
+              );
             } else {
               console.error(
-                '[addLoc..]: could not resolve ' +
+                '[DependencyResolver::getBuildRuleTarget]: could not resolve ' +
                   dep +
-                  ' in nearest BUILD file ' +
+                  ' in nearest `BUILD` file ' +
                   depToBuildFileMap[dep] +
                   '. Try saving that file to generate a valid rule.'
               );
             }
           }
 
+          const sortedBuildRuleTargets = [...buildRuleTargets].sort((a, b) => {
+            if (a[0] === ':' && b[0] === '/') {
+              return -1;
+            }
+
+            if (a[0] === '/' && b[0] === ':') {
+              return 1;
+            }
+
+            return a.localeCompare(b);
+          });
+
           try {
             const targetBuildFile = readFileSync(targetBuildFilePath, {encoding: 'utf-8', flag: 'r'});
-
             const tokeniser = new Tokeniser(targetBuildFile, depResolver.config);
             const tokens = tokeniser.tokenise();
-
             const parser = new Parser(tokens);
             const ast = parser.parse();
 
-            const updatesVisitor = new DependencyUpdateVisitor(
-              path.basename(textDocument.fileName),
-              buildRuleNames.sort()
-            );
-            const updatedAST = updatesVisitor.visit(ast);
+            const updatesVisitor = new DependencyUpdateVisitor({
+              config,
+              rootPath: textDocument.fileName,
+              newDeps: sortedBuildRuleTargets,
+            });
+            const updatedAST = updatesVisitor.updateDeps(ast);
+            const updatesVisitorResult = updatesVisitor.getResult();
 
-            if (updatesVisitor.getResult().status === 'success') {
-              const edit = new vscode.WorkspaceEdit();
-              const buildFileUri = vscode.Uri.file(targetBuildFilePath);
-              edit.createFile(buildFileUri, {overwrite: true});
-              edit.insert(buildFileUri, new vscode.Position(0, 0), updatedAST.toString());
-              vscode.workspace.applyEdit(edit);
-              vscode.workspace.saveAll(true);
-            } else {
-              // create new rule in file
+            switch (updatesVisitorResult.status) {
+              case 'success': {
+                const edit = new vscode.WorkspaceEdit();
+                const buildFileUri = vscode.Uri.file(targetBuildFilePath);
+                edit.createFile(buildFileUri, {overwrite: true});
+                edit.insert(buildFileUri, new vscode.Position(0, 0), updatedAST.toString());
+                vscode.workspace.applyEdit(edit);
+                vscode.workspace.saveAll(true);
+              }
+              case 'failed': {
+                console.info(
+                  `[DependencyUpdateVisitor::updateDeps]: Could not find a matching rule to update at ${targetBuildFilePath}. Creating a new rule in the file...`
+                );
+
+                const ruleInsertionVisitor = new RuleInsertionVisitor({
+                  config,
+                  rootPath: textDocument.fileName,
+                  newDeps: sortedBuildRuleTargets,
+                });
+                const appendedAST = ruleInsertionVisitor.insertRule(ast);
+                const ruleInsertionVisitorResult = ruleInsertionVisitor.getResult();
+
+                switch (ruleInsertionVisitorResult.status) {
+                  case 'success': {
+                    const edit = new vscode.WorkspaceEdit();
+                    const buildFileUri = vscode.Uri.file(targetBuildFilePath);
+                    edit.createFile(buildFileUri, {overwrite: true});
+                    edit.insert(buildFileUri, new vscode.Position(0, 0), appendedAST.toString());
+                    vscode.workspace.applyEdit(edit);
+                    vscode.workspace.saveAll(true);
+                  }
+                  case 'passthrough':
+                  case 'idle':
+                    throw new Error(
+                      `[DependencyUpdateVisitor::updateDeps]: Unexpected error: ${ruleInsertionVisitorResult.reason}`
+                    );
+                  default:
+                    throw new Error(
+                      `[DependencyUpdateVisitor::updateDeps]: Unexpected error: unknown status "${ruleInsertionVisitorResult.status}"`
+                    );
+                }
+              }
+              case 'passthrough':
+              case 'idle':
+                throw new Error(
+                  `[DependencyUpdateVisitor::updateDeps]: Unexpected error: ${updatesVisitorResult.reason}`
+                );
+              default:
+                throw new Error(
+                  `[DependencyUpdateVisitor::updateDeps]: Unexpected error: unknown status "${updatesVisitorResult.status}"`
+                );
             }
           } catch {
-            const fileBuilder = new DependencyFileBuilder({
-              config,
-              initialDeps: buildRuleNames,
-              rootPath: textDocument.fileName,
-            });
+            console.warn(
+              `[DependencyUpdateVisitor::visit]: Could not find a file to update at ${targetBuildFilePath}. Creating a new file...`
+            );
 
-            const fileAST = fileBuilder.build();
+            const dependencyBuilder = new DependencyBuilder({
+              config,
+              rootPath: textDocument.fileName,
+              newDeps: sortedBuildRuleTargets,
+            });
+            const fileAST = dependencyBuilder.buildNewFile();
 
             const edit = new vscode.WorkspaceEdit();
             const buildFileUri = vscode.Uri.file(targetBuildFilePath);
@@ -105,7 +163,7 @@ export function activate(context: vscode.ExtensionContext) {
           }
         } else {
           throw new Error(
-            `[extension]: Could not find any "BUILD" files in the workspace. to create one at ${siblingBuildFilePath}, add {"enablePropagation": true} in an .autodep.json file in a parent directory`
+            `[extension]: Could not find any \`BUILD\` or \`BUILD.plz\` files in the workspace. to create one at ${siblingBuildFilePath}, add \`enablePropagation: true\` to an \`.autodep.yaml\` file in either the target directory or a parent directory`
           );
         }
       } catch (error) {

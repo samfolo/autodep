@@ -1,4 +1,6 @@
 import minimatch from 'minimatch';
+import path from 'path';
+import {WorkspacePluginConfig} from '../common/types';
 import {
   ASTNode,
   Comment,
@@ -10,24 +12,43 @@ import {
   Statement,
 } from '../language/ast/types';
 
+interface BuildRuleNameVisitorOptions {
+  config: WorkspacePluginConfig;
+  rootPath: string;
+}
 export class BuildRuleNameVisitor {
-  private fileName: string;
   private _ruleName: string | null;
+  private fileName: string;
   private status: 'success' | 'failed' | 'idle' | 'passthrough';
   private reason: string;
+  private config: WorkspacePluginConfig;
+  private rootPath: string;
+  private ruleType: 'module' | 'test';
 
-  constructor(fileName: string) {
-    this.fileName = fileName;
+  constructor({config, rootPath}: BuildRuleNameVisitorOptions) {
     this._ruleName = null;
     this.status = 'idle';
-    this.reason = '';
+    this.reason = 'took no action';
+    this.rootPath = rootPath;
+    this.fileName = path.basename(rootPath);
+    this.config = config;
+
+    if (this.config.match.isTest(this.rootPath)) {
+      this.ruleType = 'test';
+    } else if (this.config.match.isModule(this.rootPath)) {
+      this.ruleType = 'module';
+    } else {
+      const error = `[BuildRuleNameVisitor::init]: unsupported file type: ${this.rootPath}. Check your settings at \`<autodepConfig>.match.(module|test)\`. Note, you don't have to double-escape your regex matchers`;
+      console.error(error);
+      throw new Error(error);
+    }
   }
 
   get ruleName() {
     return this._ruleName;
   }
 
-  visit = (node: ASTNode) => {
+  locateRuleName = (node: ASTNode) => {
     let result: ASTNode;
 
     switch (node.type) {
@@ -45,7 +66,7 @@ export class BuildRuleNameVisitor {
         break;
       default:
         this.status = 'passthrough';
-        this.reason = 'Irrelevant node type';
+        this.reason = 'irrelevant node type passed to `getRuleName()`';
         return node;
     }
 
@@ -53,7 +74,7 @@ export class BuildRuleNameVisitor {
       return result;
     } else {
       this.status = 'failed';
-      this.reason = 'Unable to find build rule name';
+      this.reason = 'unable to find build rule name in given file';
       return node;
     }
   };
@@ -175,7 +196,7 @@ export class BuildRuleNameVisitor {
       case 'name':
         if (node.value?.kind === 'StringLiteral') {
           this.status = 'success';
-          this.reason = 'Build rule name found';
+          this.reason = 'build rule name found';
           this._ruleName = String(node.value.getTokenLiteral());
         }
         break;
@@ -185,4 +206,11 @@ export class BuildRuleNameVisitor {
 
     return node;
   };
+
+  getResult = () =>
+    Object.seal({
+      status: this.status,
+      reason: this.reason,
+      fileName: this.fileName,
+    });
 }

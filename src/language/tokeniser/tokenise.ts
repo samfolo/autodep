@@ -1,5 +1,6 @@
+import {SUPPORTED_MANAGED_BUILTINS} from '../../common/const';
 import {WorkspacePluginConfig} from '../../common/types';
-import {BUILTINS, RESERVED_TERM_LOOKUP, SYMBOLS} from './tokens';
+import {RESERVED_TERM_LOOKUP, SYMBOLS} from './tokens';
 import type {TokenType, TokenValue, Token} from './types';
 
 export class Tokeniser {
@@ -30,7 +31,7 @@ export class Tokeniser {
 
   getIdentTokenType = (ident: string): TokenType =>
     RESERVED_TERM_LOOKUP[ident] ||
-    (BUILTINS.includes(ident) && 'BUILTIN') ||
+    (SUPPORTED_MANAGED_BUILTINS.some((builtin) => builtin === ident) && 'BUILTIN') ||
     (this.config.manage.rules.has(ident) && 'RULE_NAME') ||
     (this.config.manage.fields.has(ident) && 'RULE_FIELD_NAME') ||
     'IDENT';

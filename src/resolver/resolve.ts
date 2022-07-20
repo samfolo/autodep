@@ -12,7 +12,7 @@ import {WorkspacePluginConfig, WorkspacePluginConfigInput} from '../common/types
 import {CollectDepsDirective, ResolveAbsoluteImportPathsOptions} from './types';
 import {Tokeniser} from '../language/tokeniser/tokenise';
 import {Parser} from '../language/parser/parse';
-import {BuildRuleNameVisitor} from '../visitor/ruleName';
+import {BuildRuleNameVisitor} from '../visitor/findRuleName';
 
 export class DependencyResolver {
   private _config: WorkspacePluginConfig;
@@ -235,7 +235,7 @@ export class DependencyResolver {
     return nearestBuildFilePaths;
   };
 
-  getBuildRuleName = (dep: string, buildFilePath: string) => {
+  getBuildRuleTarget = (dep: string, buildFilePath: string) => {
     try {
       const buildFile = readFileSync(buildFilePath, 'utf-8');
 
@@ -245,13 +245,12 @@ export class DependencyResolver {
       const parser = new Parser(tokens);
       const ast = parser.parse();
 
-      const fileName = path.basename(dep);
-      const ruleNameVisitor = new BuildRuleNameVisitor(fileName);
-      ruleNameVisitor.visit(ast);
+      const ruleNameVisitor = new BuildRuleNameVisitor(path.basename(dep));
+      ruleNameVisitor.getRuleName(ast);
 
       return ruleNameVisitor.ruleName;
     } catch (error) {
-      console.error('[DependencyResolver::getBuildRuleName]: ', error);
+      console.error('[DependencyResolver::getBuildRuleTarget]: ', error);
       return null;
     }
   };

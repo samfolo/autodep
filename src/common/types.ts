@@ -1,19 +1,19 @@
-import {KNOWN_RULE_FIELD_NAMES} from './const';
+import {SUPPORTED_MANAGED_BUILTINS, KNOWN_RULE_FIELD_NAMES} from './const';
 
-export type DefaultManagedField = typeof KNOWN_RULE_FIELD_NAMES[number];
+export type KnownRuleFieldName = typeof KNOWN_RULE_FIELD_NAMES[number];
 
 export type LogLevel = 'info' | 'debug' | 'error' | 'warning';
 
+export type ManagedBuiltin = typeof SUPPORTED_MANAGED_BUILTINS[number];
+export type ManagedSchemaField = 'name' | 'srcs' | 'deps' | 'visibility' | 'testOnly';
 export type ManagedSchemaFieldType = 'string' | 'array' | 'bool' | 'number';
 export type ManagedSchemaFieldEntry = {value: string; as: ManagedSchemaFieldType};
-
-export type SchemaField = 'name' | 'srcs' | 'deps' | 'visibility' | 'testOnly';
 
 export interface WorkspacePluginConfigInput {
   manage?: {
     rules?: string[];
     fields?: string[];
-    schema?: Record<string, Partial<Record<SchemaField, (string | ManagedSchemaFieldEntry)[]>>>;
+    schema?: Record<string, Partial<Record<ManagedSchemaField, (string | ManagedSchemaFieldEntry)[]>>>;
   };
   match?: {
     module?: string | string[];
@@ -69,7 +69,7 @@ export interface WorkspacePluginConfig {
   manage: {
     rules: Set<string>;
     fields: Set<string>;
-    schema: Record<string, Record<SchemaField, Set<ManagedSchemaFieldEntry>>>;
+    schema: Record<string, Record<ManagedSchemaField, Set<ManagedSchemaFieldEntry>>>;
   };
   match: {
     module: RegExp | Set<string>;

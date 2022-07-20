@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {ManagedSchemaFieldEntry, ManagedSchemaFieldType} from './types';
+import {ManagedBuiltin, ManagedSchemaFieldEntry, ManagedSchemaFieldType} from './types';
 
 export const SUPPORTED_MODULE_EXTENSIONS = [
   '',
@@ -70,6 +70,14 @@ export const KNOWN_RULE_FIELD_NAMES = [
   'env',
   'optional_outs',
 ] as const;
+
+export const SUPPORTED_MANAGED_BUILTINS = ['subinclude', 'glob'] as const;
+export const SUPPORTED_MANAGED_BUILTINS_LOOKUP = Object.seal(
+  SUPPORTED_MANAGED_BUILTINS.reduce<{[K in ManagedBuiltin]: K}>(
+    (acc, builtin) => ({...acc, [builtin]: builtin}),
+    {} as {[K in ManagedBuiltin]: K}
+  )
+);
 
 export const DEFAULT_MODULE_FILENAME_MATCHER = new RegExp('.*?\\.(js|jsx|ts|tsx)$');
 export const DEFAULT_TEST_FILENAME_MATCHER = new RegExp('.*?\\.(spec|test)\\.(js|jsx|ts|tsx)$');

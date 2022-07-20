@@ -1,7 +1,12 @@
 import path from 'path';
 import {SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES} from '../../common/const';
 
-import {ManagedSchemaFieldEntry, ManagedSchemaFieldType, SchemaField, WorkspacePluginConfig} from '../../common/types';
+import {
+  ManagedSchemaFieldEntry,
+  ManagedSchemaFieldType,
+  ManagedSchemaField,
+  WorkspacePluginConfig,
+} from '../../common/types';
 
 import {Expression} from '../ast/types';
 import * as ast from '../ast/utils';
@@ -9,34 +14,34 @@ import * as ast from '../ast/utils';
 interface DependencyBuilderOptions {
   config: WorkspacePluginConfig;
   rootPath: string;
-  initialDeps: string[];
+  newDeps: string[];
 }
 
-export class DependencyFileBuilder {
+export class DependencyBuilder {
   private config: WorkspacePluginConfig;
   private rootPath: string;
   private fileName: string;
   private initialRuleType: 'module' | 'test';
-  private initialDeps: string[];
+  private newDeps: string[];
 
-  constructor({config, rootPath, initialDeps}: DependencyBuilderOptions) {
+  constructor({config, rootPath, newDeps}: DependencyBuilderOptions) {
     this.config = config;
     this.rootPath = rootPath;
     this.fileName = path.basename(this.rootPath);
-    this.initialDeps = initialDeps;
+    this.newDeps = newDeps;
 
     if (this.config.match.isTest(this.rootPath)) {
       this.initialRuleType = 'test';
     } else if (this.config.match.isModule(this.rootPath)) {
       this.initialRuleType = 'module';
     } else {
-      const error = `[DependencyFileBuilder::init]: unsupported file type: ${this.rootPath}. Check your settings at <autodepConfig>.match.(module|test). Note, you don't have to double-escape your regex matchers`;
+      const error = `[DependencyFileBuilder::init]: unsupported file type: ${this.rootPath}. Check your settings at \`<autodepConfig>.match.(module|test)\`. Note, you don't have to double-escape your regex matchers`;
       console.error(error);
       throw new Error(error);
     }
   }
 
-  build = () => {
+  readonly buildNewFile = () => {
     const root = ast.createRootNode({statements: []});
     const fileConfig = this.config.onCreate[this.initialRuleType];
 
@@ -48,6 +53,14 @@ export class DependencyFileBuilder {
       root.statements.push(this.buildSubincludeStatement(fileConfig.subinclude));
     }
 
+    root.statements.push(this.buildNewRule());
+
+    return root;
+  };
+
+  readonly buildNewRule = () => {
+    const fileConfig = this.config.onCreate[this.initialRuleType];
+
     const {name, srcs, deps, visibility, testOnly} = this.getRuleFieldSchema(
       this.config.manage.schema[fileConfig.name]
     );
@@ -58,29 +71,25 @@ export class DependencyFileBuilder {
     const buildVisibilityNode = this.schemaBuilderMap[visibility.as];
     const buildTestOnlyNode = this.schemaBuilderMap[testOnly.as];
 
-    root.statements.push(
-      ast.createExpressionStatementNode({
-        token: {type: 'RULE_NAME', value: fileConfig.name},
-        expression: this.buildCallExpressionNode(fileConfig.name, [
-          this.buildRuleFieldKwargNode(name.value, buildNameNode(path.parse(this.fileName).name)),
-          this.buildRuleFieldKwargNode(srcs.value, buildSrcsNode(this.fileName)),
-          ...(this.initialDeps.length > 0 || !fileConfig.omitEmptyFields
-            ? [this.buildRuleFieldKwargNode(deps.value, buildDepsNode(this.initialDeps))]
-            : []),
-          ...('initialVisibility' in fileConfig && fileConfig.initialVisibility
-            ? [this.buildRuleFieldKwargNode(visibility.value, buildVisibilityNode(fileConfig.initialVisibility))]
-            : []),
-          ...('testOnly' in fileConfig && fileConfig.testOnly !== null
-            ? [this.buildRuleFieldKwargNode(testOnly.value, buildTestOnlyNode(fileConfig.testOnly))]
-            : []),
-        ]),
-      })
-    );
-
-    return root;
+    return ast.createExpressionStatementNode({
+      token: {type: 'RULE_NAME', value: fileConfig.name},
+      expression: this.buildCallExpressionNode(fileConfig.name, [
+        this.buildRuleFieldKwargNode(name.value, buildNameNode(path.parse(this.fileName).name)),
+        this.buildRuleFieldKwargNode(srcs.value, buildSrcsNode(this.fileName)),
+        ...(this.newDeps.length > 0 || !fileConfig.omitEmptyFields
+          ? [this.buildRuleFieldKwargNode(deps.value, buildDepsNode(this.newDeps))]
+          : []),
+        ...('initialVisibility' in fileConfig && fileConfig.initialVisibility
+          ? [this.buildRuleFieldKwargNode(visibility.value, buildVisibilityNode(fileConfig.initialVisibility))]
+          : []),
+        ...('testOnly' in fileConfig && fileConfig.testOnly !== null
+          ? [this.buildRuleFieldKwargNode(testOnly.value, buildTestOnlyNode(fileConfig.testOnly))]
+          : []),
+      ]),
+    });
   };
 
-  private buildFileHeadingCommentStatement = (fileHeading: string) => {
+  readonly buildFileHeadingCommentStatement = (fileHeading: string) => {
     const commentLines = fileHeading.split('\n').map((line) => '# ' + line);
     return ast.createCommentStatementNode({
       token: {type: 'COMMENT', value: commentLines[0]},
@@ -93,7 +102,7 @@ export class DependencyFileBuilder {
     });
   };
 
-  private buildSubincludeStatement = (subincludes: string[]) =>
+  readonly buildSubincludeStatement = (subincludes: string[]) =>
     ast.createExpressionStatementNode({
       token: {type: 'RULE_NAME', value: 'subinclude'},
       expression: this.buildCallExpressionNode(
@@ -104,7 +113,7 @@ export class DependencyFileBuilder {
       ),
     });
 
-  private buildRuleFieldKwargNode = (key: string, value: Expression) =>
+  readonly buildRuleFieldKwargNode = (key: string, value: Expression) =>
     ast.createKeywordArgumentExpressionNode({
       token: {type: 'RULE_FIELD_NAME', value: key},
       key: ast.createIdentifierNode({
@@ -114,25 +123,25 @@ export class DependencyFileBuilder {
       value,
     });
 
-  private buildStringLiteralNode = (value: string) =>
+  readonly buildStringLiteralNode = (value: string) =>
     ast.createStringLiteralNode({
       token: {type: 'STRING', value},
       value,
     });
 
-  private buildIntegerLiteralNode = (value: number) =>
+  readonly buildIntegerLiteralNode = (value: number) =>
     ast.createIntegerLiteralNode({
       token: {type: 'INT', value: String(value)},
       value,
     });
 
-  private buildBooleanLiteralNode = (value: boolean) =>
+  readonly buildBooleanLiteralNode = (value: boolean) =>
     ast.createBooleanLiteralNode({
       token: {type: 'BOOLEAN', value: String(value)},
       value,
     });
 
-  private buildArrayNode = (values: string[]) =>
+  readonly buildArrayNode = (values: string[]) =>
     ast.createArrayLiteralNode({
       token: {type: 'OPEN_BRACKET', value: '['},
       elements: ast.createExpressionListNode({
@@ -148,7 +157,7 @@ export class DependencyFileBuilder {
 
   // Utils:
 
-  private buildCallExpressionNode = (functionName: string, args: Expression[]) =>
+  readonly buildCallExpressionNode = (functionName: string, args: Expression[]) =>
     ast.createCallExpressionNode({
       token: {type: 'OPEN_PAREN', value: '('},
       functionName: ast.createIdentifierNode({
@@ -161,7 +170,7 @@ export class DependencyFileBuilder {
       }),
     });
 
-  private getRuleFieldSchema = (schema: Partial<Record<SchemaField, Set<ManagedSchemaFieldEntry>>>) => {
+  private getRuleFieldSchema = (schema: Partial<Record<ManagedSchemaField, Set<ManagedSchemaFieldEntry>>>) => {
     const [configName] = schema.name || [];
     const [configSrcs] = schema.srcs || [];
     const [configDeps] = schema.deps || [];

@@ -30,8 +30,6 @@ export const SYMBOLS: Record<SymbolName, TokenValue> = {
   EOF: 0,
 } as const;
 
-export const BUILTINS: readonly string[] = ['subinclude', 'glob'] as const; // TODO: make dynamic via workspace config
-
 export const RESERVED_TERMS: Record<ReservedTerm, TokenValue> = {
   TRUE: 'True',
   FALSE: 'False',

@@ -24,7 +24,7 @@ export class Dependency {
     this.rootDirName = rootDirName;
   }
 
-  toBuildDep = (options: ToBuildDepOptions = {}) => {
+  toBuildTarget = (options: ToBuildDepOptions = {}) => {
     const buildFileDirPath = path.dirname(this.buildFilePath);
 
     if (this.buildFilePath === this.targetBuildFilePath) {

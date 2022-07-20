@@ -11,7 +11,7 @@ import {
 import {
   ManagedSchemaFieldEntry,
   ManagedSchemaFieldType,
-  SchemaField,
+  ManagedSchemaField,
   WorkspacePluginConfig,
   WorkspacePluginConfigInput,
 } from './types';
@@ -31,7 +31,7 @@ const qualifyFilePath = (matcher: Set<string> | RegExp, filePath: string) => {
 };
 
 const getManagedSchemaFieldEntry = (
-  field: SchemaField,
+  field: ManagedSchemaField,
   entry: string | ManagedSchemaFieldEntry,
   fallback: ManagedSchemaFieldEntry,
   configValidTypings?: ManagedSchemaFieldType[],
