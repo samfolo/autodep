@@ -1,0 +1,95 @@
+manage:
+  rules:
+    - js_library
+    - ops_app_mocha
+    - ops_app_jest
+    - yarn_script
+  fields:
+    - name
+    - src
+    - srcs
+    - deps
+    - visibility
+    - test_only
+    - labels
+    - entry
+  schema:
+    js_library:
+      name:
+        - value: name
+          as: string
+      srcs:
+        - srcs
+        - value: src
+          as: string
+      deps:
+        - value: deps
+          as: array
+      visibility:
+        - value: visibility
+          as: array
+    yarn_script:
+      srcs:
+        - value: entry
+          as: string
+      visibility:
+        - value: visibility
+          as: array
+    ops_app_jest:
+      srcs:
+        - value: entry
+          as: string
+    ops_app_mocha:
+      srcs:
+        - value: entry
+          as: string
+match:
+  module: .*?\.(js|jsx|ts|tsx)$
+  test: .*?\.(spec|test)\.(js|jsx|ts|tsx)$
+log:
+  - info
+  - debug
+  - error
+  - warning
+paths:
+  '@plz/*':
+    - ./*
+    - ./plz-out/gen/*
+  '@muistyled-engine':
+    - '@mui/styled-engine-sc'
+excludeNodeModules: true
+enablePropagation: false
+onCreate:
+  module:
+    name: js_library
+    fileHeading: |-
+      This is an onCreate module file heading
+      It even handles multiple lines!
+
+      And double lines...
+    explicitDeps: true
+    omitEmptyFields: true
+    initialVisibility:
+      - PUBLIC
+    testOnly: false
+  test:
+    name: ops_app_jest
+    fileHeading: |-
+      This is an onCreate test file heading
+      It even handles multiple lines!
+    subinclude:
+      - //vault/admin_app/apps/ops:ops_app_jest
+    explicitDeps: true
+    omitEmptyFields: true
+onUpdate:
+  module:
+    fileHeading: |-
+      This is an onUpdate module file heading
+      It even handles multiple lines!
+    omitEmptyFields: true
+    subinclude: []
+  test:
+    fileHeading: |-
+      This is an onUpdate test file heading
+      It even handles multiple lines!
+    omitEmptyFields: true
