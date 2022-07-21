@@ -47,10 +47,10 @@ match:
   module: .*?\.(js|jsx|ts|tsx)$
   test: .*?\.(spec|test)\.(js|jsx|ts|tsx)$
 log:
-  - info
   - debug
+  - info
+  - warn
   - error
-  - warning
 paths:
   '@plz/*':
     - ./*

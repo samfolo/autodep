@@ -84,3 +84,5 @@ export const DEFAULT_TEST_FILENAME_MATCHER = new RegExp('.*?\\.(spec|test)\\.(js
 export const DEFAULT_MODULE_RULE_NAME = 'filegroup';
 export const DEFAULT_TEST_RULE_NAME = 'filegroup';
 export const DEFAULT_INITIAL_VISIBILITY = ['PUBLIC'] as const;
+
+export const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const;

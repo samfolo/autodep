@@ -1,8 +1,8 @@
-import {SUPPORTED_MANAGED_BUILTINS, KNOWN_RULE_FIELD_NAMES} from './const';
+import {SUPPORTED_MANAGED_BUILTINS, KNOWN_RULE_FIELD_NAMES, LOG_LEVELS} from './const';
 
 export type KnownRuleFieldName = typeof KNOWN_RULE_FIELD_NAMES[number];
 
-export type LogLevel = 'info' | 'debug' | 'error' | 'warning';
+export type LogLevel = typeof LOG_LEVELS[number];
 
 export type ManagedBuiltin = typeof SUPPORTED_MANAGED_BUILTINS[number];
 export type ManagedSchemaField = 'name' | 'srcs' | 'deps' | 'visibility' | 'testOnly';
