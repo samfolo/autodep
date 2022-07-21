@@ -21,14 +21,17 @@ import {
   SUPPORTED_MANAGED_BUILTINS_LOOKUP,
   SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES,
 } from '../common/const';
+import {DependencyBuilder} from '../language/builder/build';
 
 interface RuleInsertionVisitorOptions {
   config: WorkspacePluginConfig;
   rootPath: string;
   newDeps: string[];
+  builderCls?: typeof DependencyBuilder;
 }
 
 export class DependencyUpdateVisitor {
+  private readonly builder: DependencyBuilder;
   private readonly fileName: string;
   private readonly newDeps: string[];
   private status: 'success' | 'failed' | 'idle' | 'passthrough';
@@ -38,7 +41,8 @@ export class DependencyUpdateVisitor {
   private ruleType: 'module' | 'test';
   private rootPath: string;
 
-  constructor({config, rootPath, newDeps}: RuleInsertionVisitorOptions) {
+  constructor({config, rootPath, newDeps, builderCls = DependencyBuilder}: RuleInsertionVisitorOptions) {
+    this.builder = new builderCls({config, rootPath, newDeps});
     this.rootPath = rootPath;
     this.fileName = path.basename(this.rootPath);
     this.config = config;
@@ -87,7 +91,34 @@ export class DependencyUpdateVisitor {
   };
 
   private visitRootNode = (node: RootNode) => {
-    node.statements = node.statements.map((statement) => this.visitStatementNode(statement));
+    // We need to check whether the first line of any config `fileHeading` is the same as
+    // the first line in the file:
+    const onUpdateFileHeading = this.config.onUpdate[this.ruleType].fileHeading ?? '';
+    const firstLineOfOnUpdateFileHeading = `# ${onUpdateFileHeading.split('\n')[0]}`;
+
+    const onCreateFileHeading = this.config.onCreate[this.ruleType].fileHeading ?? '';
+    const firstLineOfOnCreateFileHeading = `# ${onCreateFileHeading.split('\n')[0]}`;
+
+    const firstStatement = node.statements[0];
+
+    const hasOnUpdateCommentHeading = firstLineOfOnUpdateFileHeading.startsWith(
+      String(firstStatement?.getTokenLiteral())
+    );
+    const hasOnCreateCommentHeading = firstLineOfOnCreateFileHeading.startsWith(
+      String(firstStatement?.getTokenLiteral())
+    );
+
+    if (firstStatement.kind === 'CommentStatement' && (hasOnCreateCommentHeading || hasOnUpdateCommentHeading)) {
+      const [, ...nonFileHeadingStatements] = node.statements;
+
+      node.statements = [
+        this.builder.buildFileHeadingCommentStatement(onUpdateFileHeading),
+        ...nonFileHeadingStatements.map((statement) => this.visitStatementNode(statement)),
+      ];
+    } else {
+      node.statements = node.statements.map((statement) => this.visitStatementNode(statement));
+    }
+
     return node;
   };
 
@@ -95,15 +126,7 @@ export class DependencyUpdateVisitor {
     switch (node.kind) {
       case 'ExpressionStatement':
         return this.visitExpressionStatementNode(node);
-      default:
-        return node;
-    }
-  };
-
-  private visitExpressionNode = (node: Expression): Expression => {
-    switch (node.kind) {
-      case 'CallExpression':
-        return this.visitCallExpressionNode(node);
+      case 'CommentStatement':
       default:
         return node;
     }
@@ -115,6 +138,15 @@ export class DependencyUpdateVisitor {
     }
 
     return node;
+  };
+
+  private visitExpressionNode = (node: Expression): Expression => {
+    switch (node.kind) {
+      case 'CallExpression':
+        return this.visitCallExpressionNode(node);
+      default:
+        return node;
+    }
   };
 
   private visitCallExpressionNode = (node: CallExpression) => {

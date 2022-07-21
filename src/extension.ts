@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import {readFileSync} from 'fs';
+import {readFileSync, writeFileSync} from 'fs';
 
 import {Tokeniser} from './language/tokeniser/tokenise';
 import {Parser} from './language/parser/parse';
@@ -24,7 +24,6 @@ export function activate(context: vscode.ExtensionContext) {
       try {
         const depResolver = new DependencyResolver(createConfig());
         const config = depResolver.loadConfigFromWorkspace(textDocument.fileName);
-        console.log(config);
 
         const uniqueDeps = depResolver.resolveAbsoluteImportPaths({
           filePath: textDocument.fileName,
@@ -91,15 +90,10 @@ export function activate(context: vscode.ExtensionContext) {
             const updatesVisitorResult = updatesVisitor.getResult();
 
             switch (updatesVisitorResult.status) {
-              case 'success': {
-                const edit = new vscode.WorkspaceEdit();
-                const buildFileUri = vscode.Uri.file(targetBuildFilePath);
-                edit.createFile(buildFileUri, {overwrite: true});
-                edit.insert(buildFileUri, new vscode.Position(0, 0), updatedAST.toString());
-                vscode.workspace.applyEdit(edit);
-                vscode.workspace.saveAll(true);
-              }
-              case 'failed': {
+              case 'success':
+                writeFileSync(targetBuildFilePath, updatedAST.toString(), {encoding: 'utf-8', flag: 'w'});
+                break;
+              case 'failed':
                 console.info(
                   `[DependencyUpdateVisitor::updateDeps]: Could not find a matching rule to update at ${targetBuildFilePath}. Creating a new rule in the file...`
                 );
@@ -113,25 +107,22 @@ export function activate(context: vscode.ExtensionContext) {
                 const ruleInsertionVisitorResult = ruleInsertionVisitor.getResult();
 
                 switch (ruleInsertionVisitorResult.status) {
-                  case 'success': {
-                    const edit = new vscode.WorkspaceEdit();
-                    const buildFileUri = vscode.Uri.file(targetBuildFilePath);
-                    edit.createFile(buildFileUri, {overwrite: true});
-                    edit.insert(buildFileUri, new vscode.Position(0, 0), appendedAST.toString());
-                    vscode.workspace.applyEdit(edit);
-                    vscode.workspace.saveAll(true);
-                  }
+                  case 'success':
+                    writeFileSync(targetBuildFilePath, appendedAST.toString(), {encoding: 'utf-8', flag: 'w'});
+                    break;
+                  case 'failed':
+                    throw new Error(`[RuleInsertionVisitor::insertRule]: ${ruleInsertionVisitorResult.reason}`);
                   case 'passthrough':
                   case 'idle':
                     throw new Error(
-                      `[DependencyUpdateVisitor::updateDeps]: Unexpected error: ${ruleInsertionVisitorResult.reason}`
+                      `[RuleInsertionVisitor::insertRule]: Unexpected error: ${ruleInsertionVisitorResult.reason}`
                     );
                   default:
                     throw new Error(
-                      `[DependencyUpdateVisitor::updateDeps]: Unexpected error: unknown status "${ruleInsertionVisitorResult.status}"`
+                      `[RuleInsertionVisitor::insertRule]: Unexpected error: unknown status "${ruleInsertionVisitorResult.status}"`
                     );
                 }
-              }
+                break;
               case 'passthrough':
               case 'idle':
                 throw new Error(
@@ -142,9 +133,9 @@ export function activate(context: vscode.ExtensionContext) {
                   `[DependencyUpdateVisitor::updateDeps]: Unexpected error: unknown status "${updatesVisitorResult.status}"`
                 );
             }
-          } catch {
+          } catch (error) {
             console.warn(
-              `[DependencyUpdateVisitor::visit]: Could not find a file to update at ${targetBuildFilePath}. Creating a new file...`
+              `[DependencyUpdateVisitor::updateDeps]: Could not find a file to update at ${targetBuildFilePath}. Creating a new file...`
             );
 
             const dependencyBuilder = new DependencyBuilder({
@@ -152,14 +143,9 @@ export function activate(context: vscode.ExtensionContext) {
               rootPath: textDocument.fileName,
               newDeps: sortedBuildRuleTargets,
             });
-            const fileAST = dependencyBuilder.buildNewFile();
+            const builtAST = dependencyBuilder.buildNewFile();
 
-            const edit = new vscode.WorkspaceEdit();
-            const buildFileUri = vscode.Uri.file(targetBuildFilePath);
-            edit.createFile(buildFileUri, {overwrite: true});
-            edit.insert(buildFileUri, new vscode.Position(0, 0), fileAST.toString());
-            vscode.workspace.applyEdit(edit);
-            vscode.workspace.saveAll(true);
+            writeFileSync(targetBuildFilePath, builtAST.toString(), {encoding: 'utf-8', flag: 'w'});
           }
         } else {
           throw new Error(

@@ -34,7 +34,6 @@ export class DependencyResolver {
           flag: 'r',
         });
         const configInput: WorkspacePluginConfigInput = parse(configInputFile);
-        console.log(configInput);
         this._config = createConfig(configInput);
         return this._config;
       } catch (error) {

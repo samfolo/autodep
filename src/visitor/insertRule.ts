@@ -65,18 +65,38 @@ export class RuleInsertionVisitor {
   };
 
   private visitRootNode = (node: RootNode) => {
-    const fileHeading = this.config.onUpdate[this.ruleType].fileHeading;
+    // We need to check whether the first line of any config `fileHeading` is the same as
+    // the first line in the file:
+    const onUpdateFileHeading = this.config.onUpdate[this.ruleType].fileHeading ?? '';
+    const firstLineOfOnUpdateFileHeading = `# ${onUpdateFileHeading.split('\n')[0]}`;
 
-    if (fileHeading) {
+    const onCreateFileHeading = this.config.onCreate[this.ruleType].fileHeading ?? '';
+    const firstLineOfOnCreateFileHeading = `# ${onCreateFileHeading.split('\n')[0]}`;
+
+    const firstStatement = node.statements[0];
+
+    const hasOnUpdateCommentHeading = firstLineOfOnUpdateFileHeading.startsWith(
+      String(firstStatement?.getTokenLiteral())
+    );
+    const hasOnCreateCommentHeading = firstLineOfOnCreateFileHeading.startsWith(
+      String(firstStatement?.getTokenLiteral())
+    );
+
+    if (firstStatement.kind === 'CommentStatement' && (hasOnCreateCommentHeading || hasOnUpdateCommentHeading)) {
+      const [, ...nonFileHeadingStatements] = node.statements;
+
       node.statements = [
-        this.builder.buildFileHeadingCommentStatement(fileHeading),
-        ...node.statements.map((statement) => this.visitStatementNode(statement)),
+        this.builder.buildFileHeadingCommentStatement(onUpdateFileHeading),
+        ...nonFileHeadingStatements.map((statement) => this.visitStatementNode(statement)),
       ];
     } else {
       node.statements = node.statements.map((statement) => this.visitStatementNode(statement));
     }
 
     node.statements.push(this.builder.buildNewRule());
+
+    this.status = 'success';
+    this.reason = 'new rule successfully inserted into given file';
 
     return node;
   };
