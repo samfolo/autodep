@@ -13,11 +13,11 @@ import {
   Statement,
 } from '../language/ast/types';
 
-interface BuildRuleNameVisitorOptions {
+interface RuleNameVisitorOptions {
   config: AutodepConfig;
   rootPath: string;
 }
-export class BuildRuleNameVisitor {
+export class RuleNameVisitor {
   private _ruleName: string | null;
   private fileName: string;
   private status: 'success' | 'failed' | 'idle' | 'passthrough';
@@ -26,7 +26,7 @@ export class BuildRuleNameVisitor {
   private rootPath: string;
   private ruleType: 'module' | 'test';
 
-  constructor({config, rootPath}: BuildRuleNameVisitorOptions) {
+  constructor({config, rootPath}: RuleNameVisitorOptions) {
     this._ruleName = null;
     this.status = 'idle';
     this.reason = 'took no action';
@@ -39,7 +39,7 @@ export class BuildRuleNameVisitor {
     } else if (this.config.match.isModule(this.rootPath)) {
       this.ruleType = 'module';
     } else {
-      const error = `[BuildRuleNameVisitor::init]: unsupported file type: ${this.rootPath}. Check your settings at \`<autodepConfig>.match.(module|test)\`. Note, you don't have to double-escape your regex matchers`;
+      const error = `[RuleNameVisitor::init]: unsupported file type: ${this.rootPath}. Check your settings at \`<autodepConfig>.match.(module|test)\`. Note, you don't have to double-escape your regex matchers`;
       console.error(error);
       throw new Error(error);
     }

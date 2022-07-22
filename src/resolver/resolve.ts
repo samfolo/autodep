@@ -10,7 +10,7 @@ import {AutodepConfig} from '../common/types';
 import {CollectDepsDirective, ResolveAbsoluteImportPathsOptions} from './types';
 import {Tokeniser} from '../language/tokeniser/tokenise';
 import {Parser} from '../language/parser/parse';
-import {BuildRuleNameVisitor} from '../visitor/findRuleName';
+import {RuleNameVisitor} from '../visitor/findRuleName';
 import {Logger} from '../logger/log';
 import {Messages} from '../messages/message';
 
@@ -281,7 +281,7 @@ export class DependencyResolver {
       this._logger.debug({ctx: 'getBuildRuleName', message: Messages.parse.success()});
 
       this._logger.debug({ctx: 'getBuildRuleName', message: Messages.locate.attempt('rule name')});
-      const ruleNameVisitor = new BuildRuleNameVisitor({config: this._config, rootPath: path});
+      const ruleNameVisitor = new RuleNameVisitor({config: this._config, rootPath: path});
       ruleNameVisitor.locateRuleName(ast);
       const ruleNameVisitorResult = ruleNameVisitor.getResult();
 
