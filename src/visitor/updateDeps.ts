@@ -12,7 +12,7 @@ import {
   Statement,
 } from '../language/ast/types';
 import {createToken} from '../language/tokeniser/tokenise';
-import {WorkspacePluginConfig} from '../common/types';
+import {AutodepConfig} from '../common/types';
 import path from 'path';
 import {
   DEFAULT_MODULE_RULE_NAME,
@@ -24,7 +24,7 @@ import {
 import {DependencyBuilder} from '../language/builder/build';
 
 interface RuleInsertionVisitorOptions {
-  config: WorkspacePluginConfig;
+  config: AutodepConfig;
   rootPath: string;
   newDeps: string[];
   builderCls?: typeof DependencyBuilder;
@@ -37,7 +37,7 @@ export class DependencyUpdateVisitor {
   private status: 'success' | 'failed' | 'idle' | 'passthrough';
   private reason: string;
   private removedDeps: string[];
-  private config: WorkspacePluginConfig;
+  private config: AutodepConfig;
   private ruleType: 'module' | 'test';
   private rootPath: string;
 

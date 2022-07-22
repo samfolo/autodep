@@ -9,7 +9,7 @@ export type ManagedSchemaField = 'name' | 'srcs' | 'deps' | 'visibility' | 'test
 export type ManagedSchemaFieldType = 'string' | 'array' | 'bool' | 'number';
 export type ManagedSchemaFieldEntry = {value: string; as: ManagedSchemaFieldType};
 
-export interface WorkspacePluginConfigInput {
+export interface AutodepConfigInput {
   manage?: {
     rules?: string[];
     fields?: string[];
@@ -65,7 +65,7 @@ export interface WorkspacePluginConfigInput {
   };
 }
 
-export interface WorkspacePluginConfig {
+export interface AutodepConfig {
   manage: {
     rules: Set<string>;
     fields: Set<string>;

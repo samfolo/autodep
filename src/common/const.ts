@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {ManagedBuiltin, ManagedSchemaFieldEntry, ManagedSchemaFieldType} from './types';
 
+export const CONFIG_FILENAME = '.autodep.yaml';
+
 export const SUPPORTED_MODULE_EXTENSIONS = [
   '',
   '.ts',

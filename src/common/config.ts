@@ -12,8 +12,8 @@ import {
   ManagedSchemaFieldEntry,
   ManagedSchemaFieldType,
   ManagedSchemaField,
-  WorkspacePluginConfig,
-  WorkspacePluginConfigInput,
+  AutodepConfig,
+  AutodepConfigInput,
 } from './types';
 
 const qualifyFilePath = (matcher: Set<string> | RegExp, filePath: string) => {
@@ -48,7 +48,7 @@ const getManagedSchemaFieldEntry = (
   if (isValidTyping) {
     result.as = entry.as;
   } else {
-    const message = `[createConfig]: invalid typing "${entry.as}" passed to "${field}" field.`;
+    const message = `[initConfig]: invalid typing "${entry.as}" passed to "${field}" field.`;
     const suggestion = `Must be one of [${validTypings.join(', ')}].`;
     const action = `Using fallback typing "${fallback.as}"`;
     console.warn(`${message} ${suggestion} ${action}`);
@@ -60,7 +60,7 @@ const getManagedSchemaFieldEntry = (
   if (isValidValue) {
     result.value = entry.value.replace(/ /gi, '_');
   } else {
-    const message = `[createConfig]: invalid value "${entry.value}" passed to "${field}" field.`;
+    const message = `[initConfig]: invalid value "${entry.value}" passed to "${field}" field.`;
     const suggestion = configValidValues ? `Must be one of [${configValidValues?.join(', ')}].` : '';
     const action = `Using fallback value "${fallback.value}"`;
     console.warn(`${message} ${suggestion} ${action}`);
@@ -70,7 +70,7 @@ const getManagedSchemaFieldEntry = (
   return result;
 };
 
-export const createConfig = (overrides: Partial<WorkspacePluginConfigInput> = {}): WorkspacePluginConfig => ({
+export const initConfig = (overrides: Partial<AutodepConfigInput> = {}): AutodepConfig => ({
   manage: {
     rules: new Set(['filegroup', 'genrule', ...(overrides.manage?.rules || [])]),
     fields: new Set([...KNOWN_RULE_FIELD_NAMES, ...(overrides.manage?.fields || [])]),
@@ -81,7 +81,7 @@ export const createConfig = (overrides: Partial<WorkspacePluginConfigInput> = {}
           name: new Set(
             Array.isArray(entry.name) && entry.name.length > 0
               ? entry.name?.map((el) =>
-                  getManagedSchemaFieldEntry('name', el, SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES.NAME)
+                  getManagedSchemaFieldEntry('name', el, SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES.NAME, ['string'])
                 )
               : [SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES.NAME]
           ),
@@ -121,7 +121,7 @@ export const createConfig = (overrides: Partial<WorkspacePluginConfigInput> = {}
           ),
         },
       }),
-      {} as WorkspacePluginConfig['manage']['schema']
+      {} as AutodepConfig['manage']['schema']
     ),
   },
   match: {

@@ -2,7 +2,7 @@ import {readFileSync} from 'fs';
 import {createRequire} from 'node:module';
 import path from 'path';
 
-import {WorkspacePluginConfig} from '../../common/types';
+import {AutodepConfig} from '../../common/types';
 
 import {PackageAlias, PackageName, DeAliasingClientOptions} from './types';
 
@@ -19,7 +19,7 @@ export class DeAliasingClient {
   private packageJSON: Record<string, any>;
   private packageNameCache: Record<PackageAlias, PackageName>;
   private packageAliases: Set<PackageAlias>;
-  private config: WorkspacePluginConfig;
+  private config: AutodepConfig;
 
   constructor({filePath, rootDirName, config}: DeAliasingClientOptions) {
     this.filePath = filePath;

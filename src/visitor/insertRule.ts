@@ -1,10 +1,10 @@
 import {ASTNode, CallExpression, ExpressionStatement, RootNode, Expression, Statement} from '../language/ast/types';
-import {WorkspacePluginConfig} from '../common/types';
+import {AutodepConfig} from '../common/types';
 import {SUPPORTED_MANAGED_BUILTINS_LOOKUP} from '../common/const';
 import {DependencyBuilder} from '../language/builder/build';
 
 interface RuleInsertionVisitorOptions {
-  config: WorkspacePluginConfig;
+  config: AutodepConfig;
   rootPath: string;
   newDeps: string[];
   builderCls?: typeof DependencyBuilder;
@@ -15,7 +15,7 @@ export class RuleInsertionVisitor {
   private status: 'success' | 'failed' | 'idle' | 'passthrough';
   private ruleType: 'module' | 'test';
   private reason: string;
-  private config: WorkspacePluginConfig;
+  private config: AutodepConfig;
   private rootPath: string;
 
   constructor({config, rootPath, newDeps, builderCls = DependencyBuilder}: RuleInsertionVisitorOptions) {

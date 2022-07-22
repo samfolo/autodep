@@ -1,9 +1,9 @@
-import {WorkspacePluginConfig} from '../../common/types';
+import {AutodepConfig} from '../../common/types';
 
 export interface DeAliasingClientOptions {
   filePath: string;
   rootDirName: string;
-  config: WorkspacePluginConfig;
+  config: AutodepConfig;
 }
 
 export type PackageAlias = string;

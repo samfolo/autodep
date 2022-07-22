@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
+import path from 'path';
 import {readFileSync, writeFileSync} from 'fs';
 
 import {Tokeniser} from './language/tokeniser/tokenise';
@@ -7,9 +7,12 @@ import {Parser} from './language/parser/parse';
 import {Dependency} from './models/dependency';
 import {DependencyResolver} from './resolver/resolve';
 import {DependencyUpdateVisitor} from './visitor/updateDeps';
-import {createConfig} from './common/config';
+import {initConfig} from './common/config';
 import {DependencyBuilder} from './language/builder/build';
 import {RuleInsertionVisitor} from './visitor/insertRule';
+import {Logger} from './logger/log';
+import {ConfigurationLoader} from './loader/load';
+import {Messages} from './messages/message';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -22,8 +25,20 @@ export function activate(context: vscode.ExtensionContext) {
   const formatOnSave = vscode.workspace.onDidSaveTextDocument((textDocument) => {
     if (['.ts', '.js', '.tsx', '.jsx'].includes(path.extname(textDocument.fileName))) {
       try {
-        const depResolver = new DependencyResolver(createConfig());
-        const config = depResolver.loadConfigFromWorkspace(textDocument.fileName);
+        const defaultConfig = initConfig();
+        const logger = new Logger({namespace: 'AutoDep', config: defaultConfig});
+        logger.info({ctx: 'process', message: 'begin'});
+
+        const configLoader = new ConfigurationLoader(defaultConfig);
+        configLoader.loadConfigFromWorkspace(textDocument.fileName);
+        const config = configLoader.config;
+
+        const depResolver = new DependencyResolver(config);
+
+        logger.info({
+          ctx: 'process',
+          message: Messages.resolve.attempt(textDocument.fileName, 'absolute import paths'),
+        });
 
         const uniqueDeps = depResolver.resolveAbsoluteImportPaths({
           filePath: textDocument.fileName,
@@ -40,7 +55,7 @@ export function activate(context: vscode.ExtensionContext) {
         if (targetBuildFilePath) {
           const buildRuleTargets = [];
           for (const dep in depToBuildFileMap) {
-            const buildRuleTarget = depResolver.getBuildRuleTarget(dep, depToBuildFileMap[dep]);
+            const buildRuleTarget = depResolver.getBuildRuleName(dep, depToBuildFileMap[dep]);
 
             if (buildRuleTarget) {
               buildRuleTargets.push(
@@ -53,7 +68,7 @@ export function activate(context: vscode.ExtensionContext) {
               );
             } else {
               console.error(
-                '[DependencyResolver::getBuildRuleTarget]: could not resolve ' +
+                '[DependencyResolver::getBuildRuleName]: could not resolve ' +
                   dep +
                   ' in nearest `BUILD` file ' +
                   depToBuildFileMap[dep] +
@@ -76,7 +91,7 @@ export function activate(context: vscode.ExtensionContext) {
 
           try {
             const targetBuildFile = readFileSync(targetBuildFilePath, {encoding: 'utf-8', flag: 'r'});
-            const tokeniser = new Tokeniser(targetBuildFile, depResolver.config);
+            const tokeniser = new Tokeniser(targetBuildFile, config);
             const tokens = tokeniser.tokenise();
             const parser = new Parser(tokens);
             const ast = parser.parse();

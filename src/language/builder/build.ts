@@ -1,24 +1,19 @@
 import path from 'path';
 import {SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES} from '../../common/const';
 
-import {
-  ManagedSchemaFieldEntry,
-  ManagedSchemaFieldType,
-  ManagedSchemaField,
-  WorkspacePluginConfig,
-} from '../../common/types';
+import {ManagedSchemaFieldEntry, ManagedSchemaFieldType, ManagedSchemaField, AutodepConfig} from '../../common/types';
 
 import {Expression} from '../ast/types';
 import * as ast from '../ast/utils';
 
 interface DependencyBuilderOptions {
-  config: WorkspacePluginConfig;
+  config: AutodepConfig;
   rootPath: string;
   newDeps: string[];
 }
 
 export class DependencyBuilder {
-  private config: WorkspacePluginConfig;
+  private config: AutodepConfig;
   private rootPath: string;
   private fileName: string;
   private initialRuleType: 'module' | 'test';

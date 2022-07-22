@@ -1,5 +1,5 @@
 import {SUPPORTED_MANAGED_BUILTINS} from '../../common/const';
-import {WorkspacePluginConfig} from '../../common/types';
+import {AutodepConfig} from '../../common/types';
 import {RESERVED_TERM_LOOKUP, SYMBOLS} from './tokens';
 import type {TokenType, TokenValue, Token} from './types';
 
@@ -8,9 +8,9 @@ export class Tokeniser {
   private currentPosition: number;
   private readPosition: number;
   private tokens: Token[];
-  private config: WorkspacePluginConfig;
+  private config: AutodepConfig;
 
-  constructor(input: string, config: WorkspacePluginConfig) {
+  constructor(input: string, config: AutodepConfig) {
     this.input = input;
     this.config = config;
     this.currentPosition = 0;

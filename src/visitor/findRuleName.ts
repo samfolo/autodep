@@ -1,7 +1,7 @@
 import minimatch from 'minimatch';
 import path from 'path';
 import {DEFAULT_MODULE_RULE_NAME, DEFAULT_TEST_RULE_NAME, SUPPORTED_MANAGED_BUILTINS} from '../common/const';
-import {WorkspacePluginConfig} from '../common/types';
+import {AutodepConfig} from '../common/types';
 import {
   ASTNode,
   Comment,
@@ -14,7 +14,7 @@ import {
 } from '../language/ast/types';
 
 interface BuildRuleNameVisitorOptions {
-  config: WorkspacePluginConfig;
+  config: AutodepConfig;
   rootPath: string;
 }
 export class BuildRuleNameVisitor {
@@ -22,7 +22,7 @@ export class BuildRuleNameVisitor {
   private fileName: string;
   private status: 'success' | 'failed' | 'idle' | 'passthrough';
   private reason: string;
-  private config: WorkspacePluginConfig;
+  private config: AutodepConfig;
   private rootPath: string;
   private ruleType: 'module' | 'test';
 
@@ -43,10 +43,6 @@ export class BuildRuleNameVisitor {
       console.error(error);
       throw new Error(error);
     }
-  }
-
-  get ruleName() {
-    return this._ruleName;
   }
 
   locateRuleName = (node: ASTNode) => {
@@ -224,5 +220,6 @@ export class BuildRuleNameVisitor {
       status: this.status,
       reason: this.reason,
       fileName: this.fileName,
+      ruleName: this._ruleName,
     });
 }
