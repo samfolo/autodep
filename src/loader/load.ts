@@ -49,24 +49,25 @@ export class ConfigurationLoader {
         this._config = Object.freeze(initConfig(configInput));
         this._type = 'custom';
 
-        this._logger.info({
+        this._logger.debug({
           ctx: 'loadConfigFromWorkspace',
-          message: `custom configuration successfully loaded:\n${JSON.stringify(this._config, null, 2)}`,
+          message: Messages.resolve.success(configPath, CONFIG_FILENAME),
+          details: JSON.stringify(this._config, null, 2),
         });
       } catch (error) {
-        this._logger.warn({
+        this._logger.error({
           ctx: 'loadConfigFromWorkspace',
-          message: `could not resolve ${CONFIG_FILENAME} file at ${configPath}`,
+          message: Messages.resolve.failure(configPath, CONFIG_FILENAME),
           details: error,
         });
       }
-    } else {
-      this._logger.warn({
-        ctx: 'loadConfigFromWorkspace',
-        message: `no ${CONFIG_FILENAME} file found at ${configPath}. Using default config.`,
-      });
     }
 
+    this._logger.info({
+      ctx: 'loadConfigFromWorkspace',
+      message: Messages.using(`${this._type} config`),
+      details: JSON.stringify(this._config, null, 2),
+    });
     return this._config;
   };
 }

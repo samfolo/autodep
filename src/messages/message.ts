@@ -59,7 +59,17 @@ export class Messages {
    * @example unknown(null, 'status') => 'unknown status "null"'
    */
   static readonly unknown = (subject: string, type: string = 'element') => `unknown ${type} "${subject}"`;
-
+  /**
+   * A string formatting utility
+   *
+   * @param subject the element you are using, e.g. `fallback method`. Optional, defaults to `"default"`
+   * @returns
+   * ```javascript
+   * `using ${subject}`
+   * ```
+   * @example using('fallback method') => 'using fallback method'
+   */
+  static readonly using = (subject: string = 'default') => `using ${subject}`;
   /**
    * A collection of common `resolve`-journey message formatting utilities
    */
@@ -102,7 +112,6 @@ export class Messages {
      */
     failure: (path: string, subject: string = 'file') => `failed to resolve ${subject} at ${path}`,
   };
-
   /**
    * A collection of common `parse`-journey message formatting utilities
    */
@@ -141,7 +150,6 @@ export class Messages {
      */
     failure: (subject: string = 'content') => `failed to parse ${subject}`,
   };
-
   /**
    * A collection of common `initialise`-journey message formatting utilities
    */
@@ -180,7 +188,6 @@ export class Messages {
      */
     failure: (subject: string = 'resource') => `failed to initialise ${subject}`,
   };
-
   /**
    * A collection of common `collect`-journey message formatting utilities
    */
@@ -219,7 +226,6 @@ export class Messages {
      */
     failure: (subject: string = 'items') => `failed to collect ${subject}`,
   };
-
   /**
    * A collection of common `locate`-journey message formatting utilities
    */
