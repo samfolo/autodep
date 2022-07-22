@@ -97,8 +97,8 @@ export class DependencyResolver {
 
       this._logger.error({
         ctx: 'resolveAbsoluteImportPaths',
-        message: Messages.resolve.failure(dep, 'dep'),
-        details: 'de-aliasing method: ' + deAliasedDep.result,
+        message: Messages.failure('de-alias', dep),
+        details: 'method: ' + deAliasedDep.result,
       });
 
       return acc;
