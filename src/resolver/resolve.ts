@@ -42,20 +42,20 @@ export class DependencyResolver {
    * @returns a list of absolute import paths
    */
   resolveAbsoluteImportPaths = ({filePath, rootDir}: ResolveAbsoluteImportPathsOptions) => {
-    this._logger.debug({ctx: 'resolveAbsoluteImportPaths', message: Messages.initialise.attempt('de-aliasing client')});
+    this._logger.trace({ctx: 'resolveAbsoluteImportPaths', message: Messages.initialise.attempt('de-aliasing client')});
     const deAliasingClient = new DeAliasingClient({
       filePath,
       rootDirName: rootDir,
       config: this._config,
     });
 
-    this._logger.debug({ctx: 'resolveAbsoluteImportPaths', message: Messages.resolve.attempt(filePath)});
+    this._logger.trace({ctx: 'resolveAbsoluteImportPaths', message: Messages.resolve.attempt(filePath)});
     const fileContent = readFileSync(filePath, {
       encoding: 'utf-8',
       flag: 'r',
     });
 
-    this._logger.debug({ctx: 'resolveAbsoluteImportPaths', message: Messages.collect.attempt('absolute import paths')});
+    this._logger.trace({ctx: 'resolveAbsoluteImportPaths', message: Messages.collect.attempt('absolute import paths')});
     const deps = this.collectImports(fileContent, [
       {
         condition: ['.js', '.jsx'].includes(path.extname(filePath)),
@@ -70,7 +70,7 @@ export class DependencyResolver {
         collect: (file) => precinct(file, {type: 'tsx'}),
       },
     ]);
-    this._logger.debug({
+    this._logger.trace({
       ctx: 'resolveAbsoluteImportPaths',
       message: Messages.collect.success('absolute import paths'),
       details: JSON.stringify(deps, null, 2),
@@ -83,7 +83,7 @@ export class DependencyResolver {
         case 'package-name-cache':
         case 'known-config-alias':
         case 'local-module-resolution':
-          this._logger.debug({
+          this._logger.trace({
             ctx: 'resolveAbsoluteImportPaths',
             message: Messages.resolve.success(dep, 'dep'),
             details: JSON.stringify(deAliasedDep, null, 2),
@@ -149,11 +149,11 @@ export class DependencyResolver {
 
     for (const path of filePaths) {
       try {
-        this._logger.debug({ctx: 'findFirstValidPath', message: Messages.resolve.attempt(path)});
+        this._logger.trace({ctx: 'findFirstValidPath', message: Messages.resolve.attempt(path)});
         const targetBuildFile = relativeRequire.resolve(path);
         return targetBuildFile;
       } catch (error) {
-        this._logger.debug({ctx: 'findFirstValidPath', message: Messages.resolve.failure(path) + ', bubbling up...'});
+        this._logger.trace({ctx: 'findFirstValidPath', message: Messages.resolve.failure(path) + ', bubbling up...'});
       }
     }
 
@@ -269,25 +269,25 @@ export class DependencyResolver {
    */
   getBuildRuleName = (path: string, buildFilePath: string) => {
     try {
-      this._logger.debug({ctx: 'getBuildRuleName', message: Messages.resolve.attempt(buildFilePath)});
+      this._logger.trace({ctx: 'getBuildRuleName', message: Messages.resolve.attempt(buildFilePath)});
       const buildFile = readFileSync(buildFilePath, 'utf-8');
-      this._logger.debug({ctx: 'getBuildRuleName', message: Messages.resolve.success(buildFilePath)});
+      this._logger.trace({ctx: 'getBuildRuleName', message: Messages.resolve.success(buildFilePath)});
 
-      this._logger.debug({ctx: 'getBuildRuleName', message: Messages.parse.attempt()});
+      this._logger.trace({ctx: 'getBuildRuleName', message: Messages.parse.attempt()});
       const tokeniser = new Tokeniser(buildFile, this._config);
       const tokens = tokeniser.tokenise();
       const parser = new Parser(tokens);
       const ast = parser.parse();
-      this._logger.debug({ctx: 'getBuildRuleName', message: Messages.parse.success()});
+      this._logger.trace({ctx: 'getBuildRuleName', message: Messages.parse.success()});
 
-      this._logger.debug({ctx: 'getBuildRuleName', message: Messages.locate.attempt('rule name')});
+      this._logger.trace({ctx: 'getBuildRuleName', message: Messages.locate.attempt('rule name')});
       const ruleNameVisitor = new RuleNameVisitor({config: this._config, rootPath: path});
       ruleNameVisitor.locateRuleName(ast);
       const ruleNameVisitorResult = ruleNameVisitor.getResult();
 
       switch (ruleNameVisitorResult.status) {
         case 'success':
-          this._logger.debug({
+          this._logger.trace({
             ctx: 'getBuildRuleName',
             message: Messages.locate.success(`rule name for ${ruleNameVisitorResult.fileName}`),
             details: ruleNameVisitorResult.ruleName,
@@ -299,6 +299,7 @@ export class DependencyResolver {
             message: Messages.locate.failure(`rule name for ${ruleNameVisitorResult.fileName}`),
             details: ruleNameVisitorResult.reason,
           });
+          break;
         case 'idle':
         case 'passthrough':
           this._logger.error({
@@ -306,16 +307,19 @@ export class DependencyResolver {
             message: Messages.unexpected('error'),
             details: ruleNameVisitorResult.reason,
           });
+          break;
         default:
           this._logger.error({
             ctx: 'getBuildRuleName',
             message: Messages.unexpected('error'),
             details: Messages.unknown(ruleNameVisitorResult.status, 'status'),
           });
+          break;
       }
     } catch (error) {
       this._logger.error({ctx: 'getBuildRuleName', message: Messages.locate.failure('rule name'), details: error});
-      return null;
     }
+
+    return null;
   };
 }

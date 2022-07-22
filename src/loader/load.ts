@@ -29,7 +29,7 @@ export class ConfigurationLoader {
   loadConfigFromWorkspace = (configPath: string) => {
     if (configPath) {
       try {
-        this._logger.debug({
+        this._logger.trace({
           ctx: 'loadConfigFromWorkspace',
           message: Messages.resolve.attempt(configPath, CONFIG_FILENAME),
         });
@@ -37,19 +37,19 @@ export class ConfigurationLoader {
           encoding: 'utf-8',
           flag: 'r',
         });
-        this._logger.debug({
+        this._logger.trace({
           ctx: 'loadConfigFromWorkspace',
           message: Messages.resolve.success(configPath, CONFIG_FILENAME),
         });
 
-        this._logger.debug({ctx: 'loadConfigFromWorkspace', message: Messages.parse.attempt(CONFIG_FILENAME)});
+        this._logger.trace({ctx: 'loadConfigFromWorkspace', message: Messages.parse.attempt(CONFIG_FILENAME)});
         const configInput: AutodepConfigInput = parse(configInputFile);
-        this._logger.debug({ctx: 'loadConfigFromWorkspace', message: Messages.parse.success(CONFIG_FILENAME)});
+        this._logger.trace({ctx: 'loadConfigFromWorkspace', message: Messages.parse.success(CONFIG_FILENAME)});
 
         this._config = Object.freeze(initConfig(configInput));
         this._type = 'custom';
 
-        this._logger.debug({
+        this._logger.trace({
           ctx: 'loadConfigFromWorkspace',
           message: Messages.resolve.success(configPath, CONFIG_FILENAME),
           details: JSON.stringify(this._config, null, 2),

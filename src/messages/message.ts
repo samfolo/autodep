@@ -71,7 +71,19 @@ export class Messages {
    */
   static readonly using = (subject: string = 'default') => `using ${subject}`;
   /**
-   * A collection of common `resolve`-journey message formatting utilities
+   * A string formatting utility
+   *
+   * @param type the type of the element you have identified, referenced as an entity or entities, e.g. `a fruit`
+   * @param subject the element you have identified, e.g. `tomato`. Optional, defaults to `"element"`
+   * @returns
+   * ```javascript
+   * `identified ${subject} as ${type}`
+   * ```
+   * @example identified('a fruit', 'tomato') => 'identified tomato as a fruit'
+   */
+  static readonly identified = (type: string, subject: string = 'element') => `identified ${subject} as ${type}`;
+  /**
+   * A collection of common "resolve"-journey message formatting utilities
    */
   static readonly resolve = {
     /**
@@ -113,7 +125,7 @@ export class Messages {
     failure: (path: string, subject: string = 'file') => `failed to resolve ${subject} at ${path}`,
   };
   /**
-   * A collection of common `parse`-journey message formatting utilities
+   * A collection of common "parse"-journey message formatting utilities
    */
   static readonly parse = {
     /**
@@ -151,7 +163,7 @@ export class Messages {
     failure: (subject: string = 'content') => `failed to parse ${subject}`,
   };
   /**
-   * A collection of common `initialise`-journey message formatting utilities
+   * A collection of common "initialise"-journey message formatting utilities
    */
   static readonly initialise = {
     /**
@@ -189,7 +201,7 @@ export class Messages {
     failure: (subject: string = 'resource') => `failed to initialise ${subject}`,
   };
   /**
-   * A collection of common `collect`-journey message formatting utilities
+   * A collection of common "collect"-journey message formatting utilities
    */
   static readonly collect = {
     /**
@@ -227,7 +239,7 @@ export class Messages {
     failure: (subject: string = 'items') => `failed to collect ${subject}`,
   };
   /**
-   * A collection of common `locate`-journey message formatting utilities
+   * A collection of common "locate"-journey message formatting utilities
    */
   static readonly locate = {
     /**
