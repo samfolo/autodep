@@ -29,6 +29,7 @@ export interface AutodepConfigInput {
     explicitDeps?: boolean;
     omitEmptyFields?: boolean;
     initialVisibility?: string[];
+    fileExtname?: string;
     subinclude?: string[];
     testOnly?: boolean;
     module?: {
@@ -87,6 +88,7 @@ export interface AutodepConfig {
       fileHeading: string;
       explicitDeps: boolean;
       omitEmptyFields: boolean;
+      fileExtname: string;
       initialVisibility: readonly string[] | null;
       subinclude: string[] | null;
       testOnly: boolean | null;

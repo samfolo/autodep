@@ -69,6 +69,7 @@ onCreate:
       And double lines...
     explicitDeps: true
     omitEmptyFields: true
+    fileExtname: 'plz'
     initialVisibility:
       - PUBLIC
     testOnly: false

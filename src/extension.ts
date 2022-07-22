@@ -17,6 +17,9 @@ import {Messages} from './messages/message';
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+  const defaultConfig = initConfig();
+  const logger = new Logger({namespace: 'AutoDep', config: defaultConfig});
+
   const main = vscode.commands.registerCommand('node-please-build-file-auto-formatter.main', () => {
     // A way to format nearest BUILD file via command palette
     // do this later...
@@ -25,8 +28,6 @@ export function activate(context: vscode.ExtensionContext) {
   const formatOnSave = vscode.workspace.onDidSaveTextDocument((textDocument) => {
     if (['.ts', '.js', '.tsx', '.jsx'].includes(path.extname(textDocument.fileName))) {
       try {
-        const defaultConfig = initConfig();
-        const logger = new Logger({namespace: 'AutoDep', config: defaultConfig});
         logger.info({ctx: 'process', message: 'begin'});
 
         const configLoader = new ConfigurationLoader(defaultConfig);
@@ -39,7 +40,6 @@ export function activate(context: vscode.ExtensionContext) {
           ctx: 'process',
           message: Messages.resolve.attempt(textDocument.fileName, 'absolute import paths'),
         });
-
         const uniqueDeps = depResolver.resolveAbsoluteImportPaths({
           filePath: textDocument.fileName,
           rootDir: 'core3',

@@ -152,6 +152,7 @@ export const initConfig = (overrides: Partial<AutodepConfigInput> = {}): Autodep
       fileHeading: overrides.onCreate?.module?.fileHeading ?? overrides.onCreate?.fileHeading ?? '',
       explicitDeps: overrides.onCreate?.module?.explicitDeps ?? overrides.onCreate?.explicitDeps ?? false,
       omitEmptyFields: overrides.onCreate?.module?.omitEmptyFields ?? overrides.onCreate?.omitEmptyFields ?? false,
+      fileExtname: overrides.onCreate?.fileExtname || '',
       initialVisibility: overrides.onCreate?.module?.initialVisibility?.every((el) => typeof el === 'string')
         ? overrides.onCreate.module.initialVisibility
         : overrides.onCreate?.initialVisibility?.every((el) => typeof el === 'string')
