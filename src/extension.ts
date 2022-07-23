@@ -59,25 +59,20 @@ export function activate(context: vscode.ExtensionContext) {
           filePath: textDocument.fileName,
           rootDir: 'core3',
         });
-
         logger.info({
           ctx: 'process',
-          message: TaskMessages.collect.attempt(`nearest BUILD or BUILD.plz file paths`),
+          message: TaskMessages.resolve.success(textDocument.fileName, 'absolute import paths'),
+          details: JSON.stringify(uniqueDeps, null, 2),
         });
+
+        logger.info({ctx: 'process', message: TaskMessages.collect.attempt(`nearest BUILD or BUILD.plz file paths`)});
         const depToBuildFileMap = depResolver.getNearestBuildFilePaths(uniqueDeps);
+        logger.info({ctx: 'process', message: TaskMessages.collect.success(`nearest BUILD or BUILD.plz file paths`)});
 
-        logger.info({
-          ctx: 'process',
-          message: TaskMessages.resolve.attempt(textDocument.fileName, 'BUILD rule targets'),
-        });
-        logger.trace({
-          ctx: 'process',
-          message: TaskMessages.collect.attempt('BUILD rule targets'),
-        });
+        logger.info({ctx: 'process', message: TaskMessages.resolve.attempt(targetBuildFilePath, 'BUILD targets')});
         const buildRuleTargets = [];
         for (const dep in depToBuildFileMap) {
           const buildRuleTarget = depResolver.getBuildRuleName(dep, depToBuildFileMap[dep]);
-
           if (buildRuleTarget) {
             const dependencyObject = new Dependency({
               ruleName: buildRuleTarget,
@@ -94,15 +89,15 @@ export function activate(context: vscode.ExtensionContext) {
           }
         }
         const sortedBuildRuleTargets = [...buildRuleTargets].sort(compareBuildTarget);
-        logger.trace({
+        logger.info({
           ctx: 'process',
-          message: TaskMessages.resolve.success(textDocument.fileName, 'BUILD rule targets'),
+          message: TaskMessages.resolve.success(targetBuildFilePath, 'BUILD targets'),
           details: `[\n    ${sortedBuildRuleTargets.join(',\n    ')}\n]`,
         });
 
         logger.info({
           ctx: 'process',
-          message: TaskMessages.update.attempt('BUILD rule targets'),
+          message: TaskMessages.attempt('write', `BUILD targets to ${targetBuildFilePath}`),
         });
         new Writer({
           config,
@@ -110,6 +105,10 @@ export function activate(context: vscode.ExtensionContext) {
           rootPath: textDocument.fileName,
           newDeps: sortedBuildRuleTargets,
         }).writeUpdatesToFileSystem();
+        logger.info({
+          ctx: 'process',
+          message: TaskMessages.success('wrote', `BUILD targets to ${targetBuildFilePath}`),
+        });
       } catch (error) {
         const err = error as any;
 
@@ -118,8 +117,15 @@ export function activate(context: vscode.ExtensionContext) {
         } else {
           vscode.window.showErrorMessage(String(error));
         }
+        logger.error({ctx: 'process', message: 'something went wrong.', details: err.stack});
+        logger.info({ctx: 'process', message: 'exiting...'});
         return false;
       }
+      logger.info({
+        ctx: 'process',
+        message: TaskMessages.update.success('BUILD rule targets'),
+      });
+      logger.info({ctx: 'process', message: 'exiting...'});
     }
   });
 
