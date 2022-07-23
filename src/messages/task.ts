@@ -1,9 +1,9 @@
-export class Messages {
+export class TaskMessages {
   /**
    * A string formatting utility
    *
-   * @param action the action in future-tense, e.g. `find`
-   * @param subject the target of the action, e.g. `my keys`
+   * @param action the action in future-tense, e.g. `"find"`
+   * @param subject the target of the action, e.g. `"my keys"`
    * @returns
    * ```javascript
    * `attempting to ${action} ${subject}`
@@ -14,8 +14,8 @@ export class Messages {
   /**
    * A string formatting utility
    *
-   * @param result the action in past-tense, e.g. `found`
-   * @param subject the target of the action, e.g. `my keys`
+   * @param result the action in past-tense, e.g. `"found"`
+   * @param subject the target of the action, e.g. `"my keys"`
    * @returns
    * ```javascript
    * `successfully ${result} ${subject}`
@@ -26,8 +26,8 @@ export class Messages {
   /**
    * A string formatting utility
    *
-   * @param action the action as an infinitive, e.g. `find`
-   * @param subject the target of the action, e.g. `my keys`
+   * @param action the action as an infinitive, e.g. `"find"`
+   * @param subject the target of the action, e.g. `"my keys"`
    * @returns
    * ```javascript
    * `failed to ${action} ${subject}`
@@ -39,7 +39,7 @@ export class Messages {
   /**
    * A string formatting utility
    *
-   * @param subject the unexpected element, e.g. `error`. Optional, defaults to `"element"`
+   * @param subject the unexpected element, e.g. `"error"`. Optional, defaults to `"element"`
    * @returns
    * ```javascript
    * `unexpected ${subject}`
@@ -51,7 +51,7 @@ export class Messages {
    * A string formatting utility
    *
    * @param subject the unknown element, e.g. `null`
-   * @param type the type of the element if known, e.g. `status`. Optional, defaults to `"element"`
+   * @param type the type of the element if known, e.g. `"status"`. Optional, defaults to `"element"`
    * @returns
    * ```javascript
    * `unknown ${type} "${subject}"`
@@ -62,7 +62,7 @@ export class Messages {
   /**
    * A string formatting utility
    *
-   * @param subject the element you are using, e.g. `fallback method`. Optional, defaults to `"default"`
+   * @param subject the element you are using, e.g. `"fallback method"`. Optional, defaults to `"default"`
    * @returns
    * ```javascript
    * `using ${subject}`
@@ -73,8 +73,8 @@ export class Messages {
   /**
    * A string formatting utility
    *
-   * @param type the type of the element you have identified, referenced as an entity or entities, e.g. `a fruit`
-   * @param subject the element you have identified, e.g. `tomato`. Optional, defaults to `"element"`
+   * @param type the type of the element you have identified, referenced as an entity or entities, e.g. `"a fruit"`
+   * @param subject the element you have identified, e.g. `"tomato"`. Optional, defaults to `"element"`
    * @returns
    * ```javascript
    * `identified ${subject} as ${type}`
@@ -89,8 +89,8 @@ export class Messages {
     /**
      * A string formatting utility
      *
-     * @param path the path at which the element you are trying to resolve should exist, e.g. `path/to/.autodep.yaml`
-     * @param subject the thing you are trying to resolve, e.g. `configuration`. Optional, defaults to `"file"`
+     * @param path the path at which the element you are trying to resolve should exist, e.g. `"path/to/.autodep.yaml"`
+     * @param subject the thing you are trying to resolve, e.g. `"configuration"`. Optional, defaults to `"file"`
      * @returns
      * ```javascript
      * `attempting to resolve ${subject} at ${path}`
@@ -101,8 +101,8 @@ export class Messages {
     /**
      * A string formatting utility
      *
-     * @param path the successfully resolved path, e.g. `path/to/.autodep.yaml`
-     * @param subject the resolved element, e.g. `configuration`. Optional, defaults to `"file"`
+     * @param path the successfully resolved path, e.g. `"path/to/.autodep.yaml"`
+     * @param subject the resolved element, e.g. `"configuration"`. Optional, defaults to `"file"`
      * @returns
      * ```javascript
      * `successfully resolved ${subject} at ${path}`
@@ -114,8 +114,8 @@ export class Messages {
     /**
      * A string formatting utility
      *
-     * @param path the unresolvable path, e.g. `path/to/missing/file`
-     * @param subject the thing you are trying to resolve, e.g. `configuration`. Optional, defaults to `"file"`
+     * @param path the unresolvable path, e.g. `"path/to/missing/file"`
+     * @param subject the thing you are trying to resolve, e.g. `"configuration"`. Optional, defaults to `"file"`
      * @returns
      * ```javascript
      * `failed to resolve ${subject} at ${path}`
@@ -131,7 +131,7 @@ export class Messages {
     /**
      * A string formatting utility
      *
-     * @param subject the thing you are trying to parse, e.g. `BUILD file`. Optional, defaults to `"content"`
+     * @param subject the thing you are trying to parse, e.g. `"BUILD file"`. Optional, defaults to `"content"`
      * @returns
      * ```javascript
      * `attempting to parse ${subject}`
@@ -142,7 +142,7 @@ export class Messages {
     /**
      * A string formatting utility
      *
-     * @param subject the thing you have successfully parsed, e.g. `BUILD file`. Optional, defaults to `"content"`
+     * @param subject the thing you have successfully parsed, e.g. `"BUILD file"`. Optional, defaults to `"content"`
      * @returns
      * ```javascript
      * `successfully parsed ${subject}`
@@ -153,7 +153,7 @@ export class Messages {
     /**
      * A string formatting utility
      *
-     * @param subject the thing you have failed to parse, e.g. `BUILD file`. Optional, defaults to `"content"`
+     * @param subject the thing you have failed to parse, e.g. `"BUILD file"`. Optional, defaults to `"content"`
      * @returns
      * ```javascript
      * `failed to parse ${subject}`
@@ -169,7 +169,7 @@ export class Messages {
     /**
      * A string formatting utility
      *
-     * @param subject the thing you are initialising, e.g. `processor`. Optional, defaults to `"resource"`
+     * @param subject the thing you are initialising, e.g. `"processor"`. Optional, defaults to `"resource"`
      * @returns
      * ```javascript
      * `initialising ${subject}`
@@ -180,7 +180,7 @@ export class Messages {
     /**
      * A string formatting utility
      *
-     * @param subject the thing you have successfully initialised, e.g. `processor`. Optional, defaults to `"resource"`
+     * @param subject the thing you have successfully initialised, e.g. `"processor"`. Optional, defaults to `"resource"`
      * @returns
      * ```javascript
      * `successfully initialised ${subject}`
@@ -191,7 +191,7 @@ export class Messages {
     /**
      * A string formatting utility
      *
-     * @param subject the thing you have failed to initialise, e.g. `processor`. Optional, defaults to `"resource"`
+     * @param subject the thing you have failed to initialise, e.g. `"processor"`. Optional, defaults to `"resource"`
      * @returns
      * ```javascript
      * `failed to initialise ${subject}`
@@ -207,7 +207,7 @@ export class Messages {
     /**
      * A string formatting utility
      *
-     * @param subject the thing you are collecting, e.g. `imports`. Optional, defaults to `"items"`
+     * @param subject the thing you are collecting, e.g. `"imports"`. Optional, defaults to `"items"`
      * @returns
      * ```javascript
      * `collecting ${subject}`
@@ -218,7 +218,7 @@ export class Messages {
     /**
      * A string formatting utility
      *
-     * @param subject the thing you have successfully collected, e.g. `imports`. Optional, defaults to `"items"`
+     * @param subject the thing you have successfully collected, e.g. `"imports"`. Optional, defaults to `"items"`
      * @returns
      * ```javascript
      * `successfully collected ${subject}`
@@ -229,7 +229,7 @@ export class Messages {
     /**
      * A string formatting utility
      *
-     * @param subject the thing you have failed to collect, e.g. `imports`. Optional, defaults to `"items"`
+     * @param subject the thing you have failed to collect, e.g. `"imports"`. Optional, defaults to `"items"`
      * @returns
      * ```javascript
      * `failed to collect ${subject}`
@@ -245,18 +245,18 @@ export class Messages {
     /**
      * A string formatting utility
      *
-     * @param subject the thing you are locating, e.g. `target BUILD rule`. Optional, defaults to `"item"`
+     * @param subject the thing you are updating, e.g. `"target BUILD rule"`. Optional, defaults to `"item"`
      * @returns
      * ```javascript
-     * `locating ${subject}`
+     * `updating ${subject}`
      * ```
-     * @example attempt("target BUILD rule") => "locating target BUILD rule"
+     * @example attempt("target BUILD rule") => "updating target BUILD rule"
      */
-    attempt: (subject: string = 'item') => `locating ${subject}`,
+    attempt: (subject: string = 'item') => `updating ${subject}`,
     /**
      * A string formatting utility
      *
-     * @param subject the thing you have successfully located, e.g. `target BUILD rule`. Optional, defaults to `"item"`
+     * @param subject the thing you have successfully located, e.g. `"target BUILD rule"`. Optional, defaults to `"item"`
      * @returns
      * ```javascript
      * `successfully located ${subject}`
@@ -267,7 +267,7 @@ export class Messages {
     /**
      * A string formatting utility
      *
-     * @param subject the thing you have failed to locate, e.g. `target BUILD rule`. Optional, defaults to `"item"`
+     * @param subject the thing you have failed to locate, e.g. `"target BUILD rule"`. Optional, defaults to `"item"`
      * @returns
      * ```javascript
      * `failed to locate ${subject}`
@@ -275,5 +275,61 @@ export class Messages {
      * @example failure("target BUILD rule") => "failed to locate target BUILD rule"
      */
     failure: (subject: string = 'item') => `failed to locate ${subject}`,
+  };
+  /**
+   * A collection of common "update"-journey message formatting utilities
+   */
+  static readonly update = {
+    /**
+     * A string formatting utility
+     *
+     * @param subject the thing you are updating, e.g. `"checklist"`. Optional, defaults to `"element"`
+     * @param materialOrStrategy the material or strategy with which you are updating the subject, e.g. `new TODO items`. Optional
+     * @returns
+     * ```javascript
+     * `updating ${subject}` // + `with ${materialOrStrategy}`
+     * ```
+     * @examples
+     * ```javascript
+     * attempt("new TODO items", "checklist") => "updating checklist with new TODO items"
+     * attempt("new TODO items") => "updating checklist"
+     * ```
+     */
+    attempt: (subject: string = 'element', materialOrStrategy?: string) =>
+      `updating ${subject}` + materialOrStrategy ? ` with ${materialOrStrategy}` : '',
+    /**
+     * A string formatting utility
+     *
+     * @param subject the thing you have successfully updated, e.g. `"checklist"`. Optional, defaults to `"element"`
+     * @param materialOrStrategy the material or strategy with which you are updating the subject, e.g. `"new TODO items"`. Optional
+     * @returns
+     * ```javascript
+     * `successfully updated ${subject}`
+     * ```
+     * @examples
+     * ```javascript
+     * success("new TODO items", "checklist") => "successfully updated checklist with new TODO items"
+     * success("new TODO items") => "successfully updated checklist"
+     * ```
+     */
+    success: (subject: string = 'element', materialOrStrategy?: string) =>
+      `successfully updated ${subject}` + materialOrStrategy ? ` with ${materialOrStrategy}` : '',
+    /**
+     * A string formatting utility
+     *
+     * @param subject the thing you have failed to update, e.g. `"checklist"`. Optional, defaults to `"element"`
+     * @param materialOrStrategy the material or strategy with which you are updating the subject, e.g. `"new TODO items"`. Optional
+     * @returns
+     * ```javascript
+     * `failed to update ${subject}`
+     * ```
+     * @examples
+     * ```javascript
+     * failure("new TODO items", "checklist") => "failed to update checklist with new TODO items"
+     * failure("new TODO items") => "failed to update checklist"
+     * ```
+     */
+    failure: (subject: string = 'element', materialOrStrategy?: string) =>
+      `failed to update ${subject}` + materialOrStrategy ? ` with ${materialOrStrategy}` : '',
   };
 }

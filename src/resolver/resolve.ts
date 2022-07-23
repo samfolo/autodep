@@ -5,20 +5,21 @@ import {createRequire} from 'node:module';
 
 import {DeAliasingClient} from '../clients/deAliasing/deAlias';
 import {CONFIG_FILENAME, SUPPORTED_MODULE_EXTENSIONS} from '../common/const';
-import {AutodepConfig} from '../common/types';
+import {AutoDepConfig} from '../common/types';
 
 import {CollectDepsDirective, ResolveAbsoluteImportPathsOptions} from './types';
 import {Tokeniser} from '../language/tokeniser/tokenise';
 import {Parser} from '../language/parser/parse';
 import {RuleNameVisitor} from '../visitor/findRuleName';
 import {Logger} from '../logger/log';
-import {Messages} from '../messages/message';
+import {TaskMessages} from '../messages';
+import {BuildFile} from '../models/buildFile';
 
 export class DependencyResolver {
-  private _config: AutodepConfig;
+  private _config: AutoDepConfig;
   private _logger: Logger;
 
-  constructor(config: AutodepConfig) {
+  constructor(config: AutoDepConfig) {
     this._config = config;
     this._logger = new Logger({namespace: 'DependencyResolver', config: this._config});
   }
@@ -42,20 +43,26 @@ export class DependencyResolver {
    * @returns a list of absolute import paths
    */
   resolveAbsoluteImportPaths = ({filePath, rootDir}: ResolveAbsoluteImportPathsOptions) => {
-    this._logger.trace({ctx: 'resolveAbsoluteImportPaths', message: Messages.initialise.attempt('de-aliasing client')});
+    this._logger.trace({
+      ctx: 'resolveAbsoluteImportPaths',
+      message: TaskMessages.initialise.attempt('de-aliasing client'),
+    });
     const deAliasingClient = new DeAliasingClient({
       filePath,
       rootDirName: rootDir,
       config: this._config,
     });
 
-    this._logger.trace({ctx: 'resolveAbsoluteImportPaths', message: Messages.resolve.attempt(filePath)});
+    this._logger.trace({ctx: 'resolveAbsoluteImportPaths', message: TaskMessages.resolve.attempt(filePath)});
     const fileContent = readFileSync(filePath, {
       encoding: 'utf-8',
       flag: 'r',
     });
 
-    this._logger.trace({ctx: 'resolveAbsoluteImportPaths', message: Messages.collect.attempt('absolute import paths')});
+    this._logger.trace({
+      ctx: 'resolveAbsoluteImportPaths',
+      message: TaskMessages.collect.attempt('absolute import paths'),
+    });
     const deps = this.collectImports(fileContent, [
       {
         condition: ['.js', '.jsx'].includes(path.extname(filePath)),
@@ -72,7 +79,7 @@ export class DependencyResolver {
     ]);
     this._logger.trace({
       ctx: 'resolveAbsoluteImportPaths',
-      message: Messages.collect.success('absolute import paths'),
+      message: TaskMessages.collect.success('absolute import paths'),
       details: JSON.stringify(deps, null, 2),
     });
 
@@ -85,7 +92,7 @@ export class DependencyResolver {
         case 'local-module-resolution':
           this._logger.trace({
             ctx: 'resolveAbsoluteImportPaths',
-            message: Messages.resolve.success(dep, 'dep'),
+            message: TaskMessages.resolve.success(dep, 'dep'),
             details: JSON.stringify(deAliasedDep, null, 2),
           });
           acc.push(deAliasedDep.result);
@@ -97,7 +104,7 @@ export class DependencyResolver {
 
       this._logger.error({
         ctx: 'resolveAbsoluteImportPaths',
-        message: Messages.failure('de-alias', dep),
+        message: TaskMessages.failure('de-alias', dep),
         details: 'method: ' + deAliasedDep.result,
       });
 
@@ -149,18 +156,20 @@ export class DependencyResolver {
 
     for (const path of filePaths) {
       try {
-        this._logger.trace({ctx: 'findFirstValidPath', message: Messages.resolve.attempt(path)});
+        this._logger.trace({ctx: 'findFirstValidPath', message: TaskMessages.resolve.attempt(path)});
         const targetBuildFile = relativeRequire.resolve(path);
         return targetBuildFile;
       } catch (error) {
-        this._logger.trace({ctx: 'findFirstValidPath', message: Messages.resolve.failure(path) + ', bubbling up...'});
+        this._logger.trace({
+          ctx: 'findFirstValidPath',
+          message: TaskMessages.resolve.failure(path) + ', bubbling up...',
+        });
       }
     }
 
     this._logger.error({
       ctx: 'findFirstValidPath',
       message: `No valid path found for ${rootPath}`,
-      details: new Error().stack,
     });
     return null;
   };
@@ -260,7 +269,7 @@ export class DependencyResolver {
 
   /**
    * Locates the value in the `name` field of the BUILD rule containing the file at the given path.
-   * If a known `.autodep.yaml` file specifies different aliases, they will also be tried.
+   * If a known `.autodep.yaml` file specifies different aliases for the `name` field, they will also be tried.
    * If no BUILD rule matches, it returns `null`
    *
    * @param path the path of the file for which to locate the build rule name
@@ -269,18 +278,15 @@ export class DependencyResolver {
    */
   getBuildRuleName = (path: string, buildFilePath: string) => {
     try {
-      this._logger.trace({ctx: 'getBuildRuleName', message: Messages.resolve.attempt(buildFilePath)});
+      this._logger.trace({ctx: 'getBuildRuleName', message: TaskMessages.resolve.attempt(buildFilePath)});
       const buildFile = readFileSync(buildFilePath, 'utf-8');
-      this._logger.trace({ctx: 'getBuildRuleName', message: Messages.resolve.success(buildFilePath)});
+      this._logger.trace({ctx: 'getBuildRuleName', message: TaskMessages.resolve.success(buildFilePath)});
 
-      this._logger.trace({ctx: 'getBuildRuleName', message: Messages.parse.attempt()});
-      const tokeniser = new Tokeniser(buildFile, this._config);
-      const tokens = tokeniser.tokenise();
-      const parser = new Parser(tokens);
-      const ast = parser.parse();
-      this._logger.trace({ctx: 'getBuildRuleName', message: Messages.parse.success()});
+      this._logger.trace({ctx: 'getBuildRuleName', message: TaskMessages.parse.attempt()});
+      const ast = new BuildFile({file: buildFile, config: this._config}).toAST();
+      this._logger.trace({ctx: 'getBuildRuleName', message: TaskMessages.parse.success()});
 
-      this._logger.trace({ctx: 'getBuildRuleName', message: Messages.locate.attempt('rule name')});
+      this._logger.trace({ctx: 'getBuildRuleName', message: TaskMessages.locate.attempt('rule name')});
       const ruleNameVisitor = new RuleNameVisitor({config: this._config, rootPath: path});
       ruleNameVisitor.locateRuleName(ast);
       const ruleNameVisitorResult = ruleNameVisitor.getResult();
@@ -289,14 +295,14 @@ export class DependencyResolver {
         case 'success':
           this._logger.trace({
             ctx: 'getBuildRuleName',
-            message: Messages.locate.success(`rule name for ${ruleNameVisitorResult.fileName}`),
+            message: TaskMessages.locate.success(`rule name for ${ruleNameVisitorResult.fileName}`),
             details: ruleNameVisitorResult.ruleName,
           });
           return ruleNameVisitorResult.ruleName;
         case 'failed':
           this._logger.error({
             ctx: 'getBuildRuleName',
-            message: Messages.locate.failure(`rule name for ${ruleNameVisitorResult.fileName}`),
+            message: TaskMessages.locate.failure(`rule name for ${ruleNameVisitorResult.fileName}`),
             details: ruleNameVisitorResult.reason,
           });
           break;
@@ -304,20 +310,24 @@ export class DependencyResolver {
         case 'passthrough':
           this._logger.error({
             ctx: 'getBuildRuleName',
-            message: Messages.unexpected('error'),
+            message: TaskMessages.unexpected('error'),
             details: ruleNameVisitorResult.reason,
           });
           break;
         default:
           this._logger.error({
             ctx: 'getBuildRuleName',
-            message: Messages.unexpected('error'),
-            details: Messages.unknown(ruleNameVisitorResult.status, 'status'),
+            message: TaskMessages.unexpected('error'),
+            details: TaskMessages.unknown(ruleNameVisitorResult.status, 'status'),
           });
           break;
       }
     } catch (error) {
-      this._logger.error({ctx: 'getBuildRuleName', message: Messages.locate.failure('rule name'), details: error});
+      this._logger.error({
+        ctx: 'getBuildRuleName',
+        message: TaskMessages.locate.failure('rule name'),
+        details: JSON.stringify(error, null, 2),
+      });
     }
 
     return null;

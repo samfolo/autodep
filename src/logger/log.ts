@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {LogLevel, AutodepConfig} from '../common/types';
+import {LogLevel, AutoDepConfig} from '../common/types';
 
 interface LoggerOptions {
   namespace: string;
-  config: AutodepConfig;
+  config: AutoDepConfig;
 }
 
 interface LogPayload {
@@ -27,7 +27,7 @@ enum LogType {
 }
 
 export class Logger {
-  private config?: AutodepConfig | null;
+  private config?: AutoDepConfig | null;
   private permittedLogLevels?: Set<LogLevel>;
   private logHistory?: LogHistoryEntry[];
   private namespace?: string;

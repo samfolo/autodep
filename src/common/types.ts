@@ -66,7 +66,7 @@ export interface AutodepConfigInput {
   };
 }
 
-export interface AutodepConfig {
+export interface AutoDepConfig {
   manage: {
     rules: Set<string>;
     fields: Set<string>;

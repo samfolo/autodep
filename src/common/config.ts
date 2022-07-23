@@ -12,7 +12,7 @@ import {
   ManagedSchemaFieldEntry,
   ManagedSchemaFieldType,
   ManagedSchemaField,
-  AutodepConfig,
+  AutoDepConfig,
   AutodepConfigInput,
 } from './types';
 
@@ -70,7 +70,7 @@ const getManagedSchemaFieldEntry = (
   return result;
 };
 
-export const initConfig = (overrides: Partial<AutodepConfigInput> = {}): AutodepConfig => ({
+export const initConfig = (overrides: Partial<AutodepConfigInput> = {}): AutoDepConfig => ({
   manage: {
     rules: new Set(['filegroup', 'genrule', ...(overrides.manage?.rules || [])]),
     fields: new Set([...KNOWN_RULE_FIELD_NAMES, ...(overrides.manage?.fields || [])]),
@@ -121,7 +121,7 @@ export const initConfig = (overrides: Partial<AutodepConfigInput> = {}): Autodep
           ),
         },
       }),
-      {} as AutodepConfig['manage']['schema']
+      {} as AutoDepConfig['manage']['schema']
     ),
   },
   match: {

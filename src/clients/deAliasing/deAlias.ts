@@ -2,9 +2,9 @@ import {readFileSync} from 'fs';
 import {createRequire} from 'node:module';
 import path from 'path';
 
-import {AutodepConfig} from '../../common/types';
+import {AutoDepConfig} from '../../common/types';
 import {Logger} from '../../logger/log';
-import {Messages} from '../../messages/message';
+import {TaskMessages} from '../../messages';
 
 import {PackageAlias, PackageName, DeAliasingClientOptions} from './types';
 
@@ -21,7 +21,7 @@ export class DeAliasingClient {
   private packageJSON: Record<string, any>;
   private packageNameCache: Record<PackageAlias, PackageName>;
   private packageAliases: Set<PackageAlias>;
-  private config: AutodepConfig;
+  private config: AutoDepConfig;
   private _logger: Logger;
 
   constructor({filePath, rootDirName, config}: DeAliasingClientOptions) {
@@ -35,19 +35,19 @@ export class DeAliasingClient {
     this.relativePath = this.filePath.substring(relativePathIndex + 1);
 
     try {
-      this._logger.trace({ctx: 'init', message: Messages.parse.attempt(`${this.rootDirPath}/package.json`)});
+      this._logger.trace({ctx: 'init', message: TaskMessages.parse.attempt(`${this.rootDirPath}/package.json`)});
       const packageJSONString = readFileSync(`${this.rootDirPath}/package.json`);
       this.packageJSON = JSON.parse(packageJSONString.toString('utf-8'));
       this._logger.trace({
         ctx: 'init',
-        message: Messages.parse.success(`${this.rootDirPath}/package.json`),
+        message: TaskMessages.parse.success(`${this.rootDirPath}/package.json`),
         details: JSON.stringify(this.packageJSON, null, 2),
       });
     } catch (error) {
       this._logger.error({
         ctx: 'init',
-        message: Messages.parse.failure(`${this.rootDirPath}/package.json`),
-        details: error,
+        message: TaskMessages.parse.failure(`${this.rootDirPath}/package.json`),
+        details: JSON.stringify(error, null, 2),
       });
       this.packageJSON = {};
     }
@@ -60,7 +60,7 @@ export class DeAliasingClient {
         try {
           this._logger.trace({
             ctx: 'init',
-            message: Messages.resolve.attempt(`${this.rootDirPath}/${packageName}/package.json`, 'package alias'),
+            message: TaskMessages.resolve.attempt(`${this.rootDirPath}/${packageName}/package.json`, 'package alias'),
           });
           const file = readFileSync(`${this.rootDirPath}/${packageName}/package.json`);
           const packageAlias: string = JSON.parse(file.toString('utf-8')).name;
@@ -68,20 +68,23 @@ export class DeAliasingClient {
           this.packageAliases.add(packageAlias);
           this._logger.trace({
             ctx: 'init',
-            message: Messages.resolve.success(`${this.rootDirPath}/${packageName}/package.json`, 'package alias'),
+            message: TaskMessages.resolve.success(`${this.rootDirPath}/${packageName}/package.json`, 'package alias'),
           });
         } catch (error) {
           this._logger.error({
             ctx: 'init',
-            message: Messages.resolve.failure(`${this.rootDirPath}/${packageName}/package.json`, 'package alias'),
-            details: error,
+            message: TaskMessages.resolve.failure(`${this.rootDirPath}/${packageName}/package.json`, 'package alias'),
+            details: JSON.stringify(error, null, 2),
           });
         }
       }
     } else {
       this._logger.info({
         ctx: 'init',
-        message: Messages.failure(`package names at [${this.rootDirPath}/package.json].workspaces.packages`, 'find'),
+        message: TaskMessages.failure(
+          `package names at [${this.rootDirPath}/package.json].workspaces.packages`,
+          'find'
+        ),
       });
     }
   }
@@ -102,20 +105,20 @@ export class DeAliasingClient {
     const relativeRequire = createRequire(this.filePath);
 
     if (path.isAbsolute(dep)) {
-      this._logger.trace({ctx: 'deAlias', message: Messages.identified('an absolute path', dep)});
+      this._logger.trace({ctx: 'deAlias', message: TaskMessages.identified('an absolute path', dep)});
     } else {
       for (const extension of supportedExtensions) {
         const pathWithExtension = dep + extension;
         try {
           this._logger.trace({
             ctx: 'deAlias',
-            message: Messages.resolve.attempt(pathWithExtension, 'local module'),
+            message: TaskMessages.resolve.attempt(pathWithExtension, 'local module'),
           });
           const resolveAttempt = relativeRequire.resolve(pathWithExtension);
           const result: DeAliasResult = {result: resolveAttempt, method: 'local-module-resolution'};
           this._logger.trace({
             ctx: 'deAlias',
-            message: Messages.resolve.success(pathWithExtension, 'local module'),
+            message: TaskMessages.resolve.success(pathWithExtension, 'local module'),
             details: JSON.stringify(result, null, 2),
           });
 
@@ -123,7 +126,7 @@ export class DeAliasingClient {
         } catch (error) {
           this._logger.trace({
             ctx: 'deAlias',
-            message: Messages.resolve.failure(pathWithExtension, 'local module') + ' - continuing...',
+            message: TaskMessages.resolve.failure(pathWithExtension, 'local module') + ' - continuing...',
           });
         }
       }
@@ -137,12 +140,12 @@ export class DeAliasingClient {
         };
         this._logger.trace({
           ctx: 'deAlias',
-          message: Messages.identified('a workspace-defined aliased path', dep),
+          message: TaskMessages.identified('a workspace-defined aliased path', dep),
           details: JSON.stringify(result, null, 2),
         });
         this._logger.trace({
           ctx: 'deAlias',
-          message: Messages.success('de-aliased', dep),
+          message: TaskMessages.success('de-aliased', dep),
         });
 
         return result;
@@ -154,10 +157,10 @@ export class DeAliasingClient {
         const sanitisedAlias = alias.replace(/\*$/, '');
 
         if (dep.startsWith(sanitisedAlias)) {
-          this._logger.trace({ctx: 'deAlias', message: Messages.identified('a user-defined aliased path', dep)});
+          this._logger.trace({ctx: 'deAlias', message: TaskMessages.identified('a user-defined aliased path', dep)});
           this._logger.trace({
             ctx: 'deAlias',
-            message: Messages.attempt('de-alias', dep),
+            message: TaskMessages.attempt('de-alias', dep),
           });
           for (const pathOption of pathOptions) {
             const sanitisedPathOption = pathOption.replace(/\*$/, '');
@@ -170,12 +173,15 @@ export class DeAliasingClient {
             for (const extension of supportedExtensions) {
               const pathWithExtension = pathToAttempt + extension;
               try {
-                this._logger.trace({ctx: 'deAlias', message: Messages.resolve.attempt(pathWithExtension, 'module')});
+                this._logger.trace({
+                  ctx: 'deAlias',
+                  message: TaskMessages.resolve.attempt(pathWithExtension, 'module'),
+                });
                 const resolveAttempt = relativeRequire.resolve(pathWithExtension);
                 const result: DeAliasResult = {result: resolveAttempt, method: 'known-config-alias'};
                 this._logger.trace({
                   ctx: 'deAlias',
-                  message: Messages.resolve.success(pathWithExtension, 'module'),
+                  message: TaskMessages.resolve.success(pathWithExtension, 'module'),
                   details: JSON.stringify(result, null, 2),
                 });
 
@@ -183,7 +189,7 @@ export class DeAliasingClient {
               } catch (error) {
                 this._logger.trace({
                   ctx: 'deAlias',
-                  message: Messages.resolve.failure(pathWithExtension, 'module') + ' - continuing...',
+                  message: TaskMessages.resolve.failure(pathWithExtension, 'module') + ' - continuing...',
                 });
               }
             }
@@ -191,7 +197,7 @@ export class DeAliasingClient {
 
           this._logger.trace({
             ctx: 'deAlias',
-            message: Messages.failure('de-alias', `${dep} with alias "${sanitisedAlias}"`) + ' - continuing...',
+            message: TaskMessages.failure('de-alias', `${dep} with alias "${sanitisedAlias}"`) + ' - continuing...',
           });
         }
       }
@@ -200,7 +206,7 @@ export class DeAliasingClient {
     const result: DeAliasResult = {result: dep, method: 'passthrough'};
     this._logger.trace({
       ctx: 'deAlias',
-      message: Messages.failure('de-alias', dep) + ' - leaving as-is.',
+      message: TaskMessages.failure('de-alias', dep) + ' - leaving as-is.',
       details: JSON.stringify(result, null, 2),
     });
 

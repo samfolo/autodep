@@ -1,7 +1,7 @@
 import minimatch from 'minimatch';
 import path from 'path';
 import {DEFAULT_MODULE_RULE_NAME, DEFAULT_TEST_RULE_NAME, SUPPORTED_MANAGED_BUILTINS} from '../common/const';
-import {AutodepConfig} from '../common/types';
+import {AutoDepConfig} from '../common/types';
 import {
   ASTNode,
   Comment,
@@ -14,7 +14,7 @@ import {
 } from '../language/ast/types';
 
 interface RuleNameVisitorOptions {
-  config: AutodepConfig;
+  config: AutoDepConfig;
   rootPath: string;
 }
 export class RuleNameVisitor {
@@ -22,7 +22,7 @@ export class RuleNameVisitor {
   private fileName: string;
   private status: 'success' | 'failed' | 'idle' | 'passthrough';
   private reason: string;
-  private config: AutodepConfig;
+  private config: AutoDepConfig;
   private rootPath: string;
   private ruleType: 'module' | 'test';
 
