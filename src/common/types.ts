@@ -83,12 +83,12 @@ export interface AutoDepConfig {
   excludeNodeModules: boolean;
   enablePropagation: boolean;
   onCreate: {
+    fileExtname: string;
     module: {
       name: string;
       fileHeading: string;
       explicitDeps: boolean;
       omitEmptyFields: boolean;
-      fileExtname: string;
       initialVisibility: readonly string[] | null;
       subinclude: string[] | null;
       testOnly: boolean | null;
@@ -113,4 +113,5 @@ export interface AutoDepConfig {
       subinclude: string[] | null;
     };
   };
+  toString: () => string;
 }

@@ -1,4 +1,4 @@
-import {AutoDepConfig} from '../../common/types';
+import type {AutoDepConfig} from '../../common/types';
 
 export interface DeAliasingClientOptions {
   filePath: string;

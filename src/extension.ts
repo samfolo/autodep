@@ -1,20 +1,21 @@
-import * as vscode from 'vscode';
+import vscode from 'vscode';
 import path from 'path';
 
+import {initConfig} from './common/config';
+import {AutoDepError, ErrorType} from './errors/error';
+import {ConfigurationLoader} from './loader/load';
+import {Logger} from './logger/log';
+import {ErrorMessages, TaskMessages} from './messages';
 import {Dependency} from './models/dependency';
 import {DependencyResolver} from './resolver/resolve';
-import {initConfig} from './common/config';
-import {Logger} from './logger/log';
-import {ConfigurationLoader} from './loader/load';
-import {ErrorMessages, TaskMessages} from './messages';
-import {AutoDepError, ErrorType} from './errors/error';
 import {Writer} from './writer/write';
+import {compareBuildTarget} from './common/utils';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-  const defaultConfig = initConfig();
-  const logger = new Logger({namespace: 'AutoDep', config: defaultConfig});
+  const preConfig = initConfig({log: ['info', 'error']});
+  const configLoader = new ConfigurationLoader(preConfig);
 
   const main = vscode.commands.registerCommand('node-please-build-file-auto-formatter.main', () => {
     // A way to format nearest BUILD file via command palette
@@ -23,17 +24,22 @@ export function activate(context: vscode.ExtensionContext) {
 
   const formatOnSave = vscode.workspace.onDidSaveTextDocument((textDocument) => {
     if (['.ts', '.js', '.tsx', '.jsx'].includes(path.extname(textDocument.fileName))) {
+      const logger = new Logger({namespace: 'AutoDep', config: preConfig});
+      logger.info({ctx: 'process', message: 'beginning update...'});
+
       try {
-        logger.info({ctx: 'process', message: 'begin'});
+        const depResolver = new DependencyResolver(preConfig);
+        const config = configLoader.loadConfigFromWorkspace(
+          depResolver.getNearestConfigFilePath(textDocument.fileName)
+        );
 
-        const configLoader = new ConfigurationLoader(defaultConfig);
-        configLoader.loadConfigFromWorkspace(textDocument.fileName);
+        depResolver.setConfig(config);
+        logger.setConfig(config);
 
-        const config = configLoader.config;
-
-        const depResolver = new DependencyResolver(config);
-
-        const siblingBuildFilePath = path.resolve(path.dirname(textDocument.fileName), 'BUILD.plz');
+        const siblingBuildFilePath = path.resolve(
+          path.dirname(textDocument.fileName),
+          'BUILD' + (config.onCreate.fileExtname ? `.${config.onCreate.fileExtname}` : '')
+        );
         const targetBuildFilePath = config.enablePropagation
           ? depResolver.getNearestBuildFilePath(textDocument.fileName)
           : siblingBuildFilePath;
@@ -64,6 +70,10 @@ export function activate(context: vscode.ExtensionContext) {
           ctx: 'process',
           message: TaskMessages.resolve.attempt(textDocument.fileName, 'BUILD rule targets'),
         });
+        logger.trace({
+          ctx: 'process',
+          message: TaskMessages.collect.attempt('BUILD rule targets'),
+        });
         const buildRuleTargets = [];
         for (const dep in depToBuildFileMap) {
           const buildRuleTarget = depResolver.getBuildRuleName(dep, depToBuildFileMap[dep]);
@@ -83,16 +93,7 @@ export function activate(context: vscode.ExtensionContext) {
             );
           }
         }
-
-        const sortedBuildRuleTargets = [...buildRuleTargets].sort((a, b) => {
-          if (a[0] === ':' && b[0] === '/') {
-            return -1;
-          }
-          if (a[0] === '/' && b[0] === ':') {
-            return 1;
-          }
-          return a.localeCompare(b);
-        });
+        const sortedBuildRuleTargets = [...buildRuleTargets].sort(compareBuildTarget);
         logger.trace({
           ctx: 'process',
           message: TaskMessages.resolve.success(textDocument.fileName, 'BUILD rule targets'),
@@ -126,5 +127,5 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(formatOnSave);
 }
 
-// this method is called when your extension is deactivated
+// this method is called when your extension is deactivated (leaving empty for now)
 export function deactivate() {}

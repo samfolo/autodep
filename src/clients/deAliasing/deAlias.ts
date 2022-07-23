@@ -9,7 +9,7 @@ import {TaskMessages} from '../../messages';
 import {PackageAlias, PackageName, DeAliasingClientOptions} from './types';
 
 interface DeAliasResult {
-  result: string;
+  output: string;
   method: 'package-name-cache' | 'known-config-alias' | 'local-module-resolution' | 'passthrough';
 }
 
@@ -68,7 +68,10 @@ export class DeAliasingClient {
           this.packageAliases.add(packageAlias);
           this._logger.trace({
             ctx: 'init',
-            message: TaskMessages.resolve.success(`${this.rootDirPath}/${packageName}/package.json`, 'package alias'),
+            message: TaskMessages.resolve.success(
+              `${this.rootDirPath}/${packageName}/package.json`,
+              `package alias "${packageAlias}"`
+            ),
           });
         } catch (error) {
           this._logger.error({
@@ -115,7 +118,7 @@ export class DeAliasingClient {
             message: TaskMessages.resolve.attempt(pathWithExtension, 'local module'),
           });
           const resolveAttempt = relativeRequire.resolve(pathWithExtension);
-          const result: DeAliasResult = {result: resolveAttempt, method: 'local-module-resolution'};
+          const result: DeAliasResult = {output: resolveAttempt, method: 'local-module-resolution'};
           this._logger.trace({
             ctx: 'deAlias',
             message: TaskMessages.resolve.success(pathWithExtension, 'local module'),
@@ -135,7 +138,7 @@ export class DeAliasingClient {
     for (const alias of this.packageAliases) {
       if (dep.startsWith(alias)) {
         const result: DeAliasResult = {
-          result: dep.replace(alias, this.packageNameCache[alias]),
+          output: dep.replace(alias, this.packageNameCache[alias]),
           method: 'package-name-cache',
         };
         this._logger.trace({
@@ -178,7 +181,7 @@ export class DeAliasingClient {
                   message: TaskMessages.resolve.attempt(pathWithExtension, 'module'),
                 });
                 const resolveAttempt = relativeRequire.resolve(pathWithExtension);
-                const result: DeAliasResult = {result: resolveAttempt, method: 'known-config-alias'};
+                const result: DeAliasResult = {output: resolveAttempt, method: 'known-config-alias'};
                 this._logger.trace({
                   ctx: 'deAlias',
                   message: TaskMessages.resolve.success(pathWithExtension, 'module'),
@@ -203,7 +206,7 @@ export class DeAliasingClient {
       }
     }
 
-    const result: DeAliasResult = {result: dep, method: 'passthrough'};
+    const result: DeAliasResult = {output: dep, method: 'passthrough'};
     this._logger.trace({
       ctx: 'deAlias',
       message: TaskMessages.failure('de-alias', dep) + ' - leaving as-is.',

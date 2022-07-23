@@ -1,4 +1,5 @@
-/* eslint-disable @typescript-eslint/naming-convention */
+import vscode from 'vscode';
+
 import {LogLevel, AutoDepConfig} from '../common/types';
 
 interface LoggerOptions {
@@ -18,51 +19,51 @@ interface LogHistoryEntry {
   payload: LogPayload;
 }
 
-enum LogType {
-  TRACE = 'TRACE',
-  DEBUG = 'DEBUG',
-  INFO = 'INFO',
-  WARNING = 'WARNING',
-  ERROR = 'ERROR',
-}
-
 export class Logger {
-  private config?: AutoDepConfig | null;
-  private permittedLogLevels?: Set<LogLevel>;
-  private logHistory?: LogHistoryEntry[];
-  private namespace?: string;
+  private _config: AutoDepConfig;
+  private namespace: string;
 
   constructor({namespace, config}: LoggerOptions) {
-    if (!Logger._instance) {
-      this.namespace = namespace;
-      this.config = config;
-      this.permittedLogLevels = this.config.log;
-      this.logHistory = [];
-      Logger._instance = this;
-    }
+    this.namespace = namespace;
+    this._config = config;
   }
 
-  private static _instance: Logger;
+  private get permittedLogLevels() {
+    return this._config.log;
+  }
 
-  readonly trace = (payload: LogPayload) => Logger._instance.logMessage('debug', LogType.TRACE, payload);
-  readonly debug = (payload: LogPayload) => Logger._instance.logMessage('debug', LogType.DEBUG, payload);
-  readonly info = (payload: LogPayload) => Logger._instance.logMessage('info', LogType.INFO, payload);
-  readonly warn = (payload: LogPayload) => Logger._instance.logMessage('warn', LogType.WARNING, payload);
-  readonly error = (payload: LogPayload) => Logger._instance.logMessage('error', LogType.ERROR, payload);
-
-  private readonly shouldLog = (level: LogLevel) => Logger._instance.permittedLogLevels?.has(level);
-
-  private readonly formatMessage = (timestamp: string, type: LogType, payload: LogPayload) => {
-    return `${type}: ${timestamp}\n[${this.namespace}::${payload.ctx}]: ${payload.message}` + payload.details
-      ? '\ndetails:\n' + payload.details
-      : '';
+  setConfig = (newConfig: AutoDepConfig) => {
+    this._config = newConfig;
+    return this._config;
   };
 
-  private readonly logMessage = (level: LogLevel, type: LogType, payload: LogPayload) => {
-    if (Logger._instance.shouldLog(level)) {
-      const timestamp = new Date(Date.now()).toLocaleString();
-      console[level](Logger._instance.formatMessage(timestamp, type, payload));
-      Logger._instance.logHistory?.push({timestamp, payload, level});
+  private static _history: LogHistoryEntry[] = [];
+  private static _outputChannels = Object.freeze({
+    trace: vscode.window.createOutputChannel('Trace'),
+    debug: vscode.window.createOutputChannel('Debug'),
+    info: vscode.window.createOutputChannel('Info'),
+    warn: vscode.window.createOutputChannel('Warn'),
+    error: vscode.window.createOutputChannel('Error'),
+  });
+
+  readonly trace = (payload: LogPayload) => this.logMessage('trace', payload);
+  readonly debug = (payload: LogPayload) => this.logMessage('debug', payload);
+  readonly info = (payload: LogPayload) => this.logMessage('info', payload);
+  readonly warn = (payload: LogPayload) => this.logMessage('warn', payload);
+  readonly error = (payload: LogPayload) => this.logMessage('error', payload);
+
+  private readonly shouldLog = (level: LogLevel) => this.permittedLogLevels?.has(level);
+
+  private readonly formatMessage = (timestamp: string, level: LogLevel, payload: LogPayload) =>
+    `(${timestamp}) ${level.toUpperCase()}: [${this.namespace}::${payload.ctx}]: ${payload.message}` +
+    (payload.details ? '\ndetails:\n' + payload.details : '') +
+    '\n';
+
+  private readonly logMessage = (level: LogLevel, payload: LogPayload) => {
+    if (this.shouldLog(level)) {
+      const timestamp = new Date(Date.now()).toLocaleTimeString();
+      Logger._outputChannels[level].appendLine(this.formatMessage(timestamp, level, payload));
+      Logger._history.push({timestamp, payload, level});
     }
   };
 }

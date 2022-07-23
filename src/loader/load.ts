@@ -26,7 +26,9 @@ export class ConfigurationLoader {
     return this._type;
   }
 
-  loadConfigFromWorkspace = (configPath: string) => {
+  loadConfigFromWorkspace = (configPath: string | null) => {
+    this._type = 'default';
+
     if (configPath) {
       try {
         this._logger.trace({
@@ -52,7 +54,7 @@ export class ConfigurationLoader {
         this._logger.trace({
           ctx: 'loadConfigFromWorkspace',
           message: TaskMessages.resolve.success(configPath, CONFIG_FILENAME),
-          details: JSON.stringify(this._config, null, 2),
+          details: this._config.toString(),
         });
       } catch (error) {
         this._logger.error({
@@ -60,14 +62,17 @@ export class ConfigurationLoader {
           message: TaskMessages.resolve.failure(configPath, CONFIG_FILENAME),
           details: error,
         });
+
+        this._config = Object.freeze(initConfig());
       }
     }
 
     this._logger.info({
       ctx: 'loadConfigFromWorkspace',
       message: TaskMessages.using(`${this._type} config`),
-      details: JSON.stringify(this._config, null, 2),
+      details: this._config.toString(),
     });
+
     return this._config;
   };
 }

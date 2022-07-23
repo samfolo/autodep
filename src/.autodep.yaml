@@ -60,6 +60,7 @@ paths:
 excludeNodeModules: true
 enablePropagation: false
 onCreate:
+  fileExtname: 'plz'
   module:
     name: js_library
     fileHeading: |-
@@ -69,7 +70,6 @@ onCreate:
       And double lines...
     explicitDeps: true
     omitEmptyFields: true
-    fileExtname: 'plz'
     initialVisibility:
       - PUBLIC
     testOnly: false

@@ -8,8 +8,6 @@ import {CONFIG_FILENAME, SUPPORTED_MODULE_EXTENSIONS} from '../common/const';
 import {AutoDepConfig} from '../common/types';
 
 import {CollectDepsDirective, ResolveAbsoluteImportPathsOptions} from './types';
-import {Tokeniser} from '../language/tokeniser/tokenise';
-import {Parser} from '../language/parser/parse';
 import {RuleNameVisitor} from '../visitor/findRuleName';
 import {Logger} from '../logger/log';
 import {TaskMessages} from '../messages';
@@ -23,6 +21,11 @@ export class DependencyResolver {
     this._config = config;
     this._logger = new Logger({namespace: 'DependencyResolver', config: this._config});
   }
+
+  setConfig = (newConfig: AutoDepConfig) => {
+    this._config = newConfig;
+    return this._config;
+  };
 
   /**
    * Resolves the closest plugin config file path to the given path, bubbling all the way up to the top of the
@@ -84,18 +87,18 @@ export class DependencyResolver {
     });
 
     const uniqueDeps = deps.reduce<string[]>((acc, dep) => {
-      const deAliasedDep = deAliasingClient.deAlias(dep, SUPPORTED_MODULE_EXTENSIONS);
+      const result = deAliasingClient.deAlias(dep, SUPPORTED_MODULE_EXTENSIONS);
 
-      switch (deAliasedDep.method) {
+      switch (result.method) {
         case 'package-name-cache':
         case 'known-config-alias':
         case 'local-module-resolution':
           this._logger.trace({
             ctx: 'resolveAbsoluteImportPaths',
             message: TaskMessages.resolve.success(dep, 'dep'),
-            details: JSON.stringify(deAliasedDep, null, 2),
+            details: JSON.stringify(result, null, 2),
           });
-          acc.push(deAliasedDep.result);
+          acc.push(result.output);
           return acc;
         case 'passthrough':
         default:
@@ -105,7 +108,7 @@ export class DependencyResolver {
       this._logger.error({
         ctx: 'resolveAbsoluteImportPaths',
         message: TaskMessages.failure('de-alias', dep),
-        details: 'method: ' + deAliasedDep.result,
+        details: 'output: ' + result.output,
       });
 
       return acc;
@@ -244,6 +247,9 @@ export class DependencyResolver {
   getNearestBuildFilePath = (rootPath: string) =>
     this.findFirstValidPath(rootPath, this.generateRequirePaths(rootPath, ['BUILD', 'BUILD.plz']));
 
+  getNearestConfigFilePath = (rootPath: string) =>
+    this.findFirstValidPath(rootPath, this.generateRequirePaths(rootPath, [CONFIG_FILENAME]));
+
   /**
    * Returns a map of the nearest given dependencies to their nearest `BUILD` or `BUILD.plz` file.
    * If a `BUILD` file and `BUILD.plz` file both live in the same directory, the `BUILD` file path will
@@ -276,18 +282,19 @@ export class DependencyResolver {
    * @param buildFilePath the path of the BUILD file to search
    * @returns the name of the BUILD rule containing the target file, or `null`
    */
-  getBuildRuleName = (path: string, buildFilePath: string) => {
+  getBuildRuleName = (filePath: string, buildFilePath: string) => {
     try {
       this._logger.trace({ctx: 'getBuildRuleName', message: TaskMessages.resolve.attempt(buildFilePath)});
       const buildFile = readFileSync(buildFilePath, 'utf-8');
       this._logger.trace({ctx: 'getBuildRuleName', message: TaskMessages.resolve.success(buildFilePath)});
 
-      this._logger.trace({ctx: 'getBuildRuleName', message: TaskMessages.parse.attempt()});
+      const buildFileType = path.basename(buildFilePath);
+      this._logger.trace({ctx: 'getBuildRuleName', message: TaskMessages.parse.attempt(`${buildFileType} file`)});
       const ast = new BuildFile({file: buildFile, config: this._config}).toAST();
-      this._logger.trace({ctx: 'getBuildRuleName', message: TaskMessages.parse.success()});
+      this._logger.trace({ctx: 'getBuildRuleName', message: TaskMessages.parse.success(`${buildFileType} file`)});
 
       this._logger.trace({ctx: 'getBuildRuleName', message: TaskMessages.locate.attempt('rule name')});
-      const ruleNameVisitor = new RuleNameVisitor({config: this._config, rootPath: path});
+      const ruleNameVisitor = new RuleNameVisitor({config: this._config, rootPath: filePath});
       ruleNameVisitor.locateRuleName(ast);
       const ruleNameVisitorResult = ruleNameVisitor.getResult();
 

@@ -245,14 +245,14 @@ export class TaskMessages {
     /**
      * A string formatting utility
      *
-     * @param subject the thing you are updating, e.g. `"target BUILD rule"`. Optional, defaults to `"item"`
+     * @param subject the thing you are locating, e.g. `"target BUILD rule"`. Optional, defaults to `"item"`
      * @returns
      * ```javascript
-     * `updating ${subject}`
+     * `locating ${subject}`
      * ```
-     * @example attempt("target BUILD rule") => "updating target BUILD rule"
+     * @example attempt("target BUILD rule") => "locating target BUILD rule"
      */
-    attempt: (subject: string = 'item') => `updating ${subject}`,
+    attempt: (subject: string = 'item') => `locating ${subject}`,
     /**
      * A string formatting utility
      *
@@ -291,12 +291,12 @@ export class TaskMessages {
      * ```
      * @examples
      * ```javascript
-     * attempt("new TODO items", "checklist") => "updating checklist with new TODO items"
-     * attempt("new TODO items") => "updating checklist"
+     * attempt("checklist", "new TODO items") => "updating checklist with new TODO items"
+     * attempt("checklist") => "updating checklist"
      * ```
      */
     attempt: (subject: string = 'element', materialOrStrategy?: string) =>
-      `updating ${subject}` + materialOrStrategy ? ` with ${materialOrStrategy}` : '',
+      `updating ${subject}` + (materialOrStrategy ? ` with ${materialOrStrategy}` : ''),
     /**
      * A string formatting utility
      *
@@ -304,16 +304,16 @@ export class TaskMessages {
      * @param materialOrStrategy the material or strategy with which you are updating the subject, e.g. `"new TODO items"`. Optional
      * @returns
      * ```javascript
-     * `successfully updated ${subject}`
+     * `successfully updated ${subject}` // + `with ${materialOrStrategy}`
      * ```
      * @examples
      * ```javascript
-     * success("new TODO items", "checklist") => "successfully updated checklist with new TODO items"
-     * success("new TODO items") => "successfully updated checklist"
+     * success("checklist", "new TODO items") => "successfully updated checklist with new TODO items"
+     * success("checklist") => "successfully updated checklist"
      * ```
      */
     success: (subject: string = 'element', materialOrStrategy?: string) =>
-      `successfully updated ${subject}` + materialOrStrategy ? ` with ${materialOrStrategy}` : '',
+      `successfully updated ${subject}` + (materialOrStrategy ? ` with ${materialOrStrategy}` : ''),
     /**
      * A string formatting utility
      *
@@ -321,15 +321,94 @@ export class TaskMessages {
      * @param materialOrStrategy the material or strategy with which you are updating the subject, e.g. `"new TODO items"`. Optional
      * @returns
      * ```javascript
-     * `failed to update ${subject}`
+     * `failed to update ${subject}` // + `with ${materialOrStrategy}`
      * ```
      * @examples
      * ```javascript
-     * failure("new TODO items", "checklist") => "failed to update checklist with new TODO items"
-     * failure("new TODO items") => "failed to update checklist"
+     * failure("checklist", "new TODO items") => "failed to update checklist with new TODO items"
+     * failure("checklist") => "failed to update checklist"
      * ```
      */
     failure: (subject: string = 'element', materialOrStrategy?: string) =>
-      `failed to update ${subject}` + materialOrStrategy ? ` with ${materialOrStrategy}` : '',
+      `failed to update ${subject}` + (materialOrStrategy ? ` with ${materialOrStrategy}` : ''),
+  };
+  /**
+   * A collection of common "visit"-journey message formatting utilities
+   */
+  static readonly visit = {
+    /**
+     * A string formatting utility
+     *
+     * @param subject the thing you are visiting, e.g. `"Ibiza"`. Optional, defaults to `"node"`
+     * @returns
+     * ```javascript
+     * `visiting ${subject}`
+     * ```
+     * @example attempt("Ibiza") => "visiting Ibiza"
+     */
+    attempt: (subject: string = 'node') => `visiting ${subject}`,
+    /**
+     * A string formatting utility
+     *
+     * @param subject the thing you have successfully located, e.g. `"Ibiza"`. Optional, defaults to `"node"`
+     * @returns
+     * ```javascript
+     * `successfully located ${subject}`
+     * ```
+     * @example success("Ibiza") => "successfully visited Ibiza"
+     */
+    success: (subject: string = 'node') => `successfully visited ${subject}`,
+    /**
+     * A string formatting utility
+     *
+     * @param subject the thing you have failed to locate, e.g. `"Ibiza"`. Optional, defaults to `"node"`
+     * @returns
+     * ```javascript
+     * `failed to locate ${subject}`
+     * ```
+     * @example failure("Ibiza") => "failed to visit Ibiza"
+     */
+    failure: (subject: string = 'node') => `failed to visit ${subject}`,
+  };
+  /**
+   * A collection of common "identify"-journey message formatting utilities
+   */
+  static readonly identify = {
+    /**
+     * A string formatting utility
+     *
+     * @param type the type of the element you are attempting to identify, referenced as an entity or entities, e.g. `"a fruit"`
+     * @param subject the element you are attempting to identify, e.g. `"tomato"`. Optional, defaults to `"element"`
+     * @returns
+     * ```javascript
+     * `attempting to identify ${subject} as ${type}`
+     * ```
+     * @example success('a fruit', 'tomato') => 'attempting to identify tomato as a fruit'
+     */
+    attempt: (type: string, subject: string = 'element') => `attempting to identify ${subject} as ${type}`,
+    /**
+     * A string formatting utility
+     *
+     * @param type the type of the element you have successfully identified, referenced as an entity or entities, e.g. `"a fruit"`
+     * @param subject the element you have successfully identified, e.g. `"tomato"`. Optional, defaults to `"element"`
+     * @returns
+     * ```javascript
+     * `successfully identified ${subject} as ${type}`
+     * ```
+     * @example success('a fruit', 'tomato') => 'successfully identified tomato as a fruit'
+     */
+    success: (type: string, subject: string = 'element') => `successfully identified ${subject} as ${type}`,
+    /**
+     * A string formatting utility
+     *
+     * @param type the type of the element you have failed to identify, referenced as an entity or entities, e.g. `"a fruit"`
+     * @param subject the element you have failed to identify, e.g. `"tomato"`. Optional, defaults to `"element"`
+     * @returns
+     * ```javascript
+     * `failed to identify ${subject} as ${type}`
+     * ```
+     * @example success('a fruit', 'tomato') => 'failed to identify tomato as a fruit'
+     */
+    failure: (type: string, subject: string = 'element') => `failed to identify ${subject} as ${type}`,
   };
 }

@@ -87,4 +87,4 @@ export const DEFAULT_MODULE_RULE_NAME = 'filegroup';
 export const DEFAULT_TEST_RULE_NAME = 'filegroup';
 export const DEFAULT_INITIAL_VISIBILITY = ['PUBLIC'] as const;
 
-export const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
+export const LOG_LEVELS = ['trace', 'debug', 'info', 'warn', 'error'] as const;

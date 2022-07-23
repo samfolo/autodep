@@ -14,7 +14,8 @@
     "onLanguage:javascript",
     "onLanguage:javascriptreact",
     "onLanguage:typescript",
-    "onLanguage:typescriptreact"
+    "onLanguage:typescriptreact",
+    "onLanguage:yaml"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -54,6 +55,8 @@
     "yaml": "^2.1.1"
   },
   "dependencies": {
+    "@types/lodash.clonedeep": "^4.5.7",
+    "lodash.clonedeep": "^4.5.0",
     "minimatch": "^5.1.0",
     "node-source-walk": "^5.0.0",
     "precinct": "^9.0.1"

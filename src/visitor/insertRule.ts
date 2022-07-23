@@ -51,7 +51,7 @@ export class RuleInsertionVisitor {
         break;
       default:
         this.status = 'passthrough';
-        this.reason = 'irrelevant node type passed to `insertRule()`';
+        this.reason = 'irrelevant node type passed to `insertRule` visitor';
         return node;
     }
 

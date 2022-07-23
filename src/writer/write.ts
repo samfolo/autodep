@@ -1,5 +1,5 @@
 import {readFileSync, writeFileSync} from 'fs';
-
+import cloneDeep from 'lodash.clonedeep';
 import {AutoDepConfig} from '../common/types';
 import {AutoDepError, ErrorType} from '../errors/error';
 import {RootNode} from '../language/ast/types';
@@ -120,7 +120,7 @@ export class Writer {
       rootPath: this.rootPath,
       newDeps: this.newDeps,
     });
-    const updatedAST = visitor.updateDeps(structuredClone(ast));
+    const updatedAST = visitor.updateDeps(cloneDeep(ast));
     const result = visitor.getResult();
 
     switch (result.status) {
@@ -151,7 +151,7 @@ export class Writer {
       rootPath: this.rootPath,
       newDeps: this.newDeps,
     });
-    const updatedAST = visitor.insertRule(structuredClone(ast));
+    const updatedAST = visitor.insertRule(cloneDeep(ast));
     const result = visitor.getResult();
 
     switch (result.status) {

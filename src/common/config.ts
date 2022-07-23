@@ -130,7 +130,7 @@ export const initConfig = (overrides: Partial<AutodepConfigInput> = {}): AutoDep
       : typeof overrides.match?.module === 'string'
       ? new RegExp(overrides.match?.module)
       : DEFAULT_MODULE_FILENAME_MATCHER,
-    isModule: function (filePath) {
+    isModule: function (filePath: string) {
       return qualifyFilePath(this.module, filePath);
     },
     test: Array.isArray(overrides.match?.test)
@@ -138,7 +138,7 @@ export const initConfig = (overrides: Partial<AutodepConfigInput> = {}): AutoDep
       : typeof overrides.match?.test === 'string'
       ? new RegExp(overrides.match?.test)
       : DEFAULT_TEST_FILENAME_MATCHER,
-    isTest: function (filePath) {
+    isTest: function (filePath: string) {
       return qualifyFilePath(this.test, filePath);
     },
   },
@@ -147,12 +147,12 @@ export const initConfig = (overrides: Partial<AutodepConfigInput> = {}): AutoDep
   excludeNodeModules: overrides.excludeNodeModules ?? false,
   enablePropagation: overrides.enablePropagation ?? false,
   onCreate: {
+    fileExtname: typeof overrides.onCreate?.fileExtname === 'string' ? overrides.onCreate.fileExtname : '',
     module: {
       name: overrides.onCreate?.module?.name ?? overrides.onCreate?.name ?? DEFAULT_MODULE_RULE_NAME,
       fileHeading: overrides.onCreate?.module?.fileHeading ?? overrides.onCreate?.fileHeading ?? '',
       explicitDeps: overrides.onCreate?.module?.explicitDeps ?? overrides.onCreate?.explicitDeps ?? false,
       omitEmptyFields: overrides.onCreate?.module?.omitEmptyFields ?? overrides.onCreate?.omitEmptyFields ?? false,
-      fileExtname: overrides.onCreate?.fileExtname || '',
       initialVisibility: overrides.onCreate?.module?.initialVisibility?.every((el) => typeof el === 'string')
         ? overrides.onCreate.module.initialVisibility
         : overrides.onCreate?.initialVisibility?.every((el) => typeof el === 'string')
@@ -196,5 +196,21 @@ export const initConfig = (overrides: Partial<AutodepConfigInput> = {}): AutoDep
         ? overrides.onUpdate.subinclude
         : null,
     },
+  },
+  toString: function () {
+    return JSON.stringify(
+      this,
+      (_key, value) => {
+        switch (true) {
+          case value instanceof Set:
+            return [...value];
+          case value instanceof RegExp:
+            return value.toString();
+          default:
+            return value;
+        }
+      },
+      2
+    );
   },
 });
