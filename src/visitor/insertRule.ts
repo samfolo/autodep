@@ -30,6 +30,7 @@ export class RuleInsertionVisitor {
   private ruleType: 'module' | 'test';
   private reason: string;
   private rootPath: string;
+  private didUpdateSubinclude: boolean;
 
   constructor(
     {config, rootPath, newDeps}: RuleInsertionVisitorOptions,
@@ -44,6 +45,8 @@ export class RuleInsertionVisitor {
     this.status = 'idle';
     this.reason = 'took no action';
     this.rootPath = rootPath;
+    this.didUpdateSubinclude = false;
+
     if (this._config.match.isTest(this.rootPath)) {
       this.ruleType = 'test';
     } else if (this._config.match.isModule(this.rootPath)) {
@@ -168,7 +171,10 @@ export class RuleInsertionVisitor {
   };
 
   private visitCallExpressionNode = (node: CallExpression) => {
-    if (node.functionName?.getTokenLiteral() === SUPPORTED_MANAGED_BUILTINS_LOOKUP.subinclude) {
+    if (
+      !this.didUpdateSubinclude &&
+      node.functionName?.getTokenLiteral() === SUPPORTED_MANAGED_BUILTINS_LOOKUP.subinclude
+    ) {
       const newSubincludes = this._config.onUpdate[this.ruleType].subinclude;
 
       if (node.args?.elements && node.args.elements.length > 0 && Array.isArray(newSubincludes)) {
@@ -191,6 +197,8 @@ export class RuleInsertionVisitor {
 
         node.args.elements = uniqueSubincludes;
       }
+
+      this.didUpdateSubinclude = true;
     }
 
     return node;

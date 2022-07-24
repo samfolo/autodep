@@ -357,6 +357,10 @@ export class DependencyUpdateVisitor {
           }
           return element;
         });
+        // this is specific to updateDeps:
+        if (this.status !== 'success') {
+          // this means there was no deps array... so add one
+        }
       } else {
         this._logger.trace({
           ctx: 'visitCallExpressionNode',
@@ -385,13 +389,13 @@ export class DependencyUpdateVisitor {
 
   private visitArrayLiteralNode = (node: ArrayLiteral) => {
     if (node.elements) {
-      this.status = 'success';
-      this.reason = 'target rule found, dependencies updated';
       this.removedDeps = node.elements.elements.map(String);
 
       node.elements.elements = this.newDeps.map((dep) =>
         ast.createStringLiteralNode({token: createToken('STRING', dep), value: dep})
       );
+      this.status = 'success';
+      this.reason = 'target rule found, dependencies updated';
     }
     return node;
   };

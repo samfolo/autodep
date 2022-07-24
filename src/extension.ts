@@ -10,37 +10,38 @@ import {Dependency} from './models/dependency';
 import {DependencyResolver} from './resolver/resolve';
 import {Writer} from './writer/write';
 import {compareBuildTarget} from './common/utils';
+import {AutoDepConfig} from './common/types';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-  let config = initConfig({log: ['info', 'error']});
-
   const main = vscode.commands.registerCommand('node-please-build-file-auto-formatter.main', () => {
     // A way to format nearest BUILD file via command palette
     // do this later...
   });
 
-  const initialise = (rootPath: string) => {
-    const configLoader = new ConfigurationLoader(config);
-    const depResolver = new DependencyResolver(config);
-    config = configLoader.loadConfigFromWorkspace(depResolver.resolveClosestConfigFilePath(rootPath));
+  const initialise = (rootPath: string, preConfig: AutoDepConfig) => {
+    const configLoader = new ConfigurationLoader(preConfig);
+    const depResolver = new DependencyResolver(preConfig);
+    return configLoader.loadConfigFromWorkspace(depResolver.resolveClosestConfigFilePath(rootPath));
   };
 
   const formatOnSave = vscode.workspace.onDidSaveTextDocument((textDocument) => {
     if (['.ts', '.js', '.tsx', '.jsx'].includes(path.extname(textDocument.fileName))) {
+      const preConfig = initConfig({log: ['info', 'error']});
+      const logger = new Logger({namespace: 'AutoDep', config: preConfig});
+      logger.info({ctx: 'process', message: 'beginning update...'});
       const t1 = performance.now();
 
-      initialise(textDocument.fileName);
-      const dirPath = path.dirname(textDocument.fileName);
-      const depResolver = new DependencyResolver(config);
-      const logger = new Logger({namespace: 'AutoDep', config});
+      const config = initialise(textDocument.fileName, preConfig);
+      logger.setConfig(config);
 
       try {
-        logger.info({ctx: 'process', message: 'beginning update...'});
-
+        const dirPath = path.dirname(textDocument.fileName);
         const onCreateBuildFileName = `BUILD${config.onCreate.fileExtname ? `.${config.onCreate.fileExtname}` : ''}`;
         const onCreateBuildFilePath: string = path.resolve(dirPath, onCreateBuildFileName);
+
+        const depResolver = new DependencyResolver(config);
 
         let targetBuildFilePath: string | null;
 
