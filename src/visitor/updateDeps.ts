@@ -359,7 +359,14 @@ export class DependencyUpdateVisitor {
         });
         // this is specific to updateDeps:
         if (this.status !== 'success') {
-          // this means there was no deps array... so add one
+          // this means there was no deps array... so we add one:
+          const managedSchema = this._config.manage.schema[functionName];
+          const [firstDepsAlias] = managedSchema?.deps ?? [SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES.DEPS];
+          node.args.elements.push(
+            this.builder.buildRuleFieldKwargNode(firstDepsAlias.value, this.builder.buildArrayNode(this.newDeps))
+          );
+          this.status = 'success';
+          this.reason = `target rule found, \`${firstDepsAlias.value}\` field added and dependencies updated`;
         }
       } else {
         this._logger.trace({
