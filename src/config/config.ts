@@ -7,14 +7,14 @@ import {
   DEFAULT_TEST_FILENAME_MATCHER,
   DEFAULT_TEST_RULE_NAME,
   SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRY_TYPES,
-} from './const';
+} from '../common/const';
 import {
   ManagedSchemaFieldEntry,
   ManagedSchemaFieldType,
   ManagedSchemaField,
   AutoDepConfig,
   AutodepConfigInput,
-} from './types';
+} from '../common/types';
 
 const qualifyFilePath = (matcher: Set<string> | RegExp, filePath: string) => {
   if (matcher instanceof Set) {
