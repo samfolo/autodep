@@ -357,14 +357,24 @@ export class DependencyUpdateVisitor {
           }
           return element;
         });
+
         // this is specific to updateDeps:
         if (this.status !== 'success') {
           // this means there was no deps array... so we add one:
           const managedSchema = this._config.manage.schema[functionName];
           const [firstDepsAlias] = managedSchema?.deps ?? [SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES.DEPS];
+
+          this._logger.trace({
+            ctx: 'visitCallExpressionNode',
+            message:
+              TaskMessages.locate.failure(`"${firstDepsAlias.value}"-aliased \`deps\` field in target rule`) +
+              ' - inserting one...',
+            details: node.toString(),
+          });
           node.args.elements.push(
             this.builder.buildRuleFieldKwargNode(firstDepsAlias.value, this.builder.buildArrayNode(this.newDeps))
           );
+
           this.status = 'success';
           this.reason = `target rule found, \`${firstDepsAlias.value}\` field added and dependencies updated`;
         }
