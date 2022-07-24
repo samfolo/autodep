@@ -28,7 +28,7 @@ import {TaskMessages} from '../messages/task';
 import {ErrorMessages} from '../messages/error';
 import {AutoDepError, ErrorType} from '../errors/error';
 
-interface RuleInsertionVisitorOptions {
+interface DependencyUpdateVisitorOptions {
   config: AutoDepConfig;
   rootPath: string;
   newDeps: string[];
@@ -36,8 +36,11 @@ interface RuleInsertionVisitorOptions {
 }
 
 export class DependencyUpdateVisitor {
+  private builderCls: typeof DependencyBuilder;
+
   private _config: AutoDepConfig;
   private _logger: Logger;
+
   private readonly builder: DependencyBuilder;
   private readonly fileName: string;
   private readonly newDeps: string[];
@@ -47,16 +50,22 @@ export class DependencyUpdateVisitor {
   private ruleType: 'module' | 'test';
   private rootPath: string;
 
-  constructor({config, rootPath, newDeps, builderCls = DependencyBuilder}: RuleInsertionVisitorOptions) {
-    this.builder = new builderCls({config, rootPath, newDeps});
+  constructor(
+    {config, rootPath, newDeps}: DependencyUpdateVisitorOptions,
+    builderCls: typeof DependencyBuilder = DependencyBuilder
+  ) {
+    this._config = config;
+    this._logger = new Logger({namespace: 'DependencyUpdateVisitor', config: this._config});
+
+    this.builderCls = builderCls;
+
+    this.builder = new this.builderCls({config: this._config, rootPath, newDeps});
     this.rootPath = rootPath;
     this.fileName = path.basename(this.rootPath);
-    this._config = config;
     this.newDeps = newDeps;
     this.status = 'idle';
     this.reason = 'took no action';
     this.removedDeps = [];
-    this._logger = new Logger({namespace: 'DependencyUpdateVisitor', config: this._config});
 
     this._logger.trace({ctx: 'init', message: TaskMessages.initialise.attempt('DependencyUpdateVisitor')});
 
@@ -126,7 +135,9 @@ export class DependencyUpdateVisitor {
       String(firstStatement?.getTokenLiteral())
     );
 
-    if (firstStatement.kind === 'CommentStatement' && (hasOnCreateCommentHeading || hasOnUpdateCommentHeading)) {
+    const hasCommentHeading = hasOnCreateCommentHeading || hasOnUpdateCommentHeading;
+
+    if (firstStatement.kind === 'CommentStatement' && hasCommentHeading) {
       const [, ...nonFileHeadingStatements] = node.statements;
 
       node.statements = [
@@ -134,7 +145,10 @@ export class DependencyUpdateVisitor {
         ...nonFileHeadingStatements.map((statement) => this.visitStatementNode(statement)),
       ];
     } else {
-      node.statements = node.statements.map((statement) => this.visitStatementNode(statement));
+      node.statements = [
+        this.builder.buildFileHeadingCommentStatement(onUpdateFileHeading),
+        ...node.statements.map((statement) => this.visitStatementNode(statement)),
+      ];
     }
 
     return node;
@@ -208,6 +222,10 @@ export class DependencyUpdateVisitor {
     const srcsSchemaFieldEntries = managedSchema?.srcs ?? [SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES.SRCS];
 
     if (node.args?.elements && node.args.elements.length > 0) {
+      this._logger.trace({
+        ctx: 'visitCallExpressionNode',
+        message: TaskMessages.identify.attempt('the target rule', `instance of "${functionName}"`),
+      });
       const isTargetRule = node.args.elements.some((element) => {
         if (element.kind === 'KeywordArgumentExpression') {
           for (const srcsAlias of srcsSchemaFieldEntries) {
@@ -241,6 +259,7 @@ export class DependencyUpdateVisitor {
                         fieldAlias: srcsAlias.value,
                         expectedFieldType: srcsAlias.as,
                       }),
+                      details: node.toString(),
                     });
                   }
                   break;
@@ -271,6 +290,7 @@ export class DependencyUpdateVisitor {
                         fieldAlias: srcsAlias.value,
                         expectedFieldType: srcsAlias.as,
                       }),
+                      details: node.toString(),
                     });
                   }
                   break;

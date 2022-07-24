@@ -147,7 +147,7 @@ export class DependencyResolver {
   };
 
   /**
-   * Takes a given root path and attempts to `require.resolve()` with each given path
+   * Takes a given root path and attempts to `require.resolve()` with each given path.
    * If it does not successfully resolve any given path, it returns `null`
    *
    * @param rootPath the given require root path
@@ -246,9 +246,6 @@ export class DependencyResolver {
 
   getNearestBuildFilePath = (rootPath: string) =>
     this.findFirstValidPath(rootPath, this.generateRequirePaths(rootPath, ['BUILD', 'BUILD.plz']));
-
-  getNearestConfigFilePath = (rootPath: string) =>
-    this.findFirstValidPath(rootPath, this.generateRequirePaths(rootPath, [CONFIG_FILENAME]));
 
   /**
    * Returns a map of the nearest given dependencies to their nearest `BUILD` or `BUILD.plz` file.

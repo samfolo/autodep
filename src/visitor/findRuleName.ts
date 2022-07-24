@@ -192,7 +192,7 @@ export class RuleNameVisitor {
     if (node.args?.elements && node.args.elements.length > 0) {
       this._logger.trace({
         ctx: 'visitCallExpressionNode',
-        message: TaskMessages.identify.attempt('the target rule', functionName),
+        message: TaskMessages.identify.attempt('the target rule', `instance of "${functionName}"`),
       });
       const isTargetRule = node.args.elements.some((element) => {
         if (element.kind === 'KeywordArgumentExpression') {
@@ -227,6 +227,7 @@ export class RuleNameVisitor {
                         fieldAlias: srcsAlias.value,
                         expectedFieldType: srcsAlias.as,
                       }),
+                      details: node.toString(),
                     });
                   }
                   break;
@@ -257,45 +258,48 @@ export class RuleNameVisitor {
                         fieldAlias: srcsAlias.value,
                         expectedFieldType: srcsAlias.as,
                       }),
+                      details: node.toString(),
                     });
                   }
                   break;
                 default:
-                  if (
-                    element.value?.kind === 'CallExpression' &&
-                    element.value.functionName?.getTokenLiteral() === SUPPORTED_MANAGED_BUILTINS_LOOKUP.glob
-                  ) {
-                    this._logger.trace({
-                      ctx: 'visitCallExpressionNode',
-                      message: TaskMessages.identified(
-                        `a \`glob\` builtin field`,
-                        `\`${functionName}.${srcsAlias.value}\``
-                      ),
-                    });
-                    const isMatch = element.value.args?.elements?.some((arg) => {
-                      if (arg.kind === 'ArrayLiteral') {
-                        // TODO: handle "glob" include-exclude kwargs
-                        return arg.elements?.elements.some((matcher) => {
-                          this._logger.trace({
-                            ctx: 'visitCallExpressionNode',
-                            message: TaskMessages.attempt(
-                              'match',
-                              `${this.fileName} against "${matcher.getTokenLiteral()}"`
-                            ),
-                          });
-                          minimatch(this.fileName, String(matcher.getTokenLiteral()));
-                        });
-                      }
-                    });
-                    this._logger.trace({
-                      ctx: 'visitCallExpressionNode',
-                      message: TaskMessages[isMatch ? 'success' : 'failure'](
-                        'match',
-                        `"${this.fileName}" against a matcher in \`${functionName}.${srcsAlias.value}\``
-                      ),
+                  break;
+              }
+
+              if (
+                element.value?.kind === 'CallExpression' &&
+                element.value.functionName?.getTokenLiteral() === SUPPORTED_MANAGED_BUILTINS_LOOKUP.glob
+              ) {
+                this._logger.trace({
+                  ctx: 'visitCallExpressionNode',
+                  message: TaskMessages.identified(
+                    `a \`glob\` builtin field`,
+                    `\`${functionName}.${srcsAlias.value}\``
+                  ),
+                });
+                const isMatch = element.value.args?.elements?.some((arg) => {
+                  if (arg.kind === 'ArrayLiteral') {
+                    // TODO: handle "glob" include-exclude kwargs
+                    return arg.elements?.elements.some((matcher) => {
+                      this._logger.trace({
+                        ctx: 'visitCallExpressionNode',
+                        message: TaskMessages.attempt(
+                          'match',
+                          `${this.fileName} against "${matcher.getTokenLiteral()}"`
+                        ),
+                      });
+                      return minimatch(this.fileName, String(matcher.getTokenLiteral()));
                     });
                   }
-                  break;
+                });
+                this._logger.trace({
+                  ctx: 'visitCallExpressionNode',
+                  message: TaskMessages[isMatch ? 'success' : 'failure'](
+                    isMatch ? 'matched' : 'match',
+                    `"${this.fileName}" against a matcher in \`${functionName}.${srcsAlias.value}\``
+                  ),
+                });
+                return isMatch;
               }
             }
 

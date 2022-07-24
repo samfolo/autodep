@@ -112,14 +112,11 @@ export class Parser {
     return statement;
   };
 
-  private parseCommentStatement = (comment: Comment) => {
-    const statement = ast.createCommentStatementNode({
-      token: this.getCurrentToken(),
+  private parseCommentStatement = (comment: Comment) =>
+    ast.createCommentStatementNode({
+      token: comment.token,
       comment,
     });
-
-    return statement;
-  };
 
   // Comments:
 

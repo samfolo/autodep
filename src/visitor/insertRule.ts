@@ -1,33 +1,52 @@
-import {ASTNode, CallExpression, ExpressionStatement, RootNode, Expression, Statement} from '../language/ast/types';
+import {
+  ASTNode,
+  CallExpression,
+  ExpressionStatement,
+  RootNode,
+  Expression,
+  Statement,
+  Comment,
+} from '../language/ast/types';
 import {AutoDepConfig} from '../common/types';
 import {SUPPORTED_MANAGED_BUILTINS_LOOKUP} from '../common/const';
 import {DependencyBuilder} from '../language/builder/build';
+import {Logger} from '../logger/log';
+import {TaskMessages} from '../messages/task';
 
 interface RuleInsertionVisitorOptions {
   config: AutoDepConfig;
   rootPath: string;
   newDeps: string[];
-  builderCls?: typeof DependencyBuilder;
 }
 
 export class RuleInsertionVisitor {
-  private readonly builder: DependencyBuilder;
+  private builderCls: typeof DependencyBuilder;
+
+  private _config: AutoDepConfig;
+  private _logger: Logger;
+
+  private builder: DependencyBuilder;
   private status: 'success' | 'failed' | 'idle' | 'passthrough';
   private ruleType: 'module' | 'test';
   private reason: string;
-  private config: AutoDepConfig;
   private rootPath: string;
 
-  constructor({config, rootPath, newDeps, builderCls = DependencyBuilder}: RuleInsertionVisitorOptions) {
-    this.builder = new builderCls({config, rootPath, newDeps});
+  constructor(
+    {config, rootPath, newDeps}: RuleInsertionVisitorOptions,
+    builderCls: typeof DependencyBuilder = DependencyBuilder
+  ) {
+    this._config = config;
+    this._logger = new Logger({namespace: 'RuleInsertionVisitor', config: this._config});
+
+    this.builderCls = builderCls;
+
+    this.builder = new this.builderCls({config: this._config, rootPath, newDeps});
     this.status = 'idle';
     this.reason = 'took no action';
-    this.config = config;
     this.rootPath = rootPath;
-
-    if (this.config.match.isTest(this.rootPath)) {
+    if (this._config.match.isTest(this.rootPath)) {
       this.ruleType = 'test';
-    } else if (this.config.match.isModule(this.rootPath)) {
+    } else if (this._config.match.isModule(this.rootPath)) {
       this.ruleType = 'module';
     } else {
       const error = `[RuleInsertionVisitor::init]: unsupported file type: ${this.rootPath}. Check your settings at \`<autodepConfig>.match.(module|test)\`. Note, you don't have to double-escape your regex matchers`;
@@ -41,13 +60,20 @@ export class RuleInsertionVisitor {
 
     switch (node.type) {
       case 'Root':
+        this._logger.trace({ctx: 'insertRule', message: TaskMessages.visit.attempt('RootNode')});
         result = this.visitRootNode(node);
         break;
       case 'Expression':
+        this._logger.trace({ctx: 'insertRule', message: TaskMessages.visit.attempt('RootNode')});
         result = this.visitExpressionNode(node);
         break;
       case 'Statement':
+        this._logger.trace({ctx: 'insertRule', message: TaskMessages.visit.attempt('RootNode')});
         result = this.visitStatementNode(node);
+        break;
+      case 'Comment':
+        this._logger.trace({ctx: 'insertRule', message: TaskMessages.visit.attempt('Comment')});
+        result = this.visitCommentNode(node);
         break;
       default:
         this.status = 'passthrough';
@@ -67,10 +93,10 @@ export class RuleInsertionVisitor {
   private visitRootNode = (node: RootNode) => {
     // We need to check whether the first line of any config `fileHeading` is the same as
     // the first line in the file:
-    const onUpdateFileHeading = this.config.onUpdate[this.ruleType].fileHeading ?? '';
+    const onUpdateFileHeading = this._config.onUpdate[this.ruleType].fileHeading ?? '';
     const firstLineOfOnUpdateFileHeading = `# ${onUpdateFileHeading.split('\n')[0]}`;
 
-    const onCreateFileHeading = this.config.onCreate[this.ruleType].fileHeading ?? '';
+    const onCreateFileHeading = this._config.onCreate[this.ruleType].fileHeading ?? '';
     const firstLineOfOnCreateFileHeading = `# ${onCreateFileHeading.split('\n')[0]}`;
 
     const firstStatement = node.statements[0];
@@ -82,7 +108,9 @@ export class RuleInsertionVisitor {
       String(firstStatement?.getTokenLiteral())
     );
 
-    if (firstStatement.kind === 'CommentStatement' && (hasOnCreateCommentHeading || hasOnUpdateCommentHeading)) {
+    const hasCommentHeading = hasOnCreateCommentHeading || hasOnUpdateCommentHeading;
+
+    if (firstStatement.kind === 'CommentStatement' && hasCommentHeading) {
       const [, ...nonFileHeadingStatements] = node.statements;
 
       node.statements = [
@@ -90,7 +118,10 @@ export class RuleInsertionVisitor {
         ...nonFileHeadingStatements.map((statement) => this.visitStatementNode(statement)),
       ];
     } else {
-      node.statements = node.statements.map((statement) => this.visitStatementNode(statement));
+      node.statements = [
+        this.builder.buildFileHeadingCommentStatement(onUpdateFileHeading),
+        ...node.statements.map((statement) => this.visitStatementNode(statement)),
+      ];
     }
 
     node.statements.push(this.builder.buildNewRule());
@@ -105,6 +136,15 @@ export class RuleInsertionVisitor {
     switch (node.kind) {
       case 'ExpressionStatement':
         return this.visitExpressionStatementNode(node);
+      default:
+        return node;
+    }
+  };
+
+  private visitCommentNode = (node: Comment): Comment => {
+    switch (node.kind) {
+      case 'SingleLineComment':
+      case 'CommentGroup':
       default:
         return node;
     }
@@ -129,7 +169,7 @@ export class RuleInsertionVisitor {
 
   private visitCallExpressionNode = (node: CallExpression) => {
     if (node.functionName?.getTokenLiteral() === SUPPORTED_MANAGED_BUILTINS_LOOKUP.subinclude) {
-      const newSubincludes = this.config.onUpdate[this.ruleType].subinclude;
+      const newSubincludes = this._config.onUpdate[this.ruleType].subinclude;
 
       if (node.args?.elements && node.args.elements.length > 0 && Array.isArray(newSubincludes)) {
         const seen = new Set();

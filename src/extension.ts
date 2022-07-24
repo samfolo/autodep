@@ -14,40 +14,51 @@ import {compareBuildTarget} from './common/utils';
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-  const preConfig = initConfig({log: ['info', 'error']});
-  const configLoader = new ConfigurationLoader(preConfig);
+  let config = initConfig({log: ['info', 'error']});
 
   const main = vscode.commands.registerCommand('node-please-build-file-auto-formatter.main', () => {
     // A way to format nearest BUILD file via command palette
     // do this later...
   });
 
+  const initialise = (rootPath: string) => {
+    const configLoader = new ConfigurationLoader(config);
+    const depResolver = new DependencyResolver(config);
+    config = configLoader.loadConfigFromWorkspace(depResolver.resolveClosestConfigFilePath(rootPath));
+  };
+
   const formatOnSave = vscode.workspace.onDidSaveTextDocument((textDocument) => {
     if (['.ts', '.js', '.tsx', '.jsx'].includes(path.extname(textDocument.fileName))) {
-      const logger = new Logger({namespace: 'AutoDep', config: preConfig});
-      logger.info({ctx: 'process', message: 'beginning update...'});
+      const t1 = performance.now();
+
+      initialise(textDocument.fileName);
+      const dirPath = path.dirname(textDocument.fileName);
+      const depResolver = new DependencyResolver(config);
+      const logger = new Logger({namespace: 'AutoDep', config});
 
       try {
-        const depResolver = new DependencyResolver(preConfig);
-        const config = configLoader.loadConfigFromWorkspace(
-          depResolver.getNearestConfigFilePath(textDocument.fileName)
-        );
+        logger.info({ctx: 'process', message: 'beginning update...'});
 
-        depResolver.setConfig(config);
-        logger.setConfig(config);
+        const onCreateBuildFileName = `BUILD${config.onCreate.fileExtname ? `.${config.onCreate.fileExtname}` : ''}`;
+        const onCreateBuildFilePath: string = path.resolve(dirPath, onCreateBuildFileName);
 
-        const siblingBuildFilePath = path.resolve(
-          path.dirname(textDocument.fileName),
-          'BUILD' + (config.onCreate.fileExtname ? `.${config.onCreate.fileExtname}` : '')
-        );
-        const targetBuildFilePath = config.enablePropagation
-          ? depResolver.getNearestBuildFilePath(textDocument.fileName)
-          : siblingBuildFilePath;
+        let targetBuildFilePath: string | null;
+
+        if (config.enablePropagation) {
+          targetBuildFilePath = depResolver.getNearestBuildFilePath(textDocument.fileName);
+        } else {
+          targetBuildFilePath = depResolver.findFirstValidPath(
+            textDocument.fileName,
+            Array.from(
+              new Set([path.resolve(dirPath, 'BUILD'), path.resolve(dirPath, 'BUILD.plz'), onCreateBuildFilePath])
+            )
+          );
+        }
 
         if (!targetBuildFilePath) {
           throw new AutoDepError(
             ErrorType.FAILED_PRECONDITION,
-            ErrorMessages.precondition.noBUILDFilesInWorkspace({proposedPath: siblingBuildFilePath})
+            ErrorMessages.precondition.noBUILDFilesInWorkspace({proposedPath: onCreateBuildFilePath})
           );
         }
 
@@ -121,10 +132,12 @@ export function activate(context: vscode.ExtensionContext) {
         logger.info({ctx: 'process', message: 'exiting...'});
         return false;
       }
+      const t2 = performance.now();
       logger.info({
         ctx: 'process',
         message: TaskMessages.update.success('BUILD rule targets'),
       });
+      logger.info({ctx: 'process', message: `update took ${Number(t2 - t1).toFixed()}ms`});
       logger.info({ctx: 'process', message: 'exiting...'});
     }
   });

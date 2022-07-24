@@ -4,6 +4,7 @@ manage:
     - ops_app_mocha
     - ops_app_jest
     - yarn_script
+    - css_library
   fields:
     - name
     - src
@@ -14,6 +15,11 @@ manage:
     - labels
     - entry
   schema:
+    css_library:
+      srcs:
+        - srcs
+        - value: src
+          as: string
     js_library:
       name:
         - value: name
@@ -30,8 +36,8 @@ manage:
           as: array
     yarn_script:
       srcs:
-        - value: entry
-          as: string
+        - value: outs
+          as: array
       visibility:
         - value: visibility
           as: array
@@ -43,10 +49,14 @@ manage:
       srcs:
         - value: entry
           as: string
+    genrule:
+      srcs:
+        - outs
 match:
-  module: .*?\.(js|jsx|ts|tsx)$
+  module: .*?\.(js|jsx|ts|tsx|scss)$
   test: .*?\.(spec|test)\.(js|jsx|ts|tsx)$
 log:
+  - trace
   - debug
   - info
   - warn
@@ -60,7 +70,7 @@ paths:
 excludeNodeModules: true
 enablePropagation: false
 onCreate:
-  fileExtname: 'plz'
+  fileExtname: plz
   module:
     name: js_library
     fileHeading: |-

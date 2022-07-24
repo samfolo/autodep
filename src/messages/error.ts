@@ -1,3 +1,4 @@
+import path from 'path';
 import {TaskMessages} from './task';
 
 interface NoBUILDFilesInWorkspaceOptions {
@@ -28,7 +29,11 @@ export class ErrorMessages {
       ` either in the target directory or in a parent directory.`,
     noRuleFoundForDependency: ({dep, nearestBUILDFile}: NoRuleFoundForDependencyOptions) =>
       TaskMessages.resolve.failure(`${dep} in its nearest \`BUILD\` file ${nearestBUILDFile}.`) +
-      '\nTry saving that file to generate a valid rule.',
+      '\nTry:' +
+      '\n - saving that file to generate a valid rule, if one does not exist yet' +
+      "\n - setting `excludeNodeModules` to `true` in the nearest .autodep.yaml file, if it's a `node_module`" +
+      `\n - checking your \`<autodepConfig>.match\` settings, to ensure it covers the target extension ` +
+      `(\`${path.extname(dep)}\`)`,
   };
   static readonly user = {
     unsupportedFileType: ({path}: UnsupportedFileTypeOptions) =>

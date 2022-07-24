@@ -39,11 +39,11 @@ export class Logger {
 
   private static _history: LogHistoryEntry[] = [];
   private static _outputChannels = Object.freeze({
-    trace: vscode.window.createOutputChannel('Trace'),
-    debug: vscode.window.createOutputChannel('Debug'),
-    info: vscode.window.createOutputChannel('Info'),
-    warn: vscode.window.createOutputChannel('Warn'),
-    error: vscode.window.createOutputChannel('Error'),
+    trace: vscode.window.createOutputChannel('Autodep - Trace'),
+    debug: vscode.window.createOutputChannel('Autodep - Debug'),
+    info: vscode.window.createOutputChannel('Autodep - Info'),
+    warn: vscode.window.createOutputChannel('Autodep - Warn'),
+    error: vscode.window.createOutputChannel('Autodep - Error'),
   });
 
   readonly trace = (payload: LogPayload) => this.logMessage('trace', payload);
