@@ -5,6 +5,7 @@ export enum ErrorType {
   PARSER = 'File parsing error',
   UNEXPECTED = 'Unexpected error',
   USER = 'User error',
+  PROCESSING = 'Processing error',
 }
 
 export class AutoDepError extends Error {

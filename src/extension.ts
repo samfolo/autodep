@@ -22,24 +22,34 @@ export function activate(context: vscode.ExtensionContext) {
   const formatOnSave = vscode.workspace.onDidSaveTextDocument((textDocument) => {
     if (['.ts', '.js', '.tsx', '.jsx'].includes(path.extname(textDocument.fileName))) {
       const preConfig = new ConfigUmarshaller().unmarshal({log: ['info', 'error']});
-
       const logger = new Logger({namespace: 'AutoDep', config: preConfig});
-      logger.info({ctx: 'process', message: 'beginning update...'});
-      const t1 = performance.now();
-
-      const configLoader = new ConfigurationLoader(preConfig);
-      const depResolver = new DependencyResolver(preConfig);
-      const config = configLoader.loadConfigFromWorkspace(
-        depResolver.resolveClosestConfigFilePath(textDocument.fileName)
-      );
-      logger.setConfig(config);
 
       try {
+        const configLoader = new ConfigurationLoader(preConfig);
+        const depResolver = new DependencyResolver(preConfig);
+
+        logger.info({ctx: 'process', message: 'beginning update...'});
+        const t1 = performance.now();
+
+        const configLoaderResult = configLoader.loadConfigFromWorkspace(
+          depResolver.resolveClosestConfigFilePath(textDocument.fileName)
+        );
+
+        switch (configLoaderResult.status) {
+          case 'success':
+            depResolver.setConfig(configLoaderResult.output);
+            logger.setConfig(configLoaderResult.output);
+            break;
+          case 'failed':
+          case 'passthrough':
+            throw new AutoDepError(ErrorType.PROCESSING, configLoaderResult.reason);
+        }
+
+        const config = configLoaderResult.output;
+
         const dirPath = path.dirname(textDocument.fileName);
         const onCreateBuildFileName = `BUILD${config.onCreate.fileExtname ? `.${config.onCreate.fileExtname}` : ''}`;
         const onCreateBuildFilePath: string = path.resolve(dirPath, onCreateBuildFileName);
-
-        const depResolver = new DependencyResolver(config);
 
         let targetBuildFilePath: string | null;
 
@@ -119,6 +129,14 @@ export function activate(context: vscode.ExtensionContext) {
           ctx: 'process',
           message: TaskMessages.success('wrote', `BUILD targets to ${targetBuildFilePath}`),
         });
+
+        const t2 = performance.now();
+        logger.info({
+          ctx: 'process',
+          message: TaskMessages.update.success('BUILD rule targets'),
+        });
+        logger.info({ctx: 'process', message: `update took ${Number(t2 - t1).toFixed()}ms`});
+        logger.info({ctx: 'process', message: 'exiting...'});
       } catch (error) {
         const err = error as any;
 
@@ -127,18 +145,10 @@ export function activate(context: vscode.ExtensionContext) {
         } else {
           vscode.window.showErrorMessage(String(error));
         }
+
         logger.error({ctx: 'process', message: 'something went wrong.', details: err.stack});
         logger.info({ctx: 'process', message: 'exiting...'});
-        return false;
       }
-
-      const t2 = performance.now();
-      logger.info({
-        ctx: 'process',
-        message: TaskMessages.update.success('BUILD rule targets'),
-      });
-      logger.info({ctx: 'process', message: `update took ${Number(t2 - t1).toFixed()}ms`});
-      logger.info({ctx: 'process', message: 'exiting...'});
     }
   });
 

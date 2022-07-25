@@ -1,3 +1,4 @@
+import {ErrorObject} from 'ajv';
 import path from 'path';
 import {TaskMessages} from './task';
 
@@ -21,6 +22,11 @@ interface BuildRuleSchemaMismatchOptions {
   expectedFieldType: string;
 }
 
+interface InvalidConfigOptions {
+  configPath: string;
+  validationErrors: ErrorObject[] | null | undefined;
+}
+
 export class ErrorMessages {
   static readonly precondition = {
     noBUILDFilesInWorkspace: ({proposedPath}: NoBUILDFilesInWorkspaceOptions) =>
@@ -40,8 +46,15 @@ export class ErrorMessages {
       `unsupported file type: ${path}. Check your settings at \`<autodepConfig>.match.(module|test)\`.` +
       ` Note, you don't have to double-escape your regex matchers.`,
     buildRuleSchemaMismatch: ({ruleName, fieldName, fieldAlias, expectedFieldType}: BuildRuleSchemaMismatchOptions) =>
-      `found "${fieldAlias}"-aliased \`${fieldName}\` field within \`${ruleName ?? '<unknown>'}\`` +
+      `found "${fieldAlias}"-aliased \`${fieldName}\` field within \`${ruleName ?? '<unknown field>'}\`` +
       ` rule, but it was not of type "${expectedFieldType}" type.` +
       ` Check your \`<autodepConfig>.manage.schema\` if this is incorrect.`,
+    invalidConfig: ({configPath, validationErrors}: InvalidConfigOptions) =>
+      `${TaskMessages.failure('validate', configPath)}:\n` +
+        validationErrors
+          ?.map((error) => {
+            return `<autodepConfig>${error.instancePath.replace(/\//gi, '.')} ${error.message ?? '<unknown issue>'}`;
+          })
+          .join('\n') ?? '<unknown issue>',
   };
 }
