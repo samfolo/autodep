@@ -12,10 +12,6 @@ import {Dependency} from '../models/dependency';
 import {DependencyResolver} from '../resolver/resolve';
 import {Writer} from '../writer/write';
 
-interface AutoDepOptions {
-  rootPath: string;
-}
-
 export class AutoDep extends AutoDepBase {
   protected _configLoaderCls: typeof ConfigurationLoader;
   protected _depResolverCls: typeof DependencyResolver;
@@ -25,13 +21,11 @@ export class AutoDep extends AutoDepBase {
   protected _writerCls: typeof Writer;
   protected _configLoader: ConfigurationLoader;
   protected _depResolver: DependencyResolver;
-  protected _rootPath: string;
   protected _unmarshaller: ConfigUmarshaller;
   protected _startTime: number | null;
   protected _endTime: number | null;
 
   constructor(
-    {rootPath}: AutoDepOptions,
     buildFileModelCls: typeof BuildFile = BuildFile,
     configLoaderCls: typeof ConfigurationLoader = ConfigurationLoader,
     depResolverCls: typeof DependencyResolver = DependencyResolver,
@@ -41,7 +35,7 @@ export class AutoDep extends AutoDepBase {
   ) {
     /* Pass default config to superclass: */
     const unmarshaller = new unmarshallerCls();
-    const _preConfig = unmarshaller.unmarshal({log: ['info', 'error']});
+    const _preConfig = unmarshaller.unmarshal({log: ['debug', 'info', 'warn', 'error']});
     super({config: _preConfig, name: 'AutoDep'});
 
     this._buildFileModelCls = buildFileModelCls;
@@ -52,21 +46,21 @@ export class AutoDep extends AutoDepBase {
     this._writerCls = writerCls;
     this._configLoader = new this._configLoaderCls({config: this._config});
     this._depResolver = new this._depResolverCls({config: this._config});
-    this._rootPath = rootPath;
     this._unmarshaller = unmarshaller;
     this._startTime = null;
     this._endTime = null;
   }
 
-  processUpdate = () => {
+  processUpdate = (rootPath: string) => {
     try {
-      this.initialise();
+      this.initialise(rootPath);
 
-      const targetBuildFilePath = this.resolveTargetBuildFilePath();
-      const newDependencies = this.resolveDeps();
+      const targetBuildFilePath = this.resolveTargetBuildFilePath(rootPath);
+      const newDependencies = this.resolveDeps(rootPath);
       const dependencyToBuildFilePathLookup = this.getNearestBuildFilePaths(newDependencies);
 
       this.writeUpdatesToFilesystem(
+        rootPath,
         targetBuildFilePath,
         this.collectBuildRuleTargets(targetBuildFilePath, dependencyToBuildFilePathLookup)
       );
@@ -77,14 +71,12 @@ export class AutoDep extends AutoDepBase {
     }
   };
 
-  private initialise = () => {
+  private initialise = (rootPath: string) => {
     this._logger.info({ctx: 'initialise', message: 'beginning update...'});
     this._startTime = performance.now();
 
     this._logger.info({ctx: 'initialise', message: TaskMessages.attempt('load', 'config from workspace...')});
-    const result = this._configLoader.loadConfigFromWorkspace(
-      this._depResolver.resolveClosestConfigFilePath(this._rootPath)
-    );
+    const result = this._configLoader.loadConfigFromWorkspace(this._depResolver.resolveClosestConfigFilePath(rootPath));
 
     switch (result.status) {
       case 'success':
@@ -100,17 +92,17 @@ export class AutoDep extends AutoDepBase {
     return result.output;
   };
 
-  private resolveTargetBuildFilePath = () => {
-    const dirPath = path.dirname(this._rootPath);
+  private resolveTargetBuildFilePath = (rootPath: string) => {
+    const dirPath = path.dirname(rootPath);
     const onCreateBuildFilePath: string = path.resolve(dirPath, this.getOnCreateBuildFileName());
 
     let result: string | null;
 
     if (this._config.enablePropagation) {
-      result = this._depResolver.getNearestBuildFilePath(this._rootPath);
+      result = this._depResolver.getNearestBuildFilePath(rootPath);
     } else {
       result = this._depResolver.findFirstValidPath(
-        this._rootPath,
+        rootPath,
         Array.from(new Set([path.resolve(dirPath, 'BUILD'), path.resolve(dirPath, 'BUILD.plz'), onCreateBuildFilePath]))
       );
     }
@@ -125,13 +117,13 @@ export class AutoDep extends AutoDepBase {
     return result;
   };
 
-  private resolveDeps = () => {
+  private resolveDeps = (rootPath: string) => {
     this._logger.info({
       ctx: 'process',
-      message: TaskMessages.resolve.attempt(this._rootPath, 'absolute import paths'),
+      message: TaskMessages.resolve.attempt(rootPath, 'absolute import paths'),
     });
     const result = this._depResolver.resolveAbsoluteImportPaths({
-      filePath: this._rootPath,
+      filePath: rootPath,
       rootDir: 'core3',
     });
 
@@ -139,14 +131,14 @@ export class AutoDep extends AutoDepBase {
       case 'success':
         this._logger.info({
           ctx: 'process',
-          message: TaskMessages.resolve.success(this._rootPath, 'absolute import paths'),
+          message: TaskMessages.resolve.success(rootPath, 'absolute import paths'),
           details: JSON.stringify(result.successfulAttempts, null, 2),
         });
         return result.successfulAttempts;
       case 'partial-success':
         this._logger.info({
           ctx: 'process',
-          message: TaskMessages.resolve.success(this._rootPath, 'absolute import paths') + ' - with some failures',
+          message: TaskMessages.resolve.success(rootPath, 'absolute import paths') + ' - with some failures',
           details: JSON.stringify(
             {
               succesfulAttempts: result.successfulAttempts,
@@ -160,7 +152,7 @@ export class AutoDep extends AutoDepBase {
       default:
         throw new AutoDepError(
           ErrorType.FAILED_PRECONDITION,
-          TaskMessages.resolve.failure(this._rootPath, 'absolute import paths')
+          TaskMessages.resolve.failure(rootPath, 'absolute import paths')
         );
     }
   };
@@ -216,7 +208,7 @@ export class AutoDep extends AutoDepBase {
     return result;
   };
 
-  private writeUpdatesToFilesystem = (targetBuildFilePath: string, newDeps: string[]) => {
+  private writeUpdatesToFilesystem = (rootPath: string, targetBuildFilePath: string, newDeps: string[]) => {
     this._logger.info({
       ctx: 'process',
       message: TaskMessages.attempt('write', `BUILD targets to ${targetBuildFilePath}`),
@@ -225,7 +217,7 @@ export class AutoDep extends AutoDepBase {
     const writer = new this._writerCls({
       config: this._config,
       targetBuildFilePath,
-      rootPath: this._rootPath,
+      rootPath,
       newDeps,
     });
     writer.writeUpdatesToFileSystem();

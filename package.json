@@ -14,8 +14,7 @@
     "onLanguage:javascript",
     "onLanguage:javascriptreact",
     "onLanguage:typescript",
-    "onLanguage:typescriptreact",
-    "onLanguage:yaml"
+    "onLanguage:typescriptreact"
   ],
   "main": "./dist/extension.js",
   "contributes": {

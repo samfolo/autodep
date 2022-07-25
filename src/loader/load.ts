@@ -95,9 +95,9 @@ export class ConfigurationLoader extends AutoDepBase {
       this._config = Object.freeze(this._unmarshaller.unmarshal({}));
     }
 
-    this._logger.info({
+    this._logger.debug({
       ctx: 'loadConfigFromWorkspace',
-      message: TaskMessages.using(`${this._configType} config`),
+      message: TaskMessages.using(`${this._configType} config.`),
       details: this._config.toString(),
     });
 

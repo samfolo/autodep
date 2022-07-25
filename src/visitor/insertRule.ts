@@ -105,21 +105,6 @@ export class RuleInsertionVisitor extends AutoDepBase {
 
     const hasCommentHeading = hasOnCreateCommentHeading || hasOnUpdateCommentHeading;
 
-    this._logger.debug({
-      ctx: 'insertRule',
-      message: JSON.stringify(firstStatement, null, 2),
-      details: JSON.stringify(
-        {
-          hasOnCreateCommentHeading,
-          hasOnUpdateCommentHeading,
-          firstStatement: String(firstStatement?.getTokenLiteral()),
-          firstOnCreate: firstLineOfOnCreateFileHeading,
-          firstOnUpdate: firstLineOfOnUpdateFileHeading,
-        },
-        null,
-        2
-      ),
-    });
     if (firstStatement?.kind === 'CommentStatement' && hasCommentHeading) {
       const [, ...nonFileHeadingStatements] = node.statements;
 

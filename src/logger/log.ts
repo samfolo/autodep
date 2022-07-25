@@ -38,6 +38,10 @@ export class Logger {
     return this._config;
   };
 
+  resetHistory = () => {
+    Logger._history = [];
+  };
+
   private static _history: LogHistoryEntry[] = [];
   private static _outputChannels = Object.freeze({
     trace: vscode.window.createOutputChannel('Autodep - Trace'),

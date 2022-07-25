@@ -5,6 +5,7 @@ import {createRequire} from 'node:module';
 import vscode from 'vscode';
 
 import {DeAliasingClient} from '../clients/deAliasing/deAlias';
+import {TaskStatusClient} from '../clients/taskStatus/task';
 import {CONFIG_FILENAME, SUPPORTED_MODULE_EXTENSIONS} from '../common/const';
 import {AutoDepConfig} from '../config/types';
 import {AutoDepBase} from '../inheritance/base';
@@ -13,8 +14,6 @@ import {BuildFile} from '../models/buildFile';
 import {RuleNameVisitor} from '../visitor/findRuleName';
 
 import {CollectDepsDirective, ResolveAbsoluteImportPathsOptions} from './types';
-import {TaskStatus} from '../common/types';
-import {TaskStatusFSM} from '../inheritance/task';
 
 interface DependencyResolverOptions {
   config: AutoDepConfig.Output.Schema;
@@ -43,7 +42,7 @@ export class DependencyResolver extends AutoDepBase {
    * @returns a list of absolute import paths
    */
   resolveAbsoluteImportPaths = ({filePath, rootDir}: ResolveAbsoluteImportPathsOptions) => {
-    const fsm = new TaskStatusFSM();
+    const fsm = new TaskStatusClient();
     fsm.next('processing');
 
     this._logger.trace({

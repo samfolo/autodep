@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {TaskStatus} from '../common/types';
+import {TaskStatus} from '../../common/types';
 
-export class TaskStatusFSM {
+export class TaskStatusClient {
   private _status: TaskStatus;
   private _reason: string;
 
@@ -11,7 +11,7 @@ export class TaskStatusFSM {
   }
 
   readonly next = (nextStatus: TaskStatus, nextReason: string = '') => {
-    this._status = TaskStatusFSM.STATE_MAP[`${this._status}:${nextStatus}`];
+    this._status = TaskStatusClient.STATE_MAP[`${this._status}:${nextStatus}`];
     this._reason = nextReason;
   };
 
