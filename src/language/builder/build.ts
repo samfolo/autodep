@@ -3,6 +3,8 @@ import {SUPPORTED_MANAGED_BUILTINS_LOOKUP, SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIE
 
 import {ManagedSchemaFieldEntry, ManagedSchemaFieldType, ManagedSchemaFieldName} from '../../common/types';
 import {AutoDepConfig} from '../../config/types';
+import {AutoDepError, ErrorType} from '../../errors/error';
+import {ErrorMessages} from '../../messages/error';
 
 import {Expression} from '../ast/types';
 import * as ast from '../ast/utils';
@@ -14,32 +16,30 @@ interface DependencyBuilderOptions {
 }
 
 export class DependencyBuilder {
-  private config: AutoDepConfig.Output.Schema;
+  private _config: AutoDepConfig.Output.Schema;
   private rootPath: string;
   private fileName: string;
   private initialRuleType: 'module' | 'test';
   private newDeps: string[];
 
   constructor({config, rootPath, newDeps}: DependencyBuilderOptions) {
-    this.config = config;
+    this._config = config;
     this.rootPath = rootPath;
     this.fileName = path.basename(this.rootPath);
     this.newDeps = newDeps;
 
-    if (this.config.match.isTest(this.rootPath)) {
+    if (this._config.match.isTest(this.rootPath)) {
       this.initialRuleType = 'test';
-    } else if (this.config.match.isModule(this.rootPath)) {
+    } else if (this._config.match.isModule(this.rootPath)) {
       this.initialRuleType = 'module';
     } else {
-      const error = `[DependencyFileBuilder::init]: unsupported file type: ${this.rootPath}. Check your settings at \`<autodepConfig>.match.(module|test)\`. Note, you don't have to double-escape your regex matchers`;
-      console.error(error);
-      throw new Error(error);
+      throw new AutoDepError(ErrorType.USER, ErrorMessages.user.unsupportedFileType({path: this.rootPath}));
     }
   }
 
   readonly buildNewFile = () => {
     const root = ast.createRootNode({statements: []});
-    const fileConfig = this.config.onCreate[this.initialRuleType];
+    const fileConfig = this._config.onCreate[this.initialRuleType];
 
     if (fileConfig.fileHeading) {
       root.statements.push(this.buildFileHeadingCommentStatement(fileConfig.fileHeading));
@@ -55,10 +55,10 @@ export class DependencyBuilder {
   };
 
   readonly buildNewRule = () => {
-    const fileConfig = this.config.onCreate[this.initialRuleType];
+    const fileConfig = this._config.onCreate[this.initialRuleType];
 
     const {name, srcs, deps, visibility, testOnly} = this.getRuleFieldSchema(
-      this.config.manage.schema[fileConfig.name]
+      this._config.manage.schema[fileConfig.name]
     );
 
     const buildNameNode = this.schemaBuilderMap[name.as];
@@ -201,7 +201,7 @@ export class DependencyBuilder {
         ? this.buildBooleanLiteralNode(arg)
         : this.buildBooleanLiteralNode(Boolean(arg)),
     glob: (arg) =>
-      Array.isArray(arg) && arg.length > 0
+      Array.isArray(arg)
         ? this.buildCallExpressionNode(SUPPORTED_MANAGED_BUILTINS_LOOKUP.glob, [this.buildArrayNode(arg)])
         : this.buildCallExpressionNode(SUPPORTED_MANAGED_BUILTINS_LOOKUP.glob, [this.buildArrayNode([String(arg)])]),
   };
