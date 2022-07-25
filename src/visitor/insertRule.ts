@@ -9,9 +9,11 @@ import {
 } from '../language/ast/types';
 import {AutoDepConfig} from '../config/types';
 import {SUPPORTED_MANAGED_BUILTINS_LOOKUP} from '../common/const';
+import {AutoDepError, ErrorType} from '../errors/error';
 import {DependencyBuilder} from '../language/builder/build';
 import {Logger} from '../logger/log';
 import {TaskMessages} from '../messages/task';
+import {ErrorMessages} from '../messages/error';
 
 interface RuleInsertionVisitorOptions {
   config: AutoDepConfig.Output.Schema;
@@ -52,9 +54,7 @@ export class RuleInsertionVisitor {
     } else if (this._config.match.isModule(this.rootPath)) {
       this.ruleType = 'module';
     } else {
-      const error = `[RuleInsertionVisitor::init]: unsupported file type: ${this.rootPath}. Check your settings at \`<autodepConfig>.match.(module|test)\`. Note, you don't have to double-escape your regex matchers`;
-      console.error(error);
-      throw new Error(error);
+      throw new AutoDepError(ErrorType.USER, ErrorMessages.user.unsupportedFileType({path: this.rootPath}));
     }
   }
 
