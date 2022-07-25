@@ -2,6 +2,7 @@ import * as path from 'path';
 import {readFileSync} from 'fs';
 import precinct from 'precinct';
 import {createRequire} from 'node:module';
+import vscode from 'vscode';
 
 import {DeAliasingClient} from '../clients/deAliasing/deAlias';
 import {CONFIG_FILENAME, SUPPORTED_MODULE_EXTENSIONS} from '../common/const';
@@ -12,6 +13,8 @@ import {BuildFile} from '../models/buildFile';
 import {RuleNameVisitor} from '../visitor/findRuleName';
 
 import {CollectDepsDirective, ResolveAbsoluteImportPathsOptions} from './types';
+import {TaskStatus} from '../common/types';
+import {TaskStatusFSM} from '../inheritance/task';
 
 interface DependencyResolverOptions {
   config: AutoDepConfig.Output.Schema;
@@ -40,6 +43,9 @@ export class DependencyResolver extends AutoDepBase {
    * @returns a list of absolute import paths
    */
   resolveAbsoluteImportPaths = ({filePath, rootDir}: ResolveAbsoluteImportPathsOptions) => {
+    const fsm = new TaskStatusFSM();
+    fsm.next('processing');
+
     this._logger.trace({
       ctx: 'resolveAbsoluteImportPaths',
       message: TaskMessages.initialise.attempt('de-aliasing client'),
@@ -79,7 +85,9 @@ export class DependencyResolver extends AutoDepBase {
       message: TaskMessages.collect.success('absolute import paths'),
       details: JSON.stringify(deps, null, 2),
     });
+    fsm.next('success');
 
+    const failedAttempts: string[] = [];
     const uniqueDeps = deps.reduce<string[]>((acc, dep) => {
       const result = deAliasingClient.deAlias(dep, SUPPORTED_MODULE_EXTENSIONS);
 
@@ -93,30 +101,46 @@ export class DependencyResolver extends AutoDepBase {
             details: JSON.stringify(result, null, 2),
           });
           acc.push(result.output);
+          fsm.next('success');
           return acc;
         case 'passthrough':
         default:
           break;
       }
 
-      this._logger.error({
+      const errorMessage = this._logger.error({
         ctx: 'resolveAbsoluteImportPaths',
         message: TaskMessages.failure('de-alias', dep),
         details: 'output: ' + result.output,
       });
+      fsm.next('failed');
+
+      failedAttempts.push(result.output);
+
+      if (errorMessage) {
+        vscode.window.showErrorMessage(errorMessage);
+      }
 
       return acc;
     }, []);
 
+    const taskState = fsm.getState();
+    let successfulAttempts = uniqueDeps;
+
     if (this._config.excludeNodeModules) {
       this._logger.info({
         ctx: 'resolveAbsoluteImportPaths',
-        message: 'excluding node_modules from set of dependencies (requested via config)',
+        message: 'excluding **/node_modules/* from set of dependencies (requested via config)',
       });
-      return uniqueDeps.filter((dep) => !dep.includes('node_modules'));
+      successfulAttempts = uniqueDeps.filter((dep) => !dep.includes('node_modules'));
     }
 
-    return uniqueDeps;
+    return {
+      status: taskState.status,
+      reason: taskState.reason,
+      successfulAttempts,
+      failedAttempts,
+    };
   };
 
   /**
@@ -146,7 +170,7 @@ export class DependencyResolver extends AutoDepBase {
    *
    * @param rootPath the given require root path
    * @param filePaths a list of paths to attempt
-   * @returns the first valid path of the given paths, or null
+   * @returns the first valid path of the given paths, or `null`
    */
   readonly findFirstValidPath = (rootPath: string, filePaths: string[]) => {
     const relativeRequire = createRequire(rootPath);

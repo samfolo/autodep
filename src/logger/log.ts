@@ -63,8 +63,10 @@ export class Logger {
   private readonly logMessage = (level: LogLevel, payload: LogPayload) => {
     if (this.shouldLog(level)) {
       const timestamp = new Date(Date.now()).toLocaleTimeString();
-      Logger._outputChannels[level].appendLine(this.formatMessage(timestamp, level, payload));
+      const message = this.formatMessage(timestamp, level, payload);
+      Logger._outputChannels[level].appendLine(message);
       Logger._history.push({timestamp, payload, level});
+      return message;
     }
   };
 }

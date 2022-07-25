@@ -2,8 +2,7 @@ import {readFileSync} from 'fs';
 import {createRequire} from 'node:module';
 import path from 'path';
 
-import {AutoDepConfig} from '../../config/types';
-import {Logger} from '../../logger/log';
+import {AutoDepBase} from '../../inheritance/base';
 import {TaskMessages} from '../../messages';
 
 import {PackageAlias, PackageName, DeAliasingClientOptions} from './types';
@@ -13,70 +12,68 @@ interface DeAliasResult {
   method: 'package-name-cache' | 'known-config-alias' | 'local-module-resolution' | 'passthrough';
 }
 
-export class DeAliasingClient {
-  private filePath: string;
-  private rootDirName: string;
-  private rootDirPath: string;
-  private relativePath: string;
-  private packageJSON: Record<string, any>;
-  private packageNameCache: Record<PackageAlias, PackageName>;
-  private packageAliases: Set<PackageAlias>;
-  private config: AutoDepConfig.Output.Schema;
-  private _logger: Logger;
+export class DeAliasingClient extends AutoDepBase {
+  private _filePath: string;
+  private _rootDirName: string;
+  private _rootDirPath: string;
+  private _relativePath: string;
+  private _packageJSON: Record<string, any>;
+  private _packageNameCache: Record<PackageAlias, PackageName>;
+  private _packageAliases: Set<PackageAlias>;
 
   constructor({filePath, rootDirName, config}: DeAliasingClientOptions) {
-    this.filePath = filePath;
-    this.rootDirName = rootDirName;
-    this.config = config;
-    this._logger = new Logger({namespace: 'DeAliasingClient', config: this.config});
+    super({config, name: 'DeAliasingClient'});
 
-    const relativePathIndex = this.filePath.indexOf(this.rootDirName) + this.rootDirName.length;
-    this.rootDirPath = this.filePath.substring(0, relativePathIndex);
-    this.relativePath = this.filePath.substring(relativePathIndex + 1);
+    this._filePath = filePath;
+    this._rootDirName = rootDirName;
+
+    const relativePathIndex = this._filePath.indexOf(this._rootDirName) + this._rootDirName.length;
+    this._rootDirPath = this._filePath.substring(0, relativePathIndex);
+    this._relativePath = this._filePath.substring(relativePathIndex + 1);
 
     try {
-      this._logger.trace({ctx: 'init', message: TaskMessages.parse.attempt(`${this.rootDirPath}/package.json`)});
-      const packageJSONString = readFileSync(`${this.rootDirPath}/package.json`);
-      this.packageJSON = JSON.parse(packageJSONString.toString('utf-8'));
+      this._logger.trace({ctx: 'init', message: TaskMessages.parse.attempt(`${this._rootDirPath}/package.json`)});
+      const packageJSONString = readFileSync(`${this._rootDirPath}/package.json`);
+      this._packageJSON = JSON.parse(packageJSONString.toString('utf-8'));
       this._logger.trace({
         ctx: 'init',
-        message: TaskMessages.parse.success(`${this.rootDirPath}/package.json`),
-        details: JSON.stringify(this.packageJSON, null, 2),
+        message: TaskMessages.parse.success(`${this._rootDirPath}/package.json`),
+        details: JSON.stringify(this._packageJSON, null, 2),
       });
     } catch (error) {
       this._logger.error({
         ctx: 'init',
-        message: TaskMessages.parse.failure(`${this.rootDirPath}/package.json`),
+        message: TaskMessages.parse.failure(`${this._rootDirPath}/package.json`),
         details: JSON.stringify(error, null, 2),
       });
-      this.packageJSON = {};
+      this._packageJSON = {};
     }
 
-    this.packageNameCache = {};
-    this.packageAliases = new Set();
+    this._packageNameCache = {};
+    this._packageAliases = new Set();
 
-    if (this.packageJSON?.workspaces?.packages) {
-      for (const packageName of this.packageJSON.workspaces.packages) {
+    if (this._packageJSON?.workspaces?.packages) {
+      for (const packageName of this._packageJSON.workspaces.packages) {
         try {
           this._logger.trace({
             ctx: 'init',
-            message: TaskMessages.resolve.attempt(`${this.rootDirPath}/${packageName}/package.json`, 'package alias'),
+            message: TaskMessages.resolve.attempt(`${this._rootDirPath}/${packageName}/package.json`, 'package alias'),
           });
-          const file = readFileSync(`${this.rootDirPath}/${packageName}/package.json`);
+          const file = readFileSync(`${this._rootDirPath}/${packageName}/package.json`);
           const packageAlias: string = JSON.parse(file.toString('utf-8')).name;
-          this.packageNameCache[packageAlias] = packageName;
-          this.packageAliases.add(packageAlias);
+          this._packageNameCache[packageAlias] = packageName;
+          this._packageAliases.add(packageAlias);
           this._logger.trace({
             ctx: 'init',
             message: TaskMessages.resolve.success(
-              `${this.rootDirPath}/${packageName}/package.json`,
+              `${this._rootDirPath}/${packageName}/package.json`,
               `package alias "${packageAlias}"`
             ),
           });
         } catch (error) {
           this._logger.error({
             ctx: 'init',
-            message: TaskMessages.resolve.failure(`${this.rootDirPath}/${packageName}/package.json`, 'package alias'),
+            message: TaskMessages.resolve.failure(`${this._rootDirPath}/${packageName}/package.json`, 'package alias'),
             details: JSON.stringify(error, null, 2),
           });
         }
@@ -85,7 +82,7 @@ export class DeAliasingClient {
       this._logger.info({
         ctx: 'init',
         message: TaskMessages.failure(
-          `package names at [${this.rootDirPath}/package.json].workspaces.packages`,
+          `package names at [${this._rootDirPath}/package.json].workspaces.packages`,
           'find'
         ),
       });
@@ -93,19 +90,19 @@ export class DeAliasingClient {
   }
 
   get packageNames(): string[] {
-    return this.packageJSON?.workspaces?.packages ?? [];
+    return this._packageJSON?.workspaces?.packages ?? [];
   }
 
   get cache(): Record<PackageAlias, PackageName> {
-    return this.packageNameCache;
+    return this._packageNameCache;
   }
 
   get aliases(): Set<PackageAlias> {
-    return this.packageAliases;
+    return this._packageAliases;
   }
 
   deAlias = (dep: string, supportedExtensions: string[]): DeAliasResult => {
-    const relativeRequire = createRequire(this.filePath);
+    const relativeRequire = createRequire(this._filePath);
 
     if (path.isAbsolute(dep)) {
       this._logger.trace({ctx: 'deAlias', message: TaskMessages.identified('an absolute path', dep)});
@@ -135,10 +132,10 @@ export class DeAliasingClient {
       }
     }
 
-    for (const alias of this.packageAliases) {
+    for (const alias of this._packageAliases) {
       if (dep.startsWith(alias)) {
         const result: DeAliasResult = {
-          output: dep.replace(alias, this.packageNameCache[alias]),
+          output: dep.replace(alias, this._packageNameCache[alias]),
           method: 'package-name-cache',
         };
         this._logger.trace({
@@ -155,8 +152,8 @@ export class DeAliasingClient {
       }
     }
 
-    if (this.config.paths) {
-      for (const [alias, pathOptions] of Object.entries(this.config.paths)) {
+    if (this._config.paths) {
+      for (const [alias, pathOptions] of Object.entries(this._config.paths)) {
         const sanitisedAlias = alias.replace(/\*$/, '');
 
         if (dep.startsWith(sanitisedAlias)) {
@@ -169,8 +166,8 @@ export class DeAliasingClient {
             const sanitisedPathOption = pathOption.replace(/\*$/, '');
             const deAliasedDep = dep.replace(sanitisedAlias, sanitisedPathOption);
             const pathToAttempt = path.relative(
-              path.resolve(this.rootDirPath, path.dirname(this.relativePath)),
-              path.resolve(this.rootDirPath, deAliasedDep)
+              path.resolve(this._rootDirPath, path.dirname(this._relativePath)),
+              path.resolve(this._rootDirPath, deAliasedDep)
             );
 
             for (const extension of supportedExtensions) {

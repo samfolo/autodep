@@ -28,6 +28,11 @@ interface InvalidConfigOptions {
 }
 
 export class ErrorMessages {
+  static readonly unexpected = {
+    noStartTimeSetForProcess: () =>
+      'no starting time was set for this process, meaning the process was not correctly initialised,' +
+      ' and may have had an undesirable outcome.',
+  };
   static readonly precondition = {
     noBUILDFilesInWorkspace: ({proposedPath}: NoBUILDFilesInWorkspaceOptions) =>
       TaskMessages.locate.failure('any `BUILD` or `BUILD.plz` files in the workspace.') +

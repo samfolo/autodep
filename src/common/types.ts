@@ -23,3 +23,5 @@ export type RecursivePartial<T> = {
     ? RecursivePartial<T[P]>
     : T[P];
 };
+
+export type TaskStatus = 'idle' | 'passthrough' | 'success' | 'failed' | 'processing' | 'partial-success';

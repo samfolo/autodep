@@ -46,6 +46,7 @@ export class ConfigurationLoader extends AutoDepBase {
         this._logger.trace({ctx: 'loadConfigFromWorkspace', message: TaskMessages.parse.attempt(CONFIG_FILENAME)});
         const configInput: AutoDepConfig.Input.Schema = parse(configInputFile);
         this._logger.trace({ctx: 'loadConfigFromWorkspace', message: TaskMessages.parse.success(CONFIG_FILENAME)});
+
         this._logger.trace({
           ctx: 'loadConfigFromWorkspace',
           message: TaskMessages.attempt('validate', CONFIG_FILENAME),
