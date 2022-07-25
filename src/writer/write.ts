@@ -1,10 +1,11 @@
 import {readFileSync, writeFileSync} from 'fs';
 import cloneDeep from 'lodash.clonedeep';
+
 import {AutoDepConfig} from '../config/types';
 import {AutoDepError, ErrorType} from '../errors/error';
+import {AutoDepBase} from '../inheritance/base';
 import {RootNode} from '../language/ast/types';
 import {DependencyBuilder} from '../language/builder/build';
-import {Logger} from '../logger/log';
 import {TaskMessages} from '../messages/task';
 import {BuildFile} from '../models/buildFile';
 import {RuleInsertionVisitor} from '../visitor/insertRule';
@@ -17,17 +18,15 @@ interface WriterOptions {
   newDeps: string[];
 }
 
-export class Writer {
-  private rootPath: string;
-  private targetBuildFilePath: string;
-  private newDeps: string[];
-  private _config: AutoDepConfig.Output.Schema;
-  private _logger: Logger;
+export class Writer extends AutoDepBase {
+  private _newDeps: string[];
+  private _rootPath: string;
+  private _targetBuildFilePath: string;
 
-  private updatesVisitorCls: typeof DependencyUpdateVisitor;
-  private ruleInsertionVisitorCls: typeof RuleInsertionVisitor;
-  private dependencyBuilderCls: typeof DependencyBuilder;
-  private buildFileCls: typeof BuildFile;
+  private _updatesVisitorCls: typeof DependencyUpdateVisitor;
+  private _ruleInsertionVisitorCls: typeof RuleInsertionVisitor;
+  private _dependencyBuilderCls: typeof DependencyBuilder;
+  private _buildFileCls: typeof BuildFile;
 
   constructor(
     {rootPath, targetBuildFilePath, config, newDeps}: WriterOptions,
@@ -36,17 +35,16 @@ export class Writer {
     dependencyBuilderCls = DependencyBuilder,
     buildFileCls = BuildFile
   ) {
-    this._config = config;
-    this._logger = new Logger({namespace: 'Writer', config: this._config});
+    super({config, name: 'Writer'});
 
-    this.rootPath = rootPath;
-    this.targetBuildFilePath = targetBuildFilePath;
-    this.newDeps = newDeps;
+    this._updatesVisitorCls = updatesVisitorCls;
+    this._ruleInsertionVisitorCls = ruleInsertionVisitorCls;
+    this._dependencyBuilderCls = dependencyBuilderCls;
+    this._buildFileCls = buildFileCls;
 
-    this.updatesVisitorCls = updatesVisitorCls;
-    this.ruleInsertionVisitorCls = ruleInsertionVisitorCls;
-    this.dependencyBuilderCls = dependencyBuilderCls;
-    this.buildFileCls = buildFileCls;
+    this._newDeps = newDeps;
+    this._rootPath = rootPath;
+    this._targetBuildFilePath = targetBuildFilePath;
   }
 
   /**
@@ -64,12 +62,12 @@ export class Writer {
     let targetBuildFile: string;
 
     try {
-      targetBuildFile = readFileSync(this.targetBuildFilePath, {encoding: 'utf-8', flag: 'r'});
+      targetBuildFile = readFileSync(this._targetBuildFilePath, {encoding: 'utf-8', flag: 'r'});
     } catch {
       this._logger.info({
         ctx: 'processUpdate',
         message: TaskMessages.locate.failure(
-          `an updatable \`BUILD\` or \`BUILD.plz\` file at ${this.targetBuildFilePath}.`
+          `an updatable \`BUILD\` or \`BUILD.plz\` file at ${this._targetBuildFilePath}.`
         ),
       });
       this._logger.info({ctx: 'processUpdate', message: TaskMessages.attempt('create', 'a new file')});
@@ -79,7 +77,7 @@ export class Writer {
       return true;
     }
 
-    const ast = new this.buildFileCls({file: targetBuildFile, config: this._config}).toAST();
+    const ast = new this._buildFileCls({file: targetBuildFile, config: this._config}).toAST();
 
     const existingRuleUpdated = this.updateExistingRule(ast);
     if (existingRuleUpdated) {
@@ -88,7 +86,7 @@ export class Writer {
 
     this._logger.info({
       ctx: 'processUpdate',
-      message: TaskMessages.locate.failure(`updatable rule at ${this.targetBuildFilePath}`),
+      message: TaskMessages.locate.failure(`updatable rule at ${this._targetBuildFilePath}`),
     });
     this._logger.info({ctx: 'processUpdate', message: TaskMessages.attempt('append', 'a new rule to file')});
 
@@ -99,7 +97,7 @@ export class Writer {
 
     this._logger.error({
       ctx: 'processUpdate',
-      message: TaskMessages.failure('insert', `rule at ${this.targetBuildFilePath}`),
+      message: TaskMessages.failure('insert', `rule at ${this._targetBuildFilePath}`),
     });
 
     return false;
@@ -115,17 +113,17 @@ export class Writer {
    * @returns a boolean indicating whether this strategy was successful
    */
   private updateExistingRule = (ast: RootNode) => {
-    const visitor = new this.updatesVisitorCls({
+    const visitor = new this._updatesVisitorCls({
       config: this._config,
-      rootPath: this.rootPath,
-      newDeps: this.newDeps,
+      rootPath: this._rootPath,
+      newDeps: this._newDeps,
     });
     const updatedAST = visitor.updateDeps(cloneDeep(ast));
     const result = visitor.getResult();
 
     switch (result.status) {
       case 'success':
-        writeFileSync(this.targetBuildFilePath, updatedAST.toString(), {encoding: 'utf-8', flag: 'w'});
+        writeFileSync(this._targetBuildFilePath, updatedAST.toString(), {encoding: 'utf-8', flag: 'w'});
         return true;
       case 'failed':
         return false;
@@ -146,17 +144,17 @@ export class Writer {
    * @returns a boolean indicating whether this strategy was successful
    */
   private appendNewRule = (ast: RootNode) => {
-    const visitor = new this.ruleInsertionVisitorCls({
+    const visitor = new this._ruleInsertionVisitorCls({
       config: this._config,
-      rootPath: this.rootPath,
-      newDeps: this.newDeps,
+      rootPath: this._rootPath,
+      newDeps: this._newDeps,
     });
     const updatedAST = visitor.insertRule(cloneDeep(ast));
     const result = visitor.getResult();
 
     switch (result.status) {
       case 'success':
-        writeFileSync(this.targetBuildFilePath, updatedAST.toString(), {encoding: 'utf-8', flag: 'w'});
+        writeFileSync(this._targetBuildFilePath, updatedAST.toString(), {encoding: 'utf-8', flag: 'w'});
         return true;
       case 'failed':
         return false;
@@ -174,12 +172,12 @@ export class Writer {
    * - This should not fail, but if it does, it will throw an error
    */
   private beginNewFile = () => {
-    const ast = new this.dependencyBuilderCls({
+    const ast = new this._dependencyBuilderCls({
       config: this._config,
-      rootPath: this.rootPath,
-      newDeps: this.newDeps,
+      rootPath: this._rootPath,
+      newDeps: this._newDeps,
     }).buildNewFile();
 
-    writeFileSync(this.targetBuildFilePath, ast.toString(), {encoding: 'utf-8', flag: 'w'});
+    writeFileSync(this._targetBuildFilePath, ast.toString(), {encoding: 'utf-8', flag: 'w'});
   };
 }

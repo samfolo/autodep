@@ -22,14 +22,14 @@ interface LogHistoryEntry {
 
 export class Logger {
   private _config: AutoDepConfig.Output.Schema;
-  private namespace: string;
+  private _namespace: string;
 
   constructor({namespace, config}: LoggerOptions) {
-    this.namespace = namespace;
     this._config = config;
+    this._namespace = namespace;
   }
 
-  private get permittedLogLevels() {
+  private get _permittedLogLevels() {
     return this._config.log;
   }
 
@@ -53,10 +53,10 @@ export class Logger {
   readonly warn = (payload: LogPayload) => this.logMessage('warn', payload);
   readonly error = (payload: LogPayload) => this.logMessage('error', payload);
 
-  private readonly shouldLog = (level: LogLevel) => this.permittedLogLevels?.has(level);
+  private readonly shouldLog = (level: LogLevel) => this._permittedLogLevels?.has(level);
 
   private readonly formatMessage = (timestamp: string, level: LogLevel, payload: LogPayload) =>
-    `(${timestamp}) ${level.toUpperCase()}: [${this.namespace}::${payload.ctx}]: ${payload.message}` +
+    `(${timestamp}) ${level.toUpperCase()}: [${this._namespace}::${payload.ctx}]: ${payload.message}` +
     (payload.details ? '\ndetails:\n' + payload.details : '') +
     '\n';
 

@@ -11,9 +11,9 @@ import {AutoDepConfig} from '../config/types';
 import {SUPPORTED_MANAGED_BUILTINS_LOOKUP} from '../common/const';
 import {AutoDepError, ErrorType} from '../errors/error';
 import {DependencyBuilder} from '../language/builder/build';
-import {Logger} from '../logger/log';
 import {TaskMessages} from '../messages/task';
 import {ErrorMessages} from '../messages/error';
+import {AutoDepBase} from '../inheritance/base';
 
 interface RuleInsertionVisitorOptions {
   config: AutoDepConfig.Output.Schema;
@@ -21,40 +21,32 @@ interface RuleInsertionVisitorOptions {
   newDeps: string[];
 }
 
-export class RuleInsertionVisitor {
-  private builderCls: typeof DependencyBuilder;
-
-  private _config: AutoDepConfig.Output.Schema;
-  private _logger: Logger;
-
-  private builder: DependencyBuilder;
-  private status: 'success' | 'failed' | 'idle' | 'passthrough';
-  private ruleType: 'module' | 'test';
-  private reason: string;
-  private rootPath: string;
-  private didUpdateSubinclude: boolean;
+export class RuleInsertionVisitor extends AutoDepBase {
+  private _builderCls: typeof DependencyBuilder;
+  private _builder: DependencyBuilder;
+  private _didUpdateSubinclude: boolean;
+  private _rootPath: string;
+  private _ruleType: 'module' | 'test';
 
   constructor(
     {config, rootPath, newDeps}: RuleInsertionVisitorOptions,
     builderCls: typeof DependencyBuilder = DependencyBuilder
   ) {
-    this._config = config;
-    this._logger = new Logger({namespace: 'RuleInsertionVisitor', config: this._config});
+    super({config, name: 'RuleInsertionVisitor'});
+    this._logger.trace({ctx: 'init', message: TaskMessages.initialise.attempt('RuleInsertionVisitor')});
 
-    this.builderCls = builderCls;
+    this._builderCls = builderCls;
 
-    this.builder = new this.builderCls({config: this._config, rootPath, newDeps});
-    this.status = 'idle';
-    this.reason = 'took no action';
-    this.rootPath = rootPath;
-    this.didUpdateSubinclude = false;
+    this._builder = new this._builderCls({config: this._config, rootPath, newDeps});
+    this._didUpdateSubinclude = false;
+    this._rootPath = rootPath;
 
-    if (this._config.match.isTest(this.rootPath)) {
-      this.ruleType = 'test';
-    } else if (this._config.match.isModule(this.rootPath)) {
-      this.ruleType = 'module';
+    if (this._config.match.isTest(this._rootPath)) {
+      this._ruleType = 'test';
+    } else if (this._config.match.isModule(this._rootPath)) {
+      this._ruleType = 'module';
     } else {
-      throw new AutoDepError(ErrorType.USER, ErrorMessages.user.unsupportedFileType({path: this.rootPath}));
+      throw new AutoDepError(ErrorType.USER, ErrorMessages.user.unsupportedFileType({path: this._rootPath}));
     }
   }
 
@@ -79,16 +71,16 @@ export class RuleInsertionVisitor {
         result = this.visitCommentNode(node);
         break;
       default:
-        this.status = 'passthrough';
-        this.reason = 'irrelevant node type passed to `insertRule` visitor';
+        this._status = 'passthrough';
+        this._reason = 'irrelevant node type passed to `insertRule` visitor';
         return node;
     }
 
-    if (this.status === 'success') {
+    if (this._status === 'success') {
       return result;
     } else {
-      this.status = 'failed';
-      this.reason = 'unable to insert rule into given file';
+      this._status = 'failed';
+      this._reason = 'unable to insert rule into given file';
       return node;
     }
   };
@@ -96,10 +88,10 @@ export class RuleInsertionVisitor {
   private visitRootNode = (node: RootNode) => {
     // We need to check whether the first line of any config `fileHeading` is the same as
     // the first line in the file:
-    const onUpdateFileHeading = this._config.onUpdate[this.ruleType].fileHeading ?? '';
+    const onUpdateFileHeading = this._config.onUpdate[this._ruleType].fileHeading ?? '';
     const firstLineOfOnUpdateFileHeading = `# ${onUpdateFileHeading.split('\n')[0]}`;
 
-    const onCreateFileHeading = this._config.onCreate[this.ruleType].fileHeading ?? '';
+    const onCreateFileHeading = this._config.onCreate[this._ruleType].fileHeading ?? '';
     const firstLineOfOnCreateFileHeading = `# ${onCreateFileHeading.split('\n')[0]}`;
 
     const firstStatement = node.statements[0];
@@ -132,20 +124,20 @@ export class RuleInsertionVisitor {
       const [, ...nonFileHeadingStatements] = node.statements;
 
       node.statements = [
-        this.builder.buildFileHeadingCommentStatement(onUpdateFileHeading),
+        this._builder.buildFileHeadingCommentStatement(onUpdateFileHeading),
         ...nonFileHeadingStatements.map((statement) => this.visitStatementNode(statement)),
       ];
     } else {
       node.statements = [
-        this.builder.buildFileHeadingCommentStatement(onUpdateFileHeading),
+        this._builder.buildFileHeadingCommentStatement(onUpdateFileHeading),
         ...node.statements.map((statement) => this.visitStatementNode(statement)),
       ];
     }
 
-    node.statements.push(this.builder.buildNewRule());
+    node.statements.push(this._builder.buildNewRule());
 
-    this.status = 'success';
-    this.reason = 'new rule successfully inserted into given file';
+    this._status = 'success';
+    this._reason = 'new rule successfully inserted into given file';
 
     return node;
   };
@@ -187,10 +179,10 @@ export class RuleInsertionVisitor {
 
   private visitCallExpressionNode = (node: CallExpression) => {
     if (
-      !this.didUpdateSubinclude &&
+      !this._didUpdateSubinclude &&
       node.functionName?.getTokenLiteral() === SUPPORTED_MANAGED_BUILTINS_LOOKUP.subinclude
     ) {
-      const newSubincludes = this._config.onUpdate[this.ruleType].subinclude;
+      const newSubincludes = this._config.onUpdate[this._ruleType].subinclude;
 
       if (node.args?.elements && node.args.elements.length > 0 && Array.isArray(newSubincludes)) {
         const seen = new Set();
@@ -205,7 +197,7 @@ export class RuleInsertionVisitor {
 
         for (const newSubinclude of newSubincludes) {
           if (!seen.has(newSubinclude)) {
-            uniqueSubincludes.push(this.builder.buildStringLiteralNode(newSubinclude));
+            uniqueSubincludes.push(this._builder.buildStringLiteralNode(newSubinclude));
             seen.add(newSubinclude);
           }
         }
@@ -213,7 +205,7 @@ export class RuleInsertionVisitor {
         node.args.elements = uniqueSubincludes;
       }
 
-      this.didUpdateSubinclude = true;
+      this._didUpdateSubinclude = true;
     }
 
     return node;
@@ -221,8 +213,8 @@ export class RuleInsertionVisitor {
 
   getResult = () =>
     Object.seal({
-      status: this.status,
-      reason: this.reason,
-      ruleType: this.ruleType,
+      status: this._status,
+      reason: this._reason,
+      ruleType: this._ruleType,
     });
 }

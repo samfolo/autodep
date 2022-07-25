@@ -25,8 +25,8 @@ export function activate(context: vscode.ExtensionContext) {
       const logger = new Logger({namespace: 'AutoDep', config: preConfig});
 
       try {
-        const configLoader = new ConfigurationLoader(preConfig);
-        const depResolver = new DependencyResolver(preConfig);
+        const configLoader = new ConfigurationLoader({config: preConfig});
+        const depResolver = new DependencyResolver({config: preConfig});
 
         logger.info({ctx: 'process', message: 'beginning update...'});
         const t1 = performance.now();
@@ -95,10 +95,11 @@ export function activate(context: vscode.ExtensionContext) {
           const buildRuleTarget = depResolver.getBuildRuleName(dep, depToBuildFileMap[dep]);
           if (buildRuleTarget) {
             const dependencyObject = new Dependency({
-              ruleName: buildRuleTarget,
               buildFilePath: depToBuildFileMap[dep],
-              targetBuildFilePath,
               rootDirName: 'core3',
+              ruleName: buildRuleTarget,
+              targetBuildFilePath,
+              config,
             });
             buildRuleTargets.push(dependencyObject.toBuildTarget());
           } else {
@@ -139,14 +140,11 @@ export function activate(context: vscode.ExtensionContext) {
         logger.info({ctx: 'process', message: 'exiting...'});
       } catch (error) {
         const err = error as any;
+        let errorMessage = String(err.stack ?? err);
 
-        if (err.stack) {
-          vscode.window.showErrorMessage(String(err.stack));
-        } else {
-          vscode.window.showErrorMessage(String(error));
-        }
+        vscode.window.showErrorMessage(errorMessage);
 
-        logger.error({ctx: 'process', message: 'something went wrong.', details: err.stack});
+        logger.error({ctx: 'process', message: 'something went wrong.', details: errorMessage});
         logger.info({ctx: 'process', message: 'exiting...'});
       }
     }

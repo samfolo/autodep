@@ -6,26 +6,20 @@ import {createRequire} from 'node:module';
 import {DeAliasingClient} from '../clients/deAliasing/deAlias';
 import {CONFIG_FILENAME, SUPPORTED_MODULE_EXTENSIONS} from '../common/const';
 import {AutoDepConfig} from '../config/types';
-
-import {CollectDepsDirective, ResolveAbsoluteImportPathsOptions} from './types';
-import {RuleNameVisitor} from '../visitor/findRuleName';
-import {Logger} from '../logger/log';
+import {AutoDepBase} from '../inheritance/base';
 import {TaskMessages} from '../messages';
 import {BuildFile} from '../models/buildFile';
+import {RuleNameVisitor} from '../visitor/findRuleName';
 
-export class DependencyResolver {
-  private _config: AutoDepConfig.Output.Schema;
-  private _logger: Logger;
+import {CollectDepsDirective, ResolveAbsoluteImportPathsOptions} from './types';
 
-  constructor(config: AutoDepConfig.Output.Schema) {
-    this._config = config;
-    this._logger = new Logger({namespace: 'DependencyResolver', config: this._config});
+interface DependencyResolverOptions {
+  config: AutoDepConfig.Output.Schema;
+}
+export class DependencyResolver extends AutoDepBase {
+  constructor({config}: DependencyResolverOptions) {
+    super({config, name: 'DependencyResolver'});
   }
-
-  setConfig = (newConfig: AutoDepConfig.Output.Schema) => {
-    this._config = newConfig;
-    return this._config;
-  };
 
   /**
    * Resolves the closest plugin config file path to the given path, bubbling all the way up to the top of the

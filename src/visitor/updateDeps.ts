@@ -1,5 +1,15 @@
 import minimatch from 'minimatch';
+import path from 'path';
 
+import {
+  DEFAULT_MODULE_RULE_NAME,
+  DEFAULT_TEST_RULE_NAME,
+  SUPPORTED_MANAGED_BUILTINS,
+  SUPPORTED_MANAGED_BUILTINS_LOOKUP,
+  SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES,
+} from '../common/const';
+import {AutoDepConfig} from '../config/types';
+import {AutoDepError, ErrorType} from '../errors/error';
 import * as ast from '../language/ast/utils';
 import {
   ASTNode,
@@ -13,20 +23,10 @@ import {
   Comment,
 } from '../language/ast/types';
 import {createToken} from '../language/tokeniser/tokenise';
-import {AutoDepConfig} from '../config/types';
-import path from 'path';
-import {
-  DEFAULT_MODULE_RULE_NAME,
-  DEFAULT_TEST_RULE_NAME,
-  SUPPORTED_MANAGED_BUILTINS,
-  SUPPORTED_MANAGED_BUILTINS_LOOKUP,
-  SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES,
-} from '../common/const';
 import {DependencyBuilder} from '../language/builder/build';
-import {Logger} from '../logger/log';
 import {TaskMessages} from '../messages/task';
 import {ErrorMessages} from '../messages/error';
-import {AutoDepError, ErrorType} from '../errors/error';
+import {AutoDepBase} from '../inheritance/base';
 
 interface DependencyUpdateVisitorOptions {
   config: AutoDepConfig.Output.Schema;
@@ -35,48 +35,38 @@ interface DependencyUpdateVisitorOptions {
   builderCls?: typeof DependencyBuilder;
 }
 
-export class DependencyUpdateVisitor {
-  private builderCls: typeof DependencyBuilder;
-
-  private _config: AutoDepConfig.Output.Schema;
-  private _logger: Logger;
-
-  private readonly builder: DependencyBuilder;
-  private readonly fileName: string;
-  private readonly newDeps: string[];
-  private status: 'success' | 'failed' | 'idle' | 'passthrough';
-  private reason: string;
-  private removedDeps: string[];
-  private ruleType: 'module' | 'test';
-  private rootPath: string;
+export class DependencyUpdateVisitor extends AutoDepBase {
+  private _builderCls: typeof DependencyBuilder;
+  private _builder: DependencyBuilder;
+  private _fileName: string;
+  private _newDeps: string[];
+  private _removedDeps: string[];
+  private _rootPath: string;
+  private _ruleType: 'module' | 'test';
 
   constructor(
     {config, rootPath, newDeps}: DependencyUpdateVisitorOptions,
     builderCls: typeof DependencyBuilder = DependencyBuilder
   ) {
-    this._config = config;
-    this._logger = new Logger({namespace: 'DependencyUpdateVisitor', config: this._config});
-
-    this.builderCls = builderCls;
-
-    this.builder = new this.builderCls({config: this._config, rootPath, newDeps});
-    this.rootPath = rootPath;
-    this.fileName = path.basename(this.rootPath);
-    this.newDeps = newDeps;
-    this.status = 'idle';
-    this.reason = 'took no action';
-    this.removedDeps = [];
-
+    super({config, name: 'DependencyUpdateVisitor'});
     this._logger.trace({ctx: 'init', message: TaskMessages.initialise.attempt('DependencyUpdateVisitor')});
 
-    if (this._config.match.isTest(this.rootPath)) {
-      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a test', `"${this.fileName}"`)});
-      this.ruleType = 'test';
-    } else if (this._config.match.isModule(this.rootPath)) {
-      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a module', `"${this.fileName}"`)});
-      this.ruleType = 'module';
+    this._builderCls = builderCls;
+
+    this._builder = new this._builderCls({config: this._config, rootPath, newDeps});
+    this._fileName = path.basename(rootPath);
+    this._newDeps = newDeps;
+    this._removedDeps = [];
+    this._rootPath = rootPath;
+
+    if (this._config.match.isTest(this._rootPath)) {
+      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a test', `"${this._fileName}"`)});
+      this._ruleType = 'test';
+    } else if (this._config.match.isModule(this._rootPath)) {
+      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a module', `"${this._fileName}"`)});
+      this._ruleType = 'module';
     } else {
-      const message = ErrorMessages.user.unsupportedFileType({path: this.rootPath});
+      const message = ErrorMessages.user.unsupportedFileType({path: this._rootPath});
       this._logger.error({ctx: 'init', message});
       throw new AutoDepError(ErrorType.USER, message);
     }
@@ -103,16 +93,16 @@ export class DependencyUpdateVisitor {
         result = this.visitCommentNode(node);
         break;
       default:
-        this.status = 'passthrough';
-        this.reason = 'irrelevant node type passed to `updateDeps` visitor';
+        this._status = 'passthrough';
+        this._reason = 'irrelevant node type passed to `updateDeps` visitor';
         return node;
     }
 
-    if (this.status === 'success') {
+    if (this._status === 'success') {
       return result;
     } else {
-      this.status = 'failed';
-      this.reason = 'unable to find target rule in given file';
+      this._status = 'failed';
+      this._reason = 'unable to find target rule in given file';
       return node;
     }
   };
@@ -120,10 +110,10 @@ export class DependencyUpdateVisitor {
   private visitRootNode = (node: RootNode) => {
     // We need to check whether the first line of any config `fileHeading` is the same as
     // the first line in the file:
-    const onUpdateFileHeading = this._config.onUpdate[this.ruleType].fileHeading ?? '';
+    const onUpdateFileHeading = this._config.onUpdate[this._ruleType].fileHeading ?? '';
     const firstLineOfOnUpdateFileHeading = `# ${onUpdateFileHeading.split('\n')[0]}`;
 
-    const onCreateFileHeading = this._config.onCreate[this.ruleType].fileHeading ?? '';
+    const onCreateFileHeading = this._config.onCreate[this._ruleType].fileHeading ?? '';
     const firstLineOfOnCreateFileHeading = `# ${onCreateFileHeading.split('\n')[0]}`;
 
     const firstStatement = node.statements[0];
@@ -141,12 +131,12 @@ export class DependencyUpdateVisitor {
       const [, ...nonFileHeadingStatements] = node.statements;
 
       node.statements = [
-        this.builder.buildFileHeadingCommentStatement(onUpdateFileHeading),
+        this._builder.buildFileHeadingCommentStatement(onUpdateFileHeading),
         ...nonFileHeadingStatements.map((statement) => this.visitStatementNode(statement)),
       ];
     } else {
       node.statements = [
-        this.builder.buildFileHeadingCommentStatement(onUpdateFileHeading),
+        this._builder.buildFileHeadingCommentStatement(onUpdateFileHeading),
         ...node.statements.map((statement) => this.visitStatementNode(statement)),
       ];
     }
@@ -195,8 +185,8 @@ export class DependencyUpdateVisitor {
 
     const isManagedRule = this._config.manage.rules.has(functionName);
     const isManagedBuiltin = SUPPORTED_MANAGED_BUILTINS.some((builtin) => functionName === builtin);
-    const isDefaultModuleRule = this.ruleType === 'module' && functionName === DEFAULT_MODULE_RULE_NAME;
-    const isDefaultTestRule = this.ruleType === 'test' && functionName !== DEFAULT_TEST_RULE_NAME;
+    const isDefaultModuleRule = this._ruleType === 'module' && functionName === DEFAULT_MODULE_RULE_NAME;
+    const isDefaultTestRule = this._ruleType === 'test' && functionName !== DEFAULT_TEST_RULE_NAME;
 
     this._logger.trace({
       ctx: 'visitCallExpressionNode',
@@ -242,11 +232,11 @@ export class DependencyUpdateVisitor {
                       ctx: 'visitCallExpressionNode',
                       message: TaskMessages.identified(`a string field`, `\`${functionName}.${srcsAlias.value}\``),
                     });
-                    const isMatch = element.value.getTokenLiteral() === this.fileName;
+                    const isMatch = element.value.getTokenLiteral() === this._fileName;
                     this._logger.trace({
                       ctx: 'visitCallExpressionNode',
                       message: TaskMessages.locate[isMatch ? 'success' : 'failure'](
-                        `"${this.fileName}" at \`${functionName}.${srcsAlias.value}\``
+                        `"${this._fileName}" at \`${functionName}.${srcsAlias.value}\``
                       ),
                     });
                     return isMatch;
@@ -271,13 +261,13 @@ export class DependencyUpdateVisitor {
                     });
                     const isMatch = element.value.elements?.elements.some((subElement) => {
                       if (subElement?.kind === 'StringLiteral') {
-                        return subElement.getTokenLiteral() === this.fileName;
+                        return subElement.getTokenLiteral() === this._fileName;
                       }
                     });
                     this._logger.trace({
                       ctx: 'visitCallExpressionNode',
                       message: TaskMessages.locate[isMatch ? 'success' : 'failure'](
-                        `"${this.fileName}" in \`${functionName}.${srcsAlias.value}\``
+                        `"${this._fileName}" in \`${functionName}.${srcsAlias.value}\``
                       ),
                     });
                     return isMatch;
@@ -314,10 +304,10 @@ export class DependencyUpdateVisitor {
                             ctx: 'visitCallExpressionNode',
                             message: TaskMessages.attempt(
                               'match',
-                              `${this.fileName} against "${matcher.getTokenLiteral()}"`
+                              `${this._fileName} against "${matcher.getTokenLiteral()}"`
                             ),
                           });
-                          minimatch(this.fileName, String(matcher.getTokenLiteral()));
+                          minimatch(this._fileName, String(matcher.getTokenLiteral()));
                         });
                       }
                     });
@@ -325,7 +315,7 @@ export class DependencyUpdateVisitor {
                       ctx: 'visitCallExpressionNode',
                       message: TaskMessages[isMatch ? 'success' : 'failure'](
                         'match',
-                        `"${this.fileName}" against a matcher in \`${functionName}.${srcsAlias.value}\``
+                        `"${this._fileName}" against a matcher in \`${functionName}.${srcsAlias.value}\``
                       ),
                     });
                   }
@@ -337,8 +327,8 @@ export class DependencyUpdateVisitor {
               ctx: 'visitCallExpressionNode',
               message:
                 TaskMessages.resolve.failure(
-                  `${functionName}(${srcsAlias.value} = <${this.fileName}>)`,
-                  `"${this.fileName}"`
+                  `${functionName}(${srcsAlias.value} = <${this._fileName}>)`,
+                  `"${this._fileName}"`
                 ) + ' - continuing...',
             });
           }
@@ -348,7 +338,7 @@ export class DependencyUpdateVisitor {
       if (isTargetRule) {
         this._logger.trace({
           ctx: 'visitCallExpressionNode',
-          message: TaskMessages.identify.success(`target BUILD rule for "${this.fileName}"`, functionName),
+          message: TaskMessages.identify.success(`target BUILD rule for "${this._fileName}"`, functionName),
           details: node.toString(),
         });
         node.args.elements = node.args.elements.map((element) => {
@@ -359,7 +349,7 @@ export class DependencyUpdateVisitor {
         });
 
         // this is specific to updateDeps:
-        if (this.status !== 'success') {
+        if (this._status !== 'success') {
           // this means there was no deps array... so we add one:
           const managedSchema = this._config.manage.schema[functionName];
           const [firstDepsAlias] = managedSchema?.deps ?? [SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES.DEPS];
@@ -372,16 +362,16 @@ export class DependencyUpdateVisitor {
             details: node.toString(),
           });
           node.args.elements.push(
-            this.builder.buildRuleFieldKwargNode(firstDepsAlias.value, this.builder.buildArrayNode(this.newDeps))
+            this._builder.buildRuleFieldKwargNode(firstDepsAlias.value, this._builder.buildArrayNode(this._newDeps))
           );
 
-          this.status = 'success';
-          this.reason = `target rule found, \`${firstDepsAlias.value}\` field added and dependencies updated`;
+          this._status = 'success';
+          this._reason = `target rule found, \`${firstDepsAlias.value}\` field added and dependencies updated`;
         }
       } else {
         this._logger.trace({
           ctx: 'visitCallExpressionNode',
-          message: TaskMessages.identify.failure(`target BUILD rule for "${this.fileName}"`, functionName),
+          message: TaskMessages.identify.failure(`target BUILD rule for "${this._fileName}"`, functionName),
           details: node.toString(),
         });
       }
@@ -406,21 +396,21 @@ export class DependencyUpdateVisitor {
 
   private visitArrayLiteralNode = (node: ArrayLiteral) => {
     if (node.elements) {
-      this.removedDeps = node.elements.elements.map(String);
+      this._removedDeps = node.elements.elements.map(String);
 
-      node.elements.elements = this.newDeps.map((dep) =>
+      node.elements.elements = this._newDeps.map((dep) =>
         ast.createStringLiteralNode({token: createToken('STRING', dep), value: dep})
       );
-      this.status = 'success';
-      this.reason = 'target rule found, dependencies updated';
+      this._status = 'success';
+      this._reason = 'target rule found, dependencies updated';
     }
     return node;
   };
 
   getResult = () =>
     Object.seal({
-      status: this.status,
-      reason: this.reason,
-      removedDeps: this.removedDeps,
+      status: this._status,
+      reason: this._reason,
+      removedDeps: this._removedDeps,
     });
 }

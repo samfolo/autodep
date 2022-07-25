@@ -4,6 +4,7 @@ import {SUPPORTED_MANAGED_BUILTINS_LOOKUP, SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIE
 import {ManagedSchemaFieldEntry, ManagedSchemaFieldType, ManagedSchemaFieldName} from '../../common/types';
 import {AutoDepConfig} from '../../config/types';
 import {AutoDepError, ErrorType} from '../../errors/error';
+import {AutoDepBase} from '../../inheritance/base';
 import {ErrorMessages} from '../../messages/error';
 
 import {Expression} from '../ast/types';
@@ -15,23 +16,23 @@ interface DependencyBuilderOptions {
   newDeps: string[];
 }
 
-export class DependencyBuilder {
-  private _config: AutoDepConfig.Output.Schema;
-  private rootPath: string;
+export class DependencyBuilder extends AutoDepBase {
   private fileName: string;
-  private initialRuleType: 'module' | 'test';
   private newDeps: string[];
+  private rootPath: string;
+  private ruleType: 'module' | 'test';
 
   constructor({config, rootPath, newDeps}: DependencyBuilderOptions) {
-    this._config = config;
+    super({config, name: 'DependencyBuilder'});
+
     this.rootPath = rootPath;
     this.fileName = path.basename(this.rootPath);
     this.newDeps = newDeps;
 
     if (this._config.match.isTest(this.rootPath)) {
-      this.initialRuleType = 'test';
+      this.ruleType = 'test';
     } else if (this._config.match.isModule(this.rootPath)) {
-      this.initialRuleType = 'module';
+      this.ruleType = 'module';
     } else {
       throw new AutoDepError(ErrorType.USER, ErrorMessages.user.unsupportedFileType({path: this.rootPath}));
     }
@@ -39,7 +40,7 @@ export class DependencyBuilder {
 
   readonly buildNewFile = () => {
     const root = ast.createRootNode({statements: []});
-    const fileConfig = this._config.onCreate[this.initialRuleType];
+    const fileConfig = this._config.onCreate[this.ruleType];
 
     if (fileConfig.fileHeading) {
       root.statements.push(this.buildFileHeadingCommentStatement(fileConfig.fileHeading));
@@ -55,7 +56,7 @@ export class DependencyBuilder {
   };
 
   readonly buildNewRule = () => {
-    const fileConfig = this._config.onCreate[this.initialRuleType];
+    const fileConfig = this._config.onCreate[this.ruleType];
 
     const {name, srcs, deps, visibility, testOnly} = this.getRuleFieldSchema(
       this._config.manage.schema[fileConfig.name]

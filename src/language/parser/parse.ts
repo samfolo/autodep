@@ -4,6 +4,8 @@ import {Token, TokenType, TokenValue} from '../tokeniser/types';
 
 import * as ast from '../ast/utils';
 import {Comment, Expression} from '../ast/types';
+import {AutoDepBase} from '../../inheritance/base';
+import {AutoDepConfig} from '../../config/types';
 
 enum Precedence {
   LOWEST,
@@ -26,7 +28,12 @@ const precedenceMap = {
   [SYMBOLS.OPEN_BRACKET]: Precedence.INDEX,
 };
 
-export class Parser {
+interface ParserOptions {
+  tokens: Token[];
+  config: AutoDepConfig.Output.Schema;
+}
+
+export class Parser extends AutoDepBase {
   errors: string[];
   tokens: Token[];
   currentPosition: number;
@@ -34,7 +41,9 @@ export class Parser {
   prefixParseFunctions: Partial<Record<TokenType, () => Expression | undefined>>;
   infixParseFunctions: Partial<Record<TokenType, (left: Expression | undefined) => Expression | undefined>>;
 
-  constructor(tokens: Token[]) {
+  constructor({tokens, config}: ParserOptions) {
+    super({config, name: 'Parser'});
+
     this.errors = [];
     this.tokens = tokens;
     this.currentPosition = 0;

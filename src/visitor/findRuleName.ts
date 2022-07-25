@@ -1,5 +1,6 @@
 import minimatch from 'minimatch';
 import path from 'path';
+
 import {
   DEFAULT_MODULE_RULE_NAME,
   DEFAULT_TEST_RULE_NAME,
@@ -9,6 +10,7 @@ import {
 } from '../common/const';
 import {AutoDepConfig} from '../config/types';
 import {AutoDepError, ErrorType} from '../errors/error';
+import {AutoDepBase} from '../inheritance/base';
 import {
   ASTNode,
   Comment,
@@ -19,7 +21,6 @@ import {
   Expression,
   Statement,
 } from '../language/ast/types';
-import {Logger} from '../logger/log';
 import {ErrorMessages} from '../messages/error';
 import {TaskMessages} from '../messages/task';
 
@@ -27,35 +28,28 @@ interface RuleNameVisitorOptions {
   config: AutoDepConfig.Output.Schema;
   rootPath: string;
 }
-export class RuleNameVisitor {
-  private _logger: Logger;
-  private _config: AutoDepConfig.Output.Schema;
+export class RuleNameVisitor extends AutoDepBase {
+  private _fileName: string;
+  private _rootPath: string;
   private _ruleName: string | null;
-  private fileName: string;
-  private status: 'success' | 'failed' | 'idle' | 'passthrough';
-  private reason: string;
-  private rootPath: string;
-  private ruleType: 'module' | 'test';
+  private _ruleType: 'module' | 'test';
 
   constructor({config, rootPath}: RuleNameVisitorOptions) {
-    this._ruleName = null;
-    this.status = 'idle';
-    this.reason = 'took no action';
-    this.rootPath = rootPath;
-    this.fileName = path.basename(rootPath);
-    this._config = config;
-    this._logger = new Logger({namespace: 'RuleNameVisitor', config: this._config});
-
+    super({config, name: 'RuleNameVisitor'});
     this._logger.trace({ctx: 'init', message: TaskMessages.initialise.attempt('RuleNameVisitor')});
 
-    if (this._config.match.isTest(this.rootPath)) {
-      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a test', `"${this.fileName}"`)});
-      this.ruleType = 'test';
-    } else if (this._config.match.isModule(this.rootPath)) {
-      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a module', `"${this.fileName}"`)});
-      this.ruleType = 'module';
+    this._fileName = path.basename(rootPath);
+    this._rootPath = rootPath;
+    this._ruleName = null;
+
+    if (this._config.match.isTest(this._rootPath)) {
+      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a test', `"${this._fileName}"`)});
+      this._ruleType = 'test';
+    } else if (this._config.match.isModule(this._rootPath)) {
+      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a module', `"${this._fileName}"`)});
+      this._ruleType = 'module';
     } else {
-      const message = ErrorMessages.user.unsupportedFileType({path: this.rootPath});
+      const message = ErrorMessages.user.unsupportedFileType({path: this._rootPath});
       this._logger.error({ctx: 'init', message});
       throw new AutoDepError(ErrorType.USER, message);
     }
@@ -82,16 +76,16 @@ export class RuleNameVisitor {
         result = this.visitCommentNode(node);
         break;
       default:
-        this.status = 'passthrough';
-        this.reason = 'irrelevant node type passed to `locateRuleName` visitor';
+        this._status = 'passthrough';
+        this._reason = 'irrelevant node type passed to `locateRuleName` visitor';
         return node;
     }
 
-    if (this.status === 'success') {
+    if (this._status === 'success') {
       return result;
     } else {
-      this.status = 'failed';
-      this.reason = 'unable to find build rule name in given file';
+      this._status = 'failed';
+      this._reason = 'unable to find build rule name in given file';
       return node;
     }
   };
@@ -163,8 +157,8 @@ export class RuleNameVisitor {
 
     const isManagedRule = this._config.manage.rules.has(functionName);
     const isManagedBuiltin = SUPPORTED_MANAGED_BUILTINS.some((builtin) => functionName === builtin);
-    const isDefaultModuleRule = this.ruleType === 'module' && functionName === DEFAULT_MODULE_RULE_NAME;
-    const isDefaultTestRule = this.ruleType === 'test' && functionName !== DEFAULT_TEST_RULE_NAME;
+    const isDefaultModuleRule = this._ruleType === 'module' && functionName === DEFAULT_MODULE_RULE_NAME;
+    const isDefaultTestRule = this._ruleType === 'test' && functionName !== DEFAULT_TEST_RULE_NAME;
 
     this._logger.trace({
       ctx: 'visitCallExpressionNode',
@@ -210,11 +204,11 @@ export class RuleNameVisitor {
                       ctx: 'visitCallExpressionNode',
                       message: TaskMessages.identified(`a string field`, `\`${functionName}.${srcsAlias.value}\``),
                     });
-                    const isMatch = element.value.getTokenLiteral() === this.fileName;
+                    const isMatch = element.value.getTokenLiteral() === this._fileName;
                     this._logger.trace({
                       ctx: 'visitCallExpressionNode',
                       message: TaskMessages.locate[isMatch ? 'success' : 'failure'](
-                        `"${this.fileName}" at \`${functionName}.${srcsAlias.value}\``
+                        `"${this._fileName}" at \`${functionName}.${srcsAlias.value}\``
                       ),
                     });
                     return isMatch;
@@ -239,13 +233,13 @@ export class RuleNameVisitor {
                     });
                     const isMatch = element.value.elements?.elements.some((subElement) => {
                       if (subElement?.kind === 'StringLiteral') {
-                        return subElement.getTokenLiteral() === this.fileName;
+                        return subElement.getTokenLiteral() === this._fileName;
                       }
                     });
                     this._logger.trace({
                       ctx: 'visitCallExpressionNode',
                       message: TaskMessages.locate[isMatch ? 'success' : 'failure'](
-                        `"${this.fileName}" in \`${functionName}.${srcsAlias.value}\``
+                        `"${this._fileName}" in \`${functionName}.${srcsAlias.value}\``
                       ),
                     });
                     return isMatch;
@@ -285,10 +279,10 @@ export class RuleNameVisitor {
                         ctx: 'visitCallExpressionNode',
                         message: TaskMessages.attempt(
                           'match',
-                          `${this.fileName} against "${matcher.getTokenLiteral()}"`
+                          `${this._fileName} against "${matcher.getTokenLiteral()}"`
                         ),
                       });
-                      return minimatch(this.fileName, String(matcher.getTokenLiteral()));
+                      return minimatch(this._fileName, String(matcher.getTokenLiteral()));
                     });
                   }
                 });
@@ -296,7 +290,7 @@ export class RuleNameVisitor {
                   ctx: 'visitCallExpressionNode',
                   message: TaskMessages[isMatch ? 'success' : 'failure'](
                     isMatch ? 'matched' : 'match',
-                    `"${this.fileName}" against a matcher in \`${functionName}.${srcsAlias.value}\``
+                    `"${this._fileName}" against a matcher in \`${functionName}.${srcsAlias.value}\``
                   ),
                 });
                 return isMatch;
@@ -307,8 +301,8 @@ export class RuleNameVisitor {
               ctx: 'visitCallExpressionNode',
               message:
                 TaskMessages.resolve.failure(
-                  `${functionName}(${srcsAlias.value} = <${this.fileName}>)`,
-                  `"${this.fileName}"`
+                  `${functionName}(${srcsAlias.value} = <${this._fileName}>)`,
+                  `"${this._fileName}"`
                 ) + ' - continuing...',
             });
           }
@@ -318,7 +312,7 @@ export class RuleNameVisitor {
       if (isTargetRule) {
         this._logger.trace({
           ctx: 'visitCallExpressionNode',
-          message: TaskMessages.identify.success(`target BUILD rule for "${this.fileName}"`, functionName),
+          message: TaskMessages.identify.success(`target BUILD rule for "${this._fileName}"`, functionName),
           details: node.toString(),
         });
         node.args.elements = node.args.elements.map((element) => {
@@ -330,7 +324,7 @@ export class RuleNameVisitor {
       } else {
         this._logger.trace({
           ctx: 'visitCallExpressionNode',
-          message: TaskMessages.identify.failure(`target BUILD rule for "${this.fileName}"`, functionName),
+          message: TaskMessages.identify.failure(`target BUILD rule for "${this._fileName}"`, functionName),
           details: node.toString(),
         });
       }
@@ -345,8 +339,8 @@ export class RuleNameVisitor {
 
     for (const nameAlias of nameSchemaFieldEntries) {
       if (node.key.getTokenLiteral() === nameAlias.value && node.value?.kind === 'StringLiteral') {
-        this.status = 'success';
-        this.reason = 'build rule name found';
+        this._status = 'success';
+        this._reason = 'build rule name found';
         this._ruleName = String(node.value.getTokenLiteral());
         break;
       }
@@ -357,9 +351,9 @@ export class RuleNameVisitor {
 
   getResult = () =>
     Object.seal({
-      status: this.status,
-      reason: this.reason,
-      fileName: this.fileName,
+      status: this._status,
+      reason: this._reason,
+      fileName: this._fileName,
       ruleName: this._ruleName,
     });
 }

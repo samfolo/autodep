@@ -1,5 +1,5 @@
 import {AutoDepConfig} from '../config/types';
-
+import {AutoDepBase} from '../inheritance/base';
 import {Parser} from '../language/parser/parse';
 import {Tokeniser} from '../language/tokeniser/tokenise';
 
@@ -8,23 +8,23 @@ interface BuildFileOptions {
   config: AutoDepConfig.Output.Schema;
 }
 
-export class BuildFile {
-  private _file: string;
-  private _config: AutoDepConfig.Output.Schema;
+export class BuildFile extends AutoDepBase {
   private _tokeniserCls: typeof Tokeniser;
   private _parserCls: typeof Parser;
+  private _file: string;
 
   constructor({file, config}: BuildFileOptions, tokeniserCls = Tokeniser, parserCls = Parser) {
-    this._file = file;
-    this._config = config;
+    super({config, name: 'BuildFile'});
+
     this._tokeniserCls = tokeniserCls;
     this._parserCls = parserCls;
+    this._file = file;
   }
 
   readonly toAST = () => {
-    const tokeniser = new this._tokeniserCls(this._file, this._config);
+    const tokeniser = new this._tokeniserCls({input: this._file, config: this._config});
     const tokens = tokeniser.tokenise();
-    const parser = new this._parserCls(tokens);
+    const parser = new this._parserCls({tokens, config: this._config});
     return parser.parse();
   };
 }

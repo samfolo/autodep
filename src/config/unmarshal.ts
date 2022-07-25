@@ -18,8 +18,6 @@ import {
 import {AutoDepConfig} from '../config/types';
 
 export class ConfigUmarshaller {
-  constructor() {}
-
   unmarshal = (input?: AutoDepConfig.Input.Schema): AutoDepConfig.Output.Schema => ({
     manage: this.unmarshalManage(input?.manage),
     match: this.unmarshalMatch(input?.match),

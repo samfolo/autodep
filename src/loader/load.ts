@@ -5,34 +5,28 @@ import {CONFIG_FILENAME} from '../common/const';
 import {AutoDepConfig} from '../config/types';
 import {validateConfigInput} from '../config/schema';
 import {ConfigUmarshaller} from '../config/unmarshal';
-import {Logger} from '../logger/log';
+import {AutoDepBase} from '../inheritance/base';
 import {ErrorMessages, TaskMessages} from '../messages';
 
-export class ConfigurationLoader {
-  private _type: 'default' | 'custom';
-  private _status: 'idle' | 'passthrough' | 'success' | 'failed';
-  private _reason: string;
-  private _config: AutoDepConfig.Output.Schema;
-  private _logger: Logger;
+interface ConfigurationLoaderOptions {
+  config: AutoDepConfig.Output.Schema;
+}
 
-  private unmarshallerCls: typeof ConfigUmarshaller;
+export class ConfigurationLoader extends AutoDepBase {
+  private _unmarshallerCls: typeof ConfigUmarshaller;
+  private _unmarshaller: ConfigUmarshaller;
+  private _configType: 'default' | 'custom';
 
-  private unmarshaller: ConfigUmarshaller;
+  constructor({config}: ConfigurationLoaderOptions, unmarshallerCls: typeof ConfigUmarshaller = ConfigUmarshaller) {
+    super({config: Object.freeze(config), name: 'ConfigurationLoader'});
 
-  constructor(preConfig: AutoDepConfig.Output.Schema, unmarshallerCls: typeof ConfigUmarshaller = ConfigUmarshaller) {
-    this.unmarshallerCls = unmarshallerCls;
-
-    this._type = 'default';
-    this._config = Object.freeze(preConfig);
-    this._logger = new Logger({namespace: 'ConfigurationLoader', config: this._config});
-    this._status = 'idle';
-    this._reason = 'took no action';
-
-    this.unmarshaller = new this.unmarshallerCls();
+    this._unmarshallerCls = unmarshallerCls;
+    this._unmarshaller = new this._unmarshallerCls();
+    this._configType = 'default';
   }
 
   loadConfigFromWorkspace = (configPath: string | null) => {
-    this._type = 'default';
+    this._configType = 'default';
 
     if (configPath) {
       try {
@@ -64,8 +58,8 @@ export class ConfigurationLoader {
 
           this._status = 'success';
           this._reason = successMessage;
-          this._config = Object.freeze(this.unmarshaller.unmarshal(configInput));
-          this._type = 'custom';
+          this._config = Object.freeze(this._unmarshaller.unmarshal(configInput));
+          this._configType = 'custom';
 
           this._logger.trace({
             ctx: 'loadConfigFromWorkspace',
@@ -81,7 +75,7 @@ export class ConfigurationLoader {
             configPath,
             validationErrors: validateConfigInput.errors,
           });
-          this._config = Object.freeze(this.unmarshaller.unmarshal({}));
+          this._config = Object.freeze(this._unmarshaller.unmarshal({}));
         }
       } catch (error) {
         this._logger.error({
@@ -92,17 +86,17 @@ export class ConfigurationLoader {
 
         this._status = 'failed';
         this._reason = String(error);
-        this._config = Object.freeze(this.unmarshaller.unmarshal({}));
+        this._config = Object.freeze(this._unmarshaller.unmarshal({}));
       }
     } else {
       this._status = 'passthrough';
       this._reason = 'no config path passed';
-      this._config = Object.freeze(this.unmarshaller.unmarshal({}));
+      this._config = Object.freeze(this._unmarshaller.unmarshal({}));
     }
 
     this._logger.info({
       ctx: 'loadConfigFromWorkspace',
-      message: TaskMessages.using(`${this._type} config`),
+      message: TaskMessages.using(`${this._configType} config`),
       details: this._config.toString(),
     });
 

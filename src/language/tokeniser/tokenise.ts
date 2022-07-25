@@ -1,18 +1,25 @@
 import {SUPPORTED_MANAGED_BUILTINS} from '../../common/const';
 import {AutoDepConfig} from '../../config/types';
+import {AutoDepBase} from '../../inheritance/base';
+
 import {RESERVED_TERM_LOOKUP, SYMBOLS} from './tokens';
 import type {TokenType, TokenValue, Token} from './types';
 
-export class Tokeniser {
+interface TokeniserOptions {
+  input: string;
+  config: AutoDepConfig.Output.Schema;
+}
+
+export class Tokeniser extends AutoDepBase {
   private input: string;
   private currentPosition: number;
   private readPosition: number;
   private tokens: Token[];
-  private config: AutoDepConfig.Output.Schema;
 
-  constructor(input: string, config: AutoDepConfig.Output.Schema) {
+  constructor({input, config}: TokeniserOptions) {
+    super({config, name: 'Tokeniser'});
+
     this.input = input;
-    this.config = config;
     this.currentPosition = 0;
     this.readPosition = this.currentPosition + 1;
     this.tokens = [];
@@ -32,8 +39,8 @@ export class Tokeniser {
   getIdentTokenType = (ident: string): TokenType =>
     RESERVED_TERM_LOOKUP[ident] ||
     (SUPPORTED_MANAGED_BUILTINS.some((builtin) => builtin === ident) && 'BUILTIN') ||
-    (this.config.manage.rules.has(ident) && 'RULE_NAME') ||
-    (this.config.manage.fields.has(ident) && 'RULE_FIELD_NAME') ||
+    (this._config.manage.rules.has(ident) && 'RULE_NAME') ||
+    (this._config.manage.fields.has(ident) && 'RULE_FIELD_NAME') ||
     'IDENT';
 
   createToken = createToken;
