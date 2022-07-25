@@ -7,7 +7,7 @@ import {
   SUPPORTED_MANAGED_BUILTINS_LOOKUP,
   SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES,
 } from '../common/const';
-import {AutoDepConfig} from '../common/types';
+import {AutoDepConfig} from '../config/types';
 import {AutoDepError, ErrorType} from '../errors/error';
 import {
   ASTNode,
@@ -24,12 +24,12 @@ import {ErrorMessages} from '../messages/error';
 import {TaskMessages} from '../messages/task';
 
 interface RuleNameVisitorOptions {
-  config: AutoDepConfig;
+  config: AutoDepConfig.Output.Schema;
   rootPath: string;
 }
 export class RuleNameVisitor {
   private _logger: Logger;
-  private _config: AutoDepConfig;
+  private _config: AutoDepConfig.Output.Schema;
   private _ruleName: string | null;
   private fileName: string;
   private status: 'success' | 'failed' | 'idle' | 'passthrough';

@@ -7,14 +7,14 @@ import {
   Statement,
   Comment,
 } from '../language/ast/types';
-import {AutoDepConfig} from '../common/types';
+import {AutoDepConfig} from '../config/types';
 import {SUPPORTED_MANAGED_BUILTINS_LOOKUP} from '../common/const';
 import {DependencyBuilder} from '../language/builder/build';
 import {Logger} from '../logger/log';
 import {TaskMessages} from '../messages/task';
 
 interface RuleInsertionVisitorOptions {
-  config: AutoDepConfig;
+  config: AutoDepConfig.Output.Schema;
   rootPath: string;
   newDeps: string[];
 }
@@ -22,7 +22,7 @@ interface RuleInsertionVisitorOptions {
 export class RuleInsertionVisitor {
   private builderCls: typeof DependencyBuilder;
 
-  private _config: AutoDepConfig;
+  private _config: AutoDepConfig.Output.Schema;
   private _logger: Logger;
 
   private builder: DependencyBuilder;
@@ -113,7 +113,22 @@ export class RuleInsertionVisitor {
 
     const hasCommentHeading = hasOnCreateCommentHeading || hasOnUpdateCommentHeading;
 
-    if (firstStatement.kind === 'CommentStatement' && hasCommentHeading) {
+    this._logger.debug({
+      ctx: 'insertRule',
+      message: JSON.stringify(firstStatement, null, 2),
+      details: JSON.stringify(
+        {
+          hasOnCreateCommentHeading,
+          hasOnUpdateCommentHeading,
+          firstStatement: String(firstStatement?.getTokenLiteral()),
+          firstOnCreate: firstLineOfOnCreateFileHeading,
+          firstOnUpdate: firstLineOfOnUpdateFileHeading,
+        },
+        null,
+        2
+      ),
+    });
+    if (firstStatement?.kind === 'CommentStatement' && hasCommentHeading) {
       const [, ...nonFileHeadingStatements] = node.statements;
 
       node.statements = [

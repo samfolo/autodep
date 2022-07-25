@@ -1,10 +1,11 @@
 import vscode from 'vscode';
 
-import {LogLevel, AutoDepConfig} from '../common/types';
+import {LogLevel} from '../common/types';
+import {AutoDepConfig} from '../config/types';
 
 interface LoggerOptions {
   namespace: string;
-  config: AutoDepConfig;
+  config: AutoDepConfig.Output.Schema;
 }
 
 interface LogPayload {
@@ -20,7 +21,7 @@ interface LogHistoryEntry {
 }
 
 export class Logger {
-  private _config: AutoDepConfig;
+  private _config: AutoDepConfig.Output.Schema;
   private namespace: string;
 
   constructor({namespace, config}: LoggerOptions) {
@@ -32,7 +33,7 @@ export class Logger {
     return this._config.log;
   }
 
-  setConfig = (newConfig: AutoDepConfig) => {
+  setConfig = (newConfig: AutoDepConfig.Output.Schema) => {
     this._config = newConfig;
     return this._config;
   };

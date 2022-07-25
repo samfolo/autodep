@@ -13,7 +13,7 @@ import {
   Comment,
 } from '../language/ast/types';
 import {createToken} from '../language/tokeniser/tokenise';
-import {AutoDepConfig} from '../common/types';
+import {AutoDepConfig} from '../config/types';
 import path from 'path';
 import {
   DEFAULT_MODULE_RULE_NAME,
@@ -29,7 +29,7 @@ import {ErrorMessages} from '../messages/error';
 import {AutoDepError, ErrorType} from '../errors/error';
 
 interface DependencyUpdateVisitorOptions {
-  config: AutoDepConfig;
+  config: AutoDepConfig.Output.Schema;
   rootPath: string;
   newDeps: string[];
   builderCls?: typeof DependencyBuilder;
@@ -38,7 +38,7 @@ interface DependencyUpdateVisitorOptions {
 export class DependencyUpdateVisitor {
   private builderCls: typeof DependencyBuilder;
 
-  private _config: AutoDepConfig;
+  private _config: AutoDepConfig.Output.Schema;
   private _logger: Logger;
 
   private readonly builder: DependencyBuilder;
@@ -137,7 +137,7 @@ export class DependencyUpdateVisitor {
 
     const hasCommentHeading = hasOnCreateCommentHeading || hasOnUpdateCommentHeading;
 
-    if (firstStatement.kind === 'CommentStatement' && hasCommentHeading) {
+    if (firstStatement?.kind === 'CommentStatement' && hasCommentHeading) {
       const [, ...nonFileHeadingStatements] = node.statements;
 
       node.statements = [

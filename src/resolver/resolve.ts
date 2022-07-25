@@ -5,7 +5,7 @@ import {createRequire} from 'node:module';
 
 import {DeAliasingClient} from '../clients/deAliasing/deAlias';
 import {CONFIG_FILENAME, SUPPORTED_MODULE_EXTENSIONS} from '../common/const';
-import {AutoDepConfig} from '../common/types';
+import {AutoDepConfig} from '../config/types';
 
 import {CollectDepsDirective, ResolveAbsoluteImportPathsOptions} from './types';
 import {RuleNameVisitor} from '../visitor/findRuleName';
@@ -14,15 +14,15 @@ import {TaskMessages} from '../messages';
 import {BuildFile} from '../models/buildFile';
 
 export class DependencyResolver {
-  private _config: AutoDepConfig;
+  private _config: AutoDepConfig.Output.Schema;
   private _logger: Logger;
 
-  constructor(config: AutoDepConfig) {
+  constructor(config: AutoDepConfig.Output.Schema) {
     this._config = config;
     this._logger = new Logger({namespace: 'DependencyResolver', config: this._config});
   }
 
-  setConfig = (newConfig: AutoDepConfig) => {
+  setConfig = (newConfig: AutoDepConfig.Output.Schema) => {
     this._config = newConfig;
     return this._config;
   };

@@ -1,6 +1,6 @@
 import {readFileSync, writeFileSync} from 'fs';
 import cloneDeep from 'lodash.clonedeep';
-import {AutoDepConfig} from '../common/types';
+import {AutoDepConfig} from '../config/types';
 import {AutoDepError, ErrorType} from '../errors/error';
 import {RootNode} from '../language/ast/types';
 import {DependencyBuilder} from '../language/builder/build';
@@ -13,7 +13,7 @@ import {DependencyUpdateVisitor} from '../visitor/updateDeps';
 interface WriterOptions {
   rootPath: string;
   targetBuildFilePath: string;
-  config: AutoDepConfig;
+  config: AutoDepConfig.Output.Schema;
   newDeps: string[];
 }
 
@@ -21,7 +21,7 @@ export class Writer {
   private rootPath: string;
   private targetBuildFilePath: string;
   private newDeps: string[];
-  private _config: AutoDepConfig;
+  private _config: AutoDepConfig.Output.Schema;
   private _logger: Logger;
 
   private updatesVisitorCls: typeof DependencyUpdateVisitor;

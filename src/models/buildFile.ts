@@ -1,16 +1,16 @@
-import {AutoDepConfig} from '../common/types';
+import {AutoDepConfig} from '../config/types';
 
 import {Parser} from '../language/parser/parse';
 import {Tokeniser} from '../language/tokeniser/tokenise';
 
 interface BuildFileOptions {
   file: string;
-  config: AutoDepConfig;
+  config: AutoDepConfig.Output.Schema;
 }
 
 export class BuildFile {
   private _file: string;
-  private _config: AutoDepConfig;
+  private _config: AutoDepConfig.Output.Schema;
   private _tokeniserCls: typeof Tokeniser;
   private _parserCls: typeof Parser;
 

@@ -1,9 +1,9 @@
-import type {AutoDepConfig} from '../../common/types';
+import type {AutoDepConfig} from '../../config/types';
 
 export interface DeAliasingClientOptions {
   filePath: string;
   rootDirName: string;
-  config: AutoDepConfig;
+  config: AutoDepConfig.Output.Schema;
 }
 
 export type PackageAlias = string;

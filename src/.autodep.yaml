@@ -71,13 +71,13 @@ excludeNodeModules: true
 enablePropagation: false
 onCreate:
   fileExtname: plz
+  fileHeading: |-
+    This is an onCreate file heading
+    It even handles multiple lines!
+
+    And double lines...
   module:
     name: js_library
-    fileHeading: |-
-      This is an onCreate module file heading
-      It even handles multiple lines!
-
-      And double lines...
     explicitDeps: true
     omitEmptyFields: true
     initialVisibility:
@@ -85,22 +85,16 @@ onCreate:
     testOnly: false
   test:
     name: ops_app_jest
-    fileHeading: |-
-      This is an onCreate test file heading
-      It even handles multiple lines!
     subinclude:
       - //vault/admin_app/apps/ops:ops_app_jest
     explicitDeps: true
     omitEmptyFields: true
 onUpdate:
+  fileHeading: |-
+    This is an onUpdate module file heading
+    It even handles multiple lines!
   module:
-    fileHeading: |-
-      This is an onUpdate module file heading
-      It even handles multiple lines!
     omitEmptyFields: true
     subinclude: []
   test:
-    fileHeading: |-
-      This is an onUpdate test file heading
-      It even handles multiple lines!
     omitEmptyFields: true

@@ -1,19 +1,20 @@
 import path from 'path';
-import {SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES} from '../../common/const';
+import {SUPPORTED_MANAGED_BUILTINS_LOOKUP, SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES} from '../../common/const';
 
-import {ManagedSchemaFieldEntry, ManagedSchemaFieldType, ManagedSchemaField, AutoDepConfig} from '../../common/types';
+import {ManagedSchemaFieldEntry, ManagedSchemaFieldType, ManagedSchemaFieldName} from '../../common/types';
+import {AutoDepConfig} from '../../config/types';
 
 import {Expression} from '../ast/types';
 import * as ast from '../ast/utils';
 
 interface DependencyBuilderOptions {
-  config: AutoDepConfig;
+  config: AutoDepConfig.Output.Schema;
   rootPath: string;
   newDeps: string[];
 }
 
 export class DependencyBuilder {
-  private config: AutoDepConfig;
+  private config: AutoDepConfig.Output.Schema;
   private rootPath: string;
   private fileName: string;
   private initialRuleType: 'module' | 'test';
@@ -150,8 +151,6 @@ export class DependencyBuilder {
       }),
     });
 
-  // Utils:
-
   readonly buildCallExpressionNode = (functionName: string, args: Expression[]) =>
     ast.createCallExpressionNode({
       token: {type: 'OPEN_PAREN', value: '('},
@@ -165,7 +164,9 @@ export class DependencyBuilder {
       }),
     });
 
-  private getRuleFieldSchema = (schema: Partial<Record<ManagedSchemaField, Set<ManagedSchemaFieldEntry>>>) => {
+  // Utils:
+
+  private getRuleFieldSchema = (schema: Partial<Record<ManagedSchemaFieldName, Set<ManagedSchemaFieldEntry>>>) => {
     const [configName] = schema.name || [];
     const [configSrcs] = schema.srcs || [];
     const [configDeps] = schema.deps || [];
@@ -199,5 +200,9 @@ export class DependencyBuilder {
         : typeof arg === 'boolean'
         ? this.buildBooleanLiteralNode(arg)
         : this.buildBooleanLiteralNode(Boolean(arg)),
+    glob: (arg) =>
+      Array.isArray(arg) && arg.length > 0
+        ? this.buildCallExpressionNode(SUPPORTED_MANAGED_BUILTINS_LOOKUP.glob, [this.buildArrayNode(arg)])
+        : this.buildCallExpressionNode(SUPPORTED_MANAGED_BUILTINS_LOOKUP.glob, [this.buildArrayNode([String(arg)])]),
   };
 }

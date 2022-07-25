@@ -2,7 +2,7 @@ import {readFileSync} from 'fs';
 import {createRequire} from 'node:module';
 import path from 'path';
 
-import {AutoDepConfig} from '../../common/types';
+import {AutoDepConfig} from '../../config/types';
 import {Logger} from '../../logger/log';
 import {TaskMessages} from '../../messages';
 
@@ -21,7 +21,7 @@ export class DeAliasingClient {
   private packageJSON: Record<string, any>;
   private packageNameCache: Record<PackageAlias, PackageName>;
   private packageAliases: Set<PackageAlias>;
-  private config: AutoDepConfig;
+  private config: AutoDepConfig.Output.Schema;
   private _logger: Logger;
 
   constructor({filePath, rootDirName, config}: DeAliasingClientOptions) {

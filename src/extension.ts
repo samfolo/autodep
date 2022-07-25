@@ -1,7 +1,7 @@
 import vscode from 'vscode';
 import path from 'path';
 
-import {initConfig} from './common/config';
+import {ConfigUmarshaller} from './config/unmarshal';
 import {AutoDepError, ErrorType} from './errors/error';
 import {ConfigurationLoader} from './loader/load';
 import {Logger} from './logger/log';
@@ -10,7 +10,6 @@ import {Dependency} from './models/dependency';
 import {DependencyResolver} from './resolver/resolve';
 import {Writer} from './writer/write';
 import {compareBuildTarget} from './common/utils';
-import {AutoDepConfig} from './common/types';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -20,20 +19,19 @@ export function activate(context: vscode.ExtensionContext) {
     // do this later...
   });
 
-  const initialise = (rootPath: string, preConfig: AutoDepConfig) => {
-    const configLoader = new ConfigurationLoader(preConfig);
-    const depResolver = new DependencyResolver(preConfig);
-    return configLoader.loadConfigFromWorkspace(depResolver.resolveClosestConfigFilePath(rootPath));
-  };
-
   const formatOnSave = vscode.workspace.onDidSaveTextDocument((textDocument) => {
     if (['.ts', '.js', '.tsx', '.jsx'].includes(path.extname(textDocument.fileName))) {
-      const preConfig = initConfig({log: ['info', 'error']});
+      const preConfig = new ConfigUmarshaller().unmarshal({log: ['info', 'error']});
+
       const logger = new Logger({namespace: 'AutoDep', config: preConfig});
       logger.info({ctx: 'process', message: 'beginning update...'});
       const t1 = performance.now();
 
-      const config = initialise(textDocument.fileName, preConfig);
+      const configLoader = new ConfigurationLoader(preConfig);
+      const depResolver = new DependencyResolver(preConfig);
+      const config = configLoader.loadConfigFromWorkspace(
+        depResolver.resolveClosestConfigFilePath(textDocument.fileName)
+      );
       logger.setConfig(config);
 
       try {
@@ -133,6 +131,7 @@ export function activate(context: vscode.ExtensionContext) {
         logger.info({ctx: 'process', message: 'exiting...'});
         return false;
       }
+
       const t2 = performance.now();
       logger.info({
         ctx: 'process',
