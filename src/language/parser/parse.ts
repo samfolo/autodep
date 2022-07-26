@@ -74,8 +74,6 @@ export class Parser extends AutoDepBase {
       OPEN_BRACKET: this.parseArrayLiteral,
       OPEN_BRACE: this.parseMapLiteral,
     };
-
-    // comment parse function?
   }
 
   parse = () => {

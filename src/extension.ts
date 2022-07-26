@@ -1,3 +1,4 @@
+import path from 'node:path';
 import vscode from 'vscode';
 
 import {AutoDep} from './autodep';
@@ -12,9 +13,11 @@ export function activate(context: vscode.ExtensionContext) {
     // do this later...
   });
 
-  const formatOnSave = vscode.workspace.onDidSaveTextDocument((textDocument) =>
-    autodep.processUpdate(textDocument.fileName)
-  );
+  const formatOnSave = vscode.workspace.onDidSaveTextDocument((textDocument) => {
+    if (['.js', '.ts', '.jsx', '.tsx', '.scss'].includes(path.extname(textDocument.fileName))) {
+      autodep.processUpdate(textDocument.fileName);
+    }
+  });
 
   context.subscriptions.push(main);
   context.subscriptions.push(formatOnSave);
