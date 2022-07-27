@@ -16,28 +16,28 @@ interface DependencyBuilderOptions {
 }
 
 export class DependencyBuilder extends AutoDepBase {
-  private fileName: string;
-  private rootPath: string;
-  private ruleType: 'module' | 'test';
+  private _fileName: string;
+  private _rootPath: string;
+  private _ruleType: 'module' | 'test';
 
   constructor({config, rootPath}: DependencyBuilderOptions) {
     super({config, name: 'DependencyBuilder'});
 
-    this.rootPath = rootPath;
-    this.fileName = path.basename(this.rootPath);
+    this._rootPath = rootPath;
+    this._fileName = path.basename(this._rootPath);
 
-    if (this._config.match.isTest(this.rootPath)) {
-      this.ruleType = 'test';
-    } else if (this._config.match.isModule(this.rootPath)) {
-      this.ruleType = 'module';
+    if (this._config.match.isTest(this._rootPath)) {
+      this._ruleType = 'test';
+    } else if (this._config.match.isModule(this._rootPath)) {
+      this._ruleType = 'module';
     } else {
-      throw new AutoDepError(ErrorType.USER, ErrorMessages.user.unsupportedFileType({path: this.rootPath}));
+      throw new AutoDepError(ErrorType.USER, ErrorMessages.user.unsupportedFileType({path: this._rootPath}));
     }
   }
 
   readonly buildNewFile = (newDeps: string[]) => {
     const root = ast.createRootNode({statements: []});
-    const fileConfig = this._config.onCreate[this.ruleType];
+    const fileConfig = this._config.onCreate[this._ruleType];
 
     if (fileConfig.fileHeading) {
       root.statements.push(this.buildFileHeadingCommentStatement(fileConfig.fileHeading));
@@ -53,14 +53,14 @@ export class DependencyBuilder extends AutoDepBase {
   };
 
   readonly buildNewRule = (newDeps: string[]) => {
-    const fileConfig = this._config.onCreate[this.ruleType];
+    const fileConfig = this._config.onCreate[this._ruleType];
 
     const {name, srcs, deps, visibility, testOnly} = this.getRuleFieldSchema(
       this._config.manage.schema[fileConfig.name]
     );
 
     const buildNameNode = this.schemaBuilderMap[name.as];
-    const buildSrcsNode = this.schemaBuilderMap[srcs.as];
+    const buildSrcsNode = fileConfig.explicitDeps ? this.schemaBuilderMap[srcs.as] : this.schemaBuilderMap.glob;
     const buildDepsNode = this.schemaBuilderMap[deps.as];
     const buildVisibilityNode = this.schemaBuilderMap[visibility.as];
     const buildTestOnlyNode = this.schemaBuilderMap[testOnly.as];
@@ -68,8 +68,8 @@ export class DependencyBuilder extends AutoDepBase {
     return ast.createExpressionStatementNode({
       token: {type: 'RULE_NAME', value: fileConfig.name},
       expression: this.buildCallExpressionNode(fileConfig.name, [
-        this.buildRuleFieldKwargNode(name.value, buildNameNode(path.parse(this.fileName).name)),
-        this.buildRuleFieldKwargNode(srcs.value, buildSrcsNode(this.fileName)),
+        this.buildRuleFieldKwargNode(name.value, buildNameNode(path.parse(this._fileName).name)),
+        this.buildRuleFieldKwargNode(srcs.value, buildSrcsNode(this._fileName)),
         ...(newDeps.length > 0 || !fileConfig.omitEmptyFields
           ? [this.buildRuleFieldKwargNode(deps.value, buildDepsNode(newDeps))]
           : []),
@@ -198,9 +198,29 @@ export class DependencyBuilder extends AutoDepBase {
         : typeof arg === 'boolean'
         ? this.buildBooleanLiteralNode(arg)
         : this.buildBooleanLiteralNode(Boolean(arg)),
-    glob: (arg) =>
-      Array.isArray(arg)
-        ? this.buildCallExpressionNode(SUPPORTED_MANAGED_BUILTINS_LOOKUP.glob, [this.buildArrayNode(arg)])
-        : this.buildCallExpressionNode(SUPPORTED_MANAGED_BUILTINS_LOOKUP.glob, [this.buildArrayNode([String(arg)])]),
+    glob: (arg) => {
+      const globMatcherConfig = this._config.onCreate[this._ruleType].globMatchers;
+
+      let includeMatchers: string[];
+
+      if (Array.isArray(arg)) {
+        includeMatchers =
+          globMatcherConfig.include.length > 0
+            ? globMatcherConfig.include
+            : Array.from(new Set(arg.map((element) => this.toGlobMatcher(String(element)))));
+      } else {
+        includeMatchers =
+          globMatcherConfig.include.length > 0 ? globMatcherConfig.include : [this.toGlobMatcher(String(arg))];
+      }
+
+      const excludeMatchers: string[] | null = globMatcherConfig.exclude.length > 0 ? globMatcherConfig.exclude : null;
+
+      return this.buildCallExpressionNode(SUPPORTED_MANAGED_BUILTINS_LOOKUP.glob, [
+        this.buildArrayNode(includeMatchers),
+        ...(excludeMatchers ? [this.buildArrayNode(excludeMatchers)] : []),
+      ]);
+    },
   };
+
+  private toGlobMatcher = (fileName: string) => `**/*${path.extname(fileName)}`;
 }

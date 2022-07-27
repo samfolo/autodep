@@ -30,6 +30,11 @@ export namespace AutoDepConfig {
       test?: string | string[];
     }
 
+    export interface GlobMatchers {
+      include?: string[];
+      exclude?: string[];
+    }
+
     interface BaseEventFields {
       omitEmptyFields?: boolean;
       subinclude?: string[];
@@ -38,6 +43,7 @@ export namespace AutoDepConfig {
     interface BaseOnCreateFields extends BaseEventFields {
       name?: string;
       explicitDeps?: boolean;
+      globMatchers?: GlobMatchers;
     }
     interface BaseOnUpdateFields extends BaseEventFields {}
 
@@ -91,6 +97,11 @@ export namespace AutoDepConfig {
       isTest: (filePath: string) => boolean;
     }
 
+    export interface GlobMatchers {
+      include: string[];
+      exclude: string[];
+    }
+
     interface BaseEventFields {
       fileHeading: string;
       omitEmptyFields: boolean;
@@ -100,6 +111,7 @@ export namespace AutoDepConfig {
     interface BaseOnCreateFields extends BaseEventFields {
       name: string;
       explicitDeps: boolean;
+      globMatchers: GlobMatchers;
     }
     interface BaseOnUpdateFields extends BaseEventFields {}
     interface ExtraOnCreateFields {

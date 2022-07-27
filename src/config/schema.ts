@@ -180,6 +180,15 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
       properties: {
         name: {type: 'string', nullable: true},
         explicitDeps: {type: 'boolean', nullable: true},
+        globMatchers: {
+          type: 'object',
+          properties: {
+            include: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
+            exclude: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
+          },
+          required: [],
+          nullable: true,
+        },
         fileHeading: {type: 'string', nullable: true},
         omitEmptyFields: {type: 'boolean', nullable: true},
         subinclude: {
@@ -205,6 +214,15 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
           properties: {
             name: {type: 'string', nullable: true},
             explicitDeps: {type: 'boolean', nullable: true},
+            globMatchers: {
+              type: 'object',
+              properties: {
+                include: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
+                exclude: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
+              },
+              required: [],
+              nullable: true,
+            },
             omitEmptyFields: {type: 'boolean', nullable: true},
             subinclude: {
               minItems: 1,
@@ -231,6 +249,14 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
           properties: {
             name: {type: 'string', nullable: true},
             explicitDeps: {type: 'boolean', nullable: true},
+            globMatchers: {
+              type: 'object',
+              properties: {
+                include: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
+                exclude: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
+              },
+              nullable: true,
+            },
             omitEmptyFields: {type: 'boolean', nullable: true},
             subinclude: {
               minItems: 1,

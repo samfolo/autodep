@@ -84,12 +84,34 @@ onCreate:
     omitEmptyFields: true
     initialVisibility:
       - PUBLIC
+    globMatchers:
+      include:
+        - '**/*.js'
+        - '**/*.ts'
+        - '**/*.jsx'
+        - '**/*.tsx'
+      exclude:
+        - '**/*.spec.js'
+        - '**/*.spec.ts'
+        - '**/*.spec.jsx'
+        - '**/*.spec.tsx'
   test:
     name: ops_app_jest
     subinclude:
       - //vault/admin_app/apps/ops:ops_app_jest
     explicitDeps: true
     omitEmptyFields: true
+    globMatchers:
+      include:
+        - '**/*.spec.js'
+        - '**/*.spec.ts'
+        - '**/*.spec.jsx'
+        - '**/*.spec.tsx'
+      exclude:
+        - '**/some/excludeable/file.spec.js'
+        - '**/some/excludeable/file.spec.ts'
+        - '**/some/excludeable/file.spec.jsx'
+        - '**/some/excludeable/file.spec.tsx'
 onUpdate:
   fileHeading: |-
     This is an onUpdate module file heading

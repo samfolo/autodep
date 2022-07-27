@@ -141,6 +141,7 @@ export class ConfigUmarshaller {
     name: this.unmarshalStandardField(DEFAULT_MODULE_RULE_NAME, input?.module?.name ?? input?.name),
     fileHeading: this.unmarshalStandardField('', input?.fileHeading),
     explicitDeps: this.unmarshalStandardField(false, input?.module?.explicitDeps ?? input?.explicitDeps),
+    globMatchers: this.unmarshalOnCreateModuleGlobMatchers(input),
     omitEmptyFields: this.unmarshalStandardField(false, input?.module?.omitEmptyFields ?? input?.omitEmptyFields),
     subinclude: this.unmarshalNullableField(input?.module?.subinclude ?? input?.subinclude),
     testOnly: this.unmarshalNullableField(input?.module?.testOnly ?? input?.testOnly),
@@ -157,6 +158,7 @@ export class ConfigUmarshaller {
     fileHeading: this.unmarshalStandardField('', input?.fileHeading),
     explicitDeps: this.unmarshalStandardField(false, input?.test?.explicitDeps ?? input?.explicitDeps),
     omitEmptyFields: this.unmarshalStandardField(false, input?.test?.omitEmptyFields ?? input?.omitEmptyFields),
+    globMatchers: this.unmarshalOnCreateTestGlobMatchers(input),
     subinclude: this.unmarshalNullableField(input?.test?.subinclude ?? input?.subinclude),
   });
 
@@ -185,6 +187,36 @@ export class ConfigUmarshaller {
 
   private unmarshalInitialVisibility = (defaultValue: readonly string[], input?: string[]): readonly string[] =>
     input ?? defaultValue;
+
+  private unmarshalOnCreateModuleGlobMatchers = (
+    input?: AutoDepConfig.Input.OnCreate
+  ): AutoDepConfig.Output.GlobMatchers =>
+    input?.module?.globMatchers
+      ? {
+          include: input?.module?.globMatchers?.include ?? [],
+          exclude: input?.module?.globMatchers?.exclude ?? [],
+        }
+      : input?.globMatchers?.include
+      ? {
+          include: input?.globMatchers?.include ?? [],
+          exclude: input?.globMatchers?.exclude ?? [],
+        }
+      : {include: [], exclude: []};
+
+  private unmarshalOnCreateTestGlobMatchers = (
+    input?: AutoDepConfig.Input.OnCreate
+  ): AutoDepConfig.Output.GlobMatchers =>
+    input?.test?.globMatchers
+      ? {
+          include: input?.test?.globMatchers?.include ?? [],
+          exclude: input?.test?.globMatchers?.exclude ?? [],
+        }
+      : input?.globMatchers?.include
+      ? {
+          include: input?.globMatchers?.include ?? [],
+          exclude: input?.globMatchers?.exclude ?? [],
+        }
+      : {include: [], exclude: []};
 
   // Utility:
 
