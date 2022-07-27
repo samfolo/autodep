@@ -6,6 +6,7 @@ import {
   DEFAULT_MODULE_RULE_NAME,
   DEFAULT_TEST_FILENAME_MATCHER,
   DEFAULT_TEST_RULE_NAME,
+  DEFAULT_NON_BINARY_OUT_DIR,
 } from '../common/const';
 import {
   ManagedSchemaFieldEntry,
@@ -19,6 +20,11 @@ import {AutoDepConfig} from '../config/types';
 
 export class ConfigUmarshaller {
   unmarshal = (input?: AutoDepConfig.Input.Schema): AutoDepConfig.Output.Schema => ({
+    rootDir: this.unmarshalStandardField('<unknown>', input?.rootDir),
+    outDir: this.unmarshalStandardField(
+      `${input?.rootDir || '<unknown>'}/${DEFAULT_NON_BINARY_OUT_DIR}`,
+      input?.outDir
+    ),
     manage: this.unmarshalManage(input?.manage),
     match: this.unmarshalMatch(input?.match),
     log: this.unmarshalLogLevels(input?.log),

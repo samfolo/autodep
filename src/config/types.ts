@@ -62,6 +62,8 @@ export namespace AutoDepConfig {
     export type Log = LogLevel[];
 
     export interface Schema {
+      rootDir: string;
+      outDir: string;
       manage?: Manage;
       match?: Match;
       log?: Log;
@@ -119,6 +121,8 @@ export namespace AutoDepConfig {
     export type Log = Set<LogLevel>;
 
     export interface Schema {
+      rootDir: string;
+      outDir: string;
       manage: Manage;
       match: Match;
       log: Log;

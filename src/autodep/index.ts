@@ -35,7 +35,7 @@ export class AutoDep extends AutoDepBase {
   ) {
     /* Pass default config to superclass: */
     const unmarshaller = new unmarshallerCls();
-    const _preConfig = unmarshaller.unmarshal({log: ['debug', 'info', 'warn', 'error']});
+    const _preConfig = unmarshaller.unmarshal({log: ['debug', 'info', 'warn', 'error'], rootDir: '', outDir: ''});
     super({config: _preConfig, name: 'AutoDep'});
 
     this._buildFileModelCls = buildFileModelCls;
@@ -58,12 +58,8 @@ export class AutoDep extends AutoDepBase {
       const targetBuildFilePath = this.resolveTargetBuildFilePath(rootPath);
       const newDependencies = this.resolveDeps(rootPath);
       const dependencyToBuildFilePathLookup = this.getNearestBuildFilePaths(newDependencies);
-
-      this.writeUpdatesToFilesystem(
-        rootPath,
-        targetBuildFilePath,
-        this.collectBuildRuleTargets(targetBuildFilePath, dependencyToBuildFilePathLookup)
-      );
+      const buildRuleTargets = this.collectBuildRuleTargets(targetBuildFilePath, dependencyToBuildFilePathLookup);
+      this.writeUpdatesToFilesystem(rootPath, targetBuildFilePath, buildRuleTargets);
 
       this.handleSuccess();
     } catch (error) {

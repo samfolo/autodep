@@ -493,6 +493,8 @@ export class Parser extends AutoDepBase {
       kwargKeyExpression.commentMap.trailing = this.parseTrailingComment('multiline-trail');
     }
 
+    // this might be a point of contention... it treats all known kwargs as reserved words,
+    // meaning if there is a variable will the same name, the system may fail the parse step.
     if (!this.getNextTokenOfTypeOrFail('EQUALS')) {
       return;
     }

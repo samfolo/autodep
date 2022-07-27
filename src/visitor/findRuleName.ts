@@ -1,11 +1,9 @@
-import minimatch from 'minimatch';
 import path from 'path';
 
 import {
   DEFAULT_MODULE_RULE_NAME,
   DEFAULT_TEST_RULE_NAME,
   SUPPORTED_MANAGED_BUILTINS,
-  SUPPORTED_MANAGED_BUILTINS_LOOKUP,
   SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES,
 } from '../common/const';
 import {AutoDepConfig} from '../config/types';
@@ -23,24 +21,29 @@ import {
 } from '../language/ast/types';
 import {ErrorMessages} from '../messages/error';
 import {TaskMessages} from '../messages/task';
+import {NodeQualifier} from './qualify';
 
 interface RuleNameVisitorOptions {
   config: AutoDepConfig.Output.Schema;
   rootPath: string;
 }
 export class RuleNameVisitor extends AutoDepBase {
+  private _nodeQualifierCls: typeof NodeQualifier;
   private _fileName: string;
   private _rootPath: string;
   private _ruleName: string | null;
   private _ruleType: 'module' | 'test';
+  private _nodeQualifier: NodeQualifier;
 
-  constructor({config, rootPath}: RuleNameVisitorOptions) {
+  constructor({config, rootPath}: RuleNameVisitorOptions, nodeQualifierCls: typeof NodeQualifier = NodeQualifier) {
     super({config, name: 'RuleNameVisitor'});
     this._logger.trace({ctx: 'init', message: TaskMessages.initialise.attempt('RuleNameVisitor')});
 
+    this._nodeQualifierCls = nodeQualifierCls;
     this._fileName = path.basename(rootPath);
     this._rootPath = rootPath;
     this._ruleName = null;
+    this._nodeQualifier = new this._nodeQualifierCls({config: this._config, fileName: this._fileName});
 
     if (this._config.match.isTest(this._rootPath)) {
       this._logger.trace({ctx: 'init', message: TaskMessages.identified('a test', `"${this._fileName}"`)});
@@ -81,7 +84,7 @@ export class RuleNameVisitor extends AutoDepBase {
         return node;
     }
 
-    if (this._status === 'success') {
+    if (this._status === 'success' || this._status === 'failed') {
       return result;
     } else {
       this._status = 'failed';
@@ -181,135 +184,15 @@ export class RuleNameVisitor extends AutoDepBase {
     }
 
     const managedSchema = this._config.manage.schema[functionName];
-    const srcsSchemaFieldEntries = managedSchema?.srcs ?? [SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES.SRCS];
+    const srcsAliases = managedSchema?.srcs ?? [SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES.SRCS];
 
     if (node.args?.elements && node.args.elements.length > 0) {
       this._logger.trace({
         ctx: 'visitCallExpressionNode',
         message: TaskMessages.identify.attempt('the target rule', `instance of "${functionName}"`),
       });
-      const isTargetRule = node.args.elements.some((element) => {
-        if (element.kind === 'KeywordArgumentExpression') {
-          for (const srcsAlias of srcsSchemaFieldEntries) {
-            if (element.key.getTokenLiteral() === srcsAlias.value) {
-              this._logger.trace({
-                ctx: 'visitCallExpressionNode',
-                message: TaskMessages.locate.success(`a rule with \`srcs\` alias "${srcsAlias.value}"`),
-              });
 
-              switch (srcsAlias.as) {
-                case 'string':
-                  if (element.value?.kind === 'StringLiteral') {
-                    this._logger.trace({
-                      ctx: 'visitCallExpressionNode',
-                      message: TaskMessages.identified(`a string field`, `\`${functionName}.${srcsAlias.value}\``),
-                    });
-                    const isMatch = element.value.getTokenLiteral() === this._fileName;
-                    this._logger.trace({
-                      ctx: 'visitCallExpressionNode',
-                      message: TaskMessages.locate[isMatch ? 'success' : 'failure'](
-                        `"${this._fileName}" at \`${functionName}.${srcsAlias.value}\``
-                      ),
-                    });
-                    return isMatch;
-                  } else {
-                    this._logger.warn({
-                      ctx: 'visitCallExpressionNode',
-                      message: ErrorMessages.user.buildRuleSchemaMismatch({
-                        ruleName: functionName,
-                        fieldName: 'srcs',
-                        fieldAlias: srcsAlias.value,
-                        expectedFieldType: srcsAlias.as,
-                      }),
-                      details: node.toString(),
-                    });
-                  }
-                  break;
-                case 'array':
-                  if (element.value?.kind === 'ArrayLiteral') {
-                    this._logger.trace({
-                      ctx: 'visitCallExpressionNode',
-                      message: TaskMessages.identified(`an array field`, `\`${functionName}.${srcsAlias.value}\``),
-                    });
-                    const isMatch = element.value.elements?.elements.some((subElement) => {
-                      if (subElement?.kind === 'StringLiteral') {
-                        return subElement.getTokenLiteral() === this._fileName;
-                      }
-                    });
-                    this._logger.trace({
-                      ctx: 'visitCallExpressionNode',
-                      message: TaskMessages.locate[isMatch ? 'success' : 'failure'](
-                        `"${this._fileName}" in \`${functionName}.${srcsAlias.value}\``
-                      ),
-                    });
-                    return isMatch;
-                  } else {
-                    this._logger.warn({
-                      ctx: 'visitCallExpressionNode',
-                      message: ErrorMessages.user.buildRuleSchemaMismatch({
-                        ruleName: functionName,
-                        fieldName: 'srcs',
-                        fieldAlias: srcsAlias.value,
-                        expectedFieldType: srcsAlias.as,
-                      }),
-                      details: node.toString(),
-                    });
-                  }
-                  break;
-                default:
-                  break;
-              }
-
-              if (
-                element.value?.kind === 'CallExpression' &&
-                element.value.functionName?.getTokenLiteral() === SUPPORTED_MANAGED_BUILTINS_LOOKUP.glob
-              ) {
-                this._logger.trace({
-                  ctx: 'visitCallExpressionNode',
-                  message: TaskMessages.identified(
-                    `a \`glob\` builtin field`,
-                    `\`${functionName}.${srcsAlias.value}\``
-                  ),
-                });
-                const isMatch = element.value.args?.elements?.some((arg) => {
-                  if (arg.kind === 'ArrayLiteral') {
-                    // TODO: handle "glob" include-exclude kwargs
-                    return arg.elements?.elements.some((matcher) => {
-                      this._logger.trace({
-                        ctx: 'visitCallExpressionNode',
-                        message: TaskMessages.attempt(
-                          'match',
-                          `${this._fileName} against "${matcher.getTokenLiteral()}"`
-                        ),
-                      });
-                      return minimatch(this._fileName, String(matcher.getTokenLiteral()));
-                    });
-                  }
-                });
-                this._logger.trace({
-                  ctx: 'visitCallExpressionNode',
-                  message: TaskMessages[isMatch ? 'success' : 'failure'](
-                    isMatch ? 'matched' : 'match',
-                    `"${this._fileName}" against a matcher in \`${functionName}.${srcsAlias.value}\``
-                  ),
-                });
-                return isMatch;
-              }
-            }
-
-            this._logger.trace({
-              ctx: 'visitCallExpressionNode',
-              message:
-                TaskMessages.resolve.failure(
-                  `${functionName}(${srcsAlias.value} = <${this._fileName}>)`,
-                  `"${this._fileName}"`
-                ) + ' - continuing...',
-            });
-          }
-        }
-      });
-
-      if (isTargetRule) {
+      if (this._nodeQualifier.isTargetBuildRule(node, functionName, srcsAliases)) {
         this._logger.trace({
           ctx: 'visitCallExpressionNode',
           message: TaskMessages.identify.success(`target BUILD rule for "${this._fileName}"`, functionName),
@@ -335,13 +218,24 @@ export class RuleNameVisitor extends AutoDepBase {
 
   private visitKeywordArgumentExpressionNode = (node: KeywordArgumentExpression, functionName: string) => {
     const managedSchema = this._config.manage.schema[functionName];
-    const nameSchemaFieldEntries = managedSchema?.name ?? [SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES.NAME];
+    const nameAliases = managedSchema?.name ?? [SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES.NAME];
 
-    for (const nameAlias of nameSchemaFieldEntries) {
-      if (node.key.getTokenLiteral() === nameAlias.value && node.value?.kind === 'StringLiteral') {
-        this._status = 'success';
-        this._reason = 'build rule name found';
-        this._ruleName = String(node.value.getTokenLiteral());
+    for (const nameAlias of nameAliases) {
+      if (node.key.getTokenLiteral() === nameAlias.value) {
+        if (node.value?.kind === 'StringLiteral') {
+          this._status = 'success';
+          this._reason = 'build rule name found';
+          this._ruleName = String(node.value.getTokenLiteral());
+        } else {
+          this._nodeQualifier.warnOfBuildSchemaMismatch(
+            'visitKeywordArgumentExpressionNode',
+            node,
+            functionName,
+            nameAlias
+          );
+          this._status = 'failed';
+          this._reason = `"${nameAlias.value}"-aliased \`name\` field found, but was not of type "string"`;
+        }
         break;
       }
     }

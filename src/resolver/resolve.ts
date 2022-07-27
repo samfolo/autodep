@@ -18,6 +18,7 @@ import {CollectDepsDirective, ResolveAbsoluteImportPathsOptions} from './types';
 interface DependencyResolverOptions {
   config: AutoDepConfig.Output.Schema;
 }
+
 export class DependencyResolver extends AutoDepBase {
   constructor({config}: DependencyResolverOptions) {
     super({config, name: 'DependencyResolver'});
@@ -99,7 +100,9 @@ export class DependencyResolver extends AutoDepBase {
             message: TaskMessages.resolve.success(dep, 'dep'),
             details: JSON.stringify(result, null, 2),
           });
-          acc.push(result.output);
+          // In the case an `outDir` path was found,
+          // transform to the equivalent rootDir path:
+          acc.push(this.transformOutDirPathToRootDirPath(result.output));
           fsm.next('success');
           return acc;
         case 'passthrough':
@@ -140,6 +143,29 @@ export class DependencyResolver extends AutoDepBase {
       successfulAttempts,
       failedAttempts,
     };
+  };
+
+  private getExactSubPathMatcher = (exactSubPath: string) => new RegExp(`(?<=/|^)${exactSubPath}(?=/|$)`, 'gi');
+
+  private transformOutDirPathToRootDirPath = (targetPath: string) => {
+    const regexMatcher = this.getExactSubPathMatcher(this._config.outDir);
+
+    if (regexMatcher.test(targetPath)) {
+      const equivalentRootDirPath = targetPath.replace(
+        this.getExactSubPathMatcher(this._config.outDir),
+        this._config.rootDir
+      );
+      this._logger.info({
+        ctx: 'transformOutDirPathToRootDirPath',
+        message:
+          TaskMessages.identified('a generated file', targetPath) +
+          ' - converted to its equivalent root directory path...',
+        details: equivalentRootDirPath,
+      });
+      return equivalentRootDirPath;
+    }
+
+    return targetPath;
   };
 
   /**

@@ -1,3 +1,5 @@
+rootDir: core3
+outDir: core3/plz-out/gen
 manage:
   rules:
     - js_library
@@ -82,7 +84,6 @@ onCreate:
     omitEmptyFields: true
     initialVisibility:
       - PUBLIC
-    testOnly: false
   test:
     name: ops_app_jest
     subinclude:
@@ -95,6 +96,5 @@ onUpdate:
     It even handles multiple lines!
   module:
     omitEmptyFields: true
-    subinclude: []
   test:
     omitEmptyFields: true

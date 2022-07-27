@@ -9,6 +9,8 @@ const ajv = new AnotherJsonSchemaValidator({allowUnionTypes: true, allErrors: tr
 const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
   type: 'object',
   properties: {
+    rootDir: {type: 'string', not: {enum: ['', '<unknown>']}},
+    outDir: {type: 'string', not: {enum: ['', '<unknown>']}},
     manage: {
       type: 'object',
       minProperties: 1,
@@ -292,7 +294,7 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
       nullable: true,
     },
   },
-  required: [],
+  required: ['rootDir'],
 };
 
 export const validateConfigInput = ajv.compile<InputConfig>(AUTODEP_CONFIG_INPUT_SCHEMA);

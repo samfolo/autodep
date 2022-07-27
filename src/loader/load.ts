@@ -76,7 +76,7 @@ export class ConfigurationLoader extends AutoDepBase {
             configPath,
             validationErrors: validateConfigInput.errors,
           });
-          this._config = Object.freeze(this._unmarshaller.unmarshal({}));
+          this._config = Object.freeze(this._unmarshaller.unmarshal());
         }
       } catch (error) {
         this._logger.error({
@@ -87,12 +87,12 @@ export class ConfigurationLoader extends AutoDepBase {
 
         this._status = 'failed';
         this._reason = String(error);
-        this._config = Object.freeze(this._unmarshaller.unmarshal({}));
+        this._config = Object.freeze(this._unmarshaller.unmarshal());
       }
     } else {
       this._status = 'passthrough';
       this._reason = 'no config path passed';
-      this._config = Object.freeze(this._unmarshaller.unmarshal({}));
+      this._config = Object.freeze(this._unmarshaller.unmarshal());
     }
 
     this._logger.debug({

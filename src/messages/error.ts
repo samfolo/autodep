@@ -52,7 +52,7 @@ export class ErrorMessages {
       ` Note, you don't have to double-escape your regex matchers.`,
     buildRuleSchemaMismatch: ({ruleName, fieldName, fieldAlias, expectedFieldType}: BuildRuleSchemaMismatchOptions) =>
       `found "${fieldAlias}"-aliased \`${fieldName}\` field within \`${ruleName ?? '<unknown field>'}\`` +
-      ` rule, but it was not of type "${expectedFieldType}" type.` +
+      ` rule, but it was not of type "${expectedFieldType}".` +
       ` Check your \`<autodepConfig>.manage.schema\` if this is incorrect.`,
     invalidConfig: ({configPath, validationErrors}: InvalidConfigOptions) =>
       `${TaskMessages.failure('validate', configPath)}:\n` +
