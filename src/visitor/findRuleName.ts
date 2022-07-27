@@ -1,5 +1,3 @@
-import path from 'path';
-
 import {
   DEFAULT_MODULE_RULE_NAME,
   DEFAULT_TEST_RULE_NAME,
@@ -7,8 +5,6 @@ import {
   SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES,
 } from '../common/const';
 import {AutoDepConfig} from '../config/types';
-import {AutoDepError, ErrorType} from '../errors/error';
-import {AutoDepBase} from '../inheritance/base';
 import {
   ASTNode,
   Comment,
@@ -19,43 +15,25 @@ import {
   Expression,
   Statement,
 } from '../language/ast/types';
-import {ErrorMessages} from '../messages/error';
+import {DependencyBuilder} from '../language/builder/build';
 import {TaskMessages} from '../messages/task';
+import {VisitorBase} from './base';
 import {NodeQualifier} from './qualify';
 
 interface RuleNameVisitorOptions {
   config: AutoDepConfig.Output.Schema;
   rootPath: string;
 }
-export class RuleNameVisitor extends AutoDepBase {
-  private _nodeQualifierCls: typeof NodeQualifier;
-  private _fileName: string;
-  private _rootPath: string;
+export class RuleNameVisitor extends VisitorBase {
   private _ruleName: string | null;
-  private _ruleType: 'module' | 'test';
-  private _nodeQualifier: NodeQualifier;
 
-  constructor({config, rootPath}: RuleNameVisitorOptions, nodeQualifierCls: typeof NodeQualifier = NodeQualifier) {
-    super({config, name: 'RuleNameVisitor'});
-    this._logger.trace({ctx: 'init', message: TaskMessages.initialise.attempt('RuleNameVisitor')});
-
-    this._nodeQualifierCls = nodeQualifierCls;
-    this._fileName = path.basename(rootPath);
-    this._rootPath = rootPath;
+  constructor(
+    {config, rootPath}: RuleNameVisitorOptions,
+    builderCls: typeof DependencyBuilder = DependencyBuilder,
+    nodeQualifierCls: typeof NodeQualifier = NodeQualifier
+  ) {
+    super({config, rootPath, name: 'RuleNameVisitor'}, builderCls, nodeQualifierCls);
     this._ruleName = null;
-    this._nodeQualifier = new this._nodeQualifierCls({config: this._config, fileName: this._fileName});
-
-    if (this._config.match.isTest(this._rootPath)) {
-      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a test', `"${this._fileName}"`)});
-      this._ruleType = 'test';
-    } else if (this._config.match.isModule(this._rootPath)) {
-      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a module', `"${this._fileName}"`)});
-      this._ruleType = 'module';
-    } else {
-      const message = ErrorMessages.user.unsupportedFileType({path: this._rootPath});
-      this._logger.error({ctx: 'init', message});
-      throw new AutoDepError(ErrorType.USER, message);
-    }
   }
 
   locateRuleName = (node: ASTNode) => {
@@ -198,6 +176,8 @@ export class RuleNameVisitor extends AutoDepBase {
           message: TaskMessages.identify.success(`target BUILD rule for "${this._fileName}"`, functionName),
           details: node.toString(),
         });
+
+        // where the name is found, find the `name` kwarg field and return target if found:
         node.args.elements = node.args.elements.map((element) => {
           if (element.kind === 'KeywordArgumentExpression') {
             return this.visitKeywordArgumentExpressionNode(element, functionName);

@@ -1,5 +1,3 @@
-import path from 'path';
-
 import {
   DEFAULT_MODULE_RULE_NAME,
   DEFAULT_TEST_RULE_NAME,
@@ -23,9 +21,8 @@ import {
 import {createToken} from '../language/tokeniser/tokenise';
 import {DependencyBuilder} from '../language/builder/build';
 import {TaskMessages} from '../messages/task';
-import {ErrorMessages} from '../messages/error';
-import {AutoDepBase} from '../inheritance/base';
 import {NodeQualifier} from './qualify';
+import {VisitorBase} from './base';
 
 interface DependencyUpdateVisitorOptions {
   config: AutoDepConfig.Output.Schema;
@@ -34,45 +31,18 @@ interface DependencyUpdateVisitorOptions {
   builderCls?: typeof DependencyBuilder;
 }
 
-export class DependencyUpdateVisitor extends AutoDepBase {
-  private _builderCls: typeof DependencyBuilder;
-  private _nodeQualifierCls: typeof NodeQualifier;
-  private _builder: DependencyBuilder;
-  private _fileName: string;
+export class DependencyUpdateVisitor extends VisitorBase {
   private _newDeps: string[];
   private _removedDeps: string[];
-  private _rootPath: string;
-  private _ruleType: 'module' | 'test';
-  private _nodeQualifier: NodeQualifier;
 
   constructor(
     {config, rootPath, newDeps}: DependencyUpdateVisitorOptions,
     builderCls: typeof DependencyBuilder = DependencyBuilder,
     nodeQualifierCls: typeof NodeQualifier = NodeQualifier
   ) {
-    super({config, name: 'DependencyUpdateVisitor'});
-    this._logger.trace({ctx: 'init', message: TaskMessages.initialise.attempt('DependencyUpdateVisitor')});
-
-    this._builderCls = builderCls;
-    this._nodeQualifierCls = nodeQualifierCls;
-    this._builder = new this._builderCls({config: this._config, rootPath, newDeps});
-    this._fileName = path.basename(rootPath);
+    super({config, rootPath, name: 'RuleInsertionVisitor'}, builderCls, nodeQualifierCls);
     this._newDeps = newDeps;
     this._removedDeps = [];
-    this._rootPath = rootPath;
-    this._nodeQualifier = new this._nodeQualifierCls({config: this._config, fileName: this._fileName});
-
-    if (this._config.match.isTest(this._rootPath)) {
-      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a test', `"${this._fileName}"`)});
-      this._ruleType = 'test';
-    } else if (this._config.match.isModule(this._rootPath)) {
-      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a module', `"${this._fileName}"`)});
-      this._ruleType = 'module';
-    } else {
-      const message = ErrorMessages.user.unsupportedFileType({path: this._rootPath});
-      this._logger.error({ctx: 'init', message});
-      throw new AutoDepError(ErrorType.USER, message);
-    }
   }
 
   updateDeps = (node: ASTNode) => {
@@ -111,26 +81,9 @@ export class DependencyUpdateVisitor extends AutoDepBase {
   };
 
   private visitRootNode = (node: RootNode) => {
-    // We need to check whether the first line of any config `fileHeading` is the same as
-    // the first line in the file:
     const onUpdateFileHeading = this._config.onUpdate[this._ruleType].fileHeading ?? '';
-    const firstLineOfOnUpdateFileHeading = `# ${onUpdateFileHeading.split('\n')[0]}`;
 
-    const onCreateFileHeading = this._config.onCreate[this._ruleType].fileHeading ?? '';
-    const firstLineOfOnCreateFileHeading = `# ${onCreateFileHeading.split('\n')[0]}`;
-
-    const firstStatement = node.statements[0];
-
-    const hasOnUpdateCommentHeading = firstLineOfOnUpdateFileHeading.startsWith(
-      String(firstStatement?.getTokenLiteral())
-    );
-    const hasOnCreateCommentHeading = firstLineOfOnCreateFileHeading.startsWith(
-      String(firstStatement?.getTokenLiteral())
-    );
-
-    const hasCommentHeading = hasOnCreateCommentHeading || hasOnUpdateCommentHeading;
-
-    if (firstStatement?.kind === 'CommentStatement' && hasCommentHeading) {
+    if (this.shouldUpdateCommentHeading(node, onUpdateFileHeading)) {
       const [, ...nonFileHeadingStatements] = node.statements;
 
       node.statements = [

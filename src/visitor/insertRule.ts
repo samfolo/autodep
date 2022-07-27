@@ -9,11 +9,10 @@ import {
 } from '../language/ast/types';
 import {AutoDepConfig} from '../config/types';
 import {SUPPORTED_MANAGED_BUILTINS_LOOKUP} from '../common/const';
-import {AutoDepError, ErrorType} from '../errors/error';
 import {DependencyBuilder} from '../language/builder/build';
 import {TaskMessages} from '../messages/task';
-import {ErrorMessages} from '../messages/error';
-import {AutoDepBase} from '../inheritance/base';
+import {NodeQualifier} from './qualify';
+import {VisitorBase} from './base';
 
 interface RuleInsertionVisitorOptions {
   config: AutoDepConfig.Output.Schema;
@@ -21,33 +20,18 @@ interface RuleInsertionVisitorOptions {
   newDeps: string[];
 }
 
-export class RuleInsertionVisitor extends AutoDepBase {
-  private _builderCls: typeof DependencyBuilder;
-  private _builder: DependencyBuilder;
+export class RuleInsertionVisitor extends VisitorBase {
   private _didUpdateSubinclude: boolean;
-  private _rootPath: string;
-  private _ruleType: 'module' | 'test';
+  private _newDeps: string[];
 
   constructor(
     {config, rootPath, newDeps}: RuleInsertionVisitorOptions,
-    builderCls: typeof DependencyBuilder = DependencyBuilder
+    builderCls: typeof DependencyBuilder = DependencyBuilder,
+    nodeQualifierCls: typeof NodeQualifier = NodeQualifier
   ) {
-    super({config, name: 'RuleInsertionVisitor'});
-    this._logger.trace({ctx: 'init', message: TaskMessages.initialise.attempt('RuleInsertionVisitor')});
-
-    this._builderCls = builderCls;
-
-    this._builder = new this._builderCls({config: this._config, rootPath, newDeps});
+    super({config, rootPath, name: 'RuleInsertionVisitor'}, builderCls, nodeQualifierCls);
     this._didUpdateSubinclude = false;
-    this._rootPath = rootPath;
-
-    if (this._config.match.isTest(this._rootPath)) {
-      this._ruleType = 'test';
-    } else if (this._config.match.isModule(this._rootPath)) {
-      this._ruleType = 'module';
-    } else {
-      throw new AutoDepError(ErrorType.USER, ErrorMessages.user.unsupportedFileType({path: this._rootPath}));
-    }
+    this._newDeps = newDeps;
   }
 
   insertRule = (node: ASTNode) => {
@@ -86,26 +70,9 @@ export class RuleInsertionVisitor extends AutoDepBase {
   };
 
   private visitRootNode = (node: RootNode) => {
-    // We need to check whether the first line of any config `fileHeading` is the same as
-    // the first line in the file:
     const onUpdateFileHeading = this._config.onUpdate[this._ruleType].fileHeading ?? '';
-    const firstLineOfOnUpdateFileHeading = `# ${onUpdateFileHeading.split('\n')[0]}`;
 
-    const onCreateFileHeading = this._config.onCreate[this._ruleType].fileHeading ?? '';
-    const firstLineOfOnCreateFileHeading = `# ${onCreateFileHeading.split('\n')[0]}`;
-
-    const firstStatement = node.statements[0];
-
-    const hasOnUpdateCommentHeading = firstLineOfOnUpdateFileHeading.startsWith(
-      String(firstStatement?.getTokenLiteral())
-    );
-    const hasOnCreateCommentHeading = firstLineOfOnCreateFileHeading.startsWith(
-      String(firstStatement?.getTokenLiteral())
-    );
-
-    const hasCommentHeading = hasOnCreateCommentHeading || hasOnUpdateCommentHeading;
-
-    if (firstStatement?.kind === 'CommentStatement' && hasCommentHeading) {
+    if (this.shouldUpdateCommentHeading(node, onUpdateFileHeading)) {
       const [, ...nonFileHeadingStatements] = node.statements;
 
       node.statements = [
@@ -119,7 +86,7 @@ export class RuleInsertionVisitor extends AutoDepBase {
       ];
     }
 
-    node.statements.push(this._builder.buildNewRule());
+    node.statements.push(this._builder.buildNewRule(this._newDeps));
 
     this._status = 'success';
     this._reason = 'new rule successfully inserted into given file';

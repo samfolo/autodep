@@ -175,8 +175,7 @@ export class Writer extends AutoDepBase {
     const ast = new this._dependencyBuilderCls({
       config: this._config,
       rootPath: this._rootPath,
-      newDeps: this._newDeps,
-    }).buildNewFile();
+    }).buildNewFile(this._newDeps);
 
     writeFileSync(this._targetBuildFilePath, ast.toString(), {encoding: 'utf-8', flag: 'w'});
   };

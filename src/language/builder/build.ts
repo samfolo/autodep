@@ -13,21 +13,18 @@ import * as ast from '../ast/utils';
 interface DependencyBuilderOptions {
   config: AutoDepConfig.Output.Schema;
   rootPath: string;
-  newDeps: string[];
 }
 
 export class DependencyBuilder extends AutoDepBase {
   private fileName: string;
-  private newDeps: string[];
   private rootPath: string;
   private ruleType: 'module' | 'test';
 
-  constructor({config, rootPath, newDeps}: DependencyBuilderOptions) {
+  constructor({config, rootPath}: DependencyBuilderOptions) {
     super({config, name: 'DependencyBuilder'});
 
     this.rootPath = rootPath;
     this.fileName = path.basename(this.rootPath);
-    this.newDeps = newDeps;
 
     if (this._config.match.isTest(this.rootPath)) {
       this.ruleType = 'test';
@@ -38,7 +35,7 @@ export class DependencyBuilder extends AutoDepBase {
     }
   }
 
-  readonly buildNewFile = () => {
+  readonly buildNewFile = (newDeps: string[]) => {
     const root = ast.createRootNode({statements: []});
     const fileConfig = this._config.onCreate[this.ruleType];
 
@@ -50,12 +47,12 @@ export class DependencyBuilder extends AutoDepBase {
       root.statements.push(this.buildSubincludeStatement(fileConfig.subinclude));
     }
 
-    root.statements.push(this.buildNewRule());
+    root.statements.push(this.buildNewRule(newDeps));
 
     return root;
   };
 
-  readonly buildNewRule = () => {
+  readonly buildNewRule = (newDeps: string[]) => {
     const fileConfig = this._config.onCreate[this.ruleType];
 
     const {name, srcs, deps, visibility, testOnly} = this.getRuleFieldSchema(
@@ -73,8 +70,8 @@ export class DependencyBuilder extends AutoDepBase {
       expression: this.buildCallExpressionNode(fileConfig.name, [
         this.buildRuleFieldKwargNode(name.value, buildNameNode(path.parse(this.fileName).name)),
         this.buildRuleFieldKwargNode(srcs.value, buildSrcsNode(this.fileName)),
-        ...(this.newDeps.length > 0 || !fileConfig.omitEmptyFields
-          ? [this.buildRuleFieldKwargNode(deps.value, buildDepsNode(this.newDeps))]
+        ...(newDeps.length > 0 || !fileConfig.omitEmptyFields
+          ? [this.buildRuleFieldKwargNode(deps.value, buildDepsNode(newDeps))]
           : []),
         ...('initialVisibility' in fileConfig && fileConfig.initialVisibility
           ? [this.buildRuleFieldKwargNode(visibility.value, buildVisibilityNode(fileConfig.initialVisibility))]
