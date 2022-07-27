@@ -62,12 +62,9 @@ export class VisitorBase extends AutoDepBase {
 
     const firstStatement = node.statements[0];
 
-    const hasOnUpdateCommentHeading = firstLineOfOnUpdateFileHeading.startsWith(
-      String(firstStatement?.getTokenLiteral())
-    );
-    const hasOnCreateCommentHeading = firstLineOfOnCreateFileHeading.startsWith(
-      String(firstStatement?.getTokenLiteral())
-    );
+    const firstStatementLiteral = String(firstStatement?.getTokenLiteral());
+    const hasOnUpdateCommentHeading = firstLineOfOnUpdateFileHeading.startsWith(firstStatementLiteral);
+    const hasOnCreateCommentHeading = firstLineOfOnCreateFileHeading.startsWith(firstStatementLiteral);
 
     const hasCommentHeading = hasOnCreateCommentHeading || hasOnUpdateCommentHeading;
 
