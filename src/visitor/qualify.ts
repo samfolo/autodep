@@ -55,7 +55,7 @@ export class NodeQualifier extends AutoDepBase {
 
     return node.args.elements.some((element) => {
       if (element.kind === 'KeywordArgumentExpression') {
-        for (const srcsAlias of srcsAliases) {
+        return [...srcsAliases].some((srcsAlias) => {
           if (element.key.getTokenLiteral() === srcsAlias.value) {
             this._logger.trace({
               ctx: 'isTargetBuildRule',
@@ -90,16 +90,17 @@ export class NodeQualifier extends AutoDepBase {
           }
 
           this._logger.trace({
-            ctx: 'visitCallExpressionNode',
+            ctx: 'isTargetBuildRule',
             message:
               TaskMessages.resolve.failure(
                 `${functionName}(${srcsAlias.value} = <${this._fileName}>)`,
                 `"${this._fileName}"`
               ) + ' - continuing...',
+            details: node.toString(),
           });
 
           return false;
-        }
+        });
       }
 
       return false;
@@ -205,7 +206,7 @@ export class NodeQualifier extends AutoDepBase {
     const isDefaultTestRule = this._ruleType === 'test' && functionName !== DEFAULT_TEST_RULE_NAME;
 
     this._logger.trace({
-      ctx: 'visitCallExpressionNode',
+      ctx: 'isManagedNode',
       message: TaskMessages.success('entered', 'CallExpression'),
       details: JSON.stringify(
         {
@@ -220,6 +221,6 @@ export class NodeQualifier extends AutoDepBase {
       ),
     });
 
-    return !(isManagedRule || isManagedBuiltin || isDefaultModuleRule || isDefaultTestRule);
+    return isManagedRule || isManagedBuiltin || isDefaultModuleRule || isDefaultTestRule;
   };
 }

@@ -35,7 +35,7 @@ export class DependencyUpdateVisitor extends VisitorBase {
     builderCls: typeof DependencyBuilder = DependencyBuilder,
     nodeQualifierCls: typeof NodeQualifier = NodeQualifier
   ) {
-    super({config, rootPath, name: 'RuleInsertionVisitor'}, builderCls, nodeQualifierCls);
+    super({config, rootPath, name: 'DependencyUpdateVisitor'}, builderCls, nodeQualifierCls);
     this._newDeps = newDeps;
     this._removedDeps = [];
   }

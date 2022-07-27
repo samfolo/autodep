@@ -123,9 +123,17 @@ export class Writer extends AutoDepBase {
 
     switch (result.status) {
       case 'success':
+        this._logger.trace({
+          ctx: 'processUpdate',
+          message: TaskMessages.update.success(this._targetBuildFilePath, 'new BUILD dependencies'),
+        });
         writeFileSync(this._targetBuildFilePath, updatedAST.toString(), {encoding: 'utf-8', flag: 'w'});
         return true;
       case 'failed':
+        this._logger.trace({
+          ctx: 'processUpdate',
+          message: TaskMessages.update.failure(this._targetBuildFilePath, 'new BUILD dependencies'),
+        });
         return false;
       case 'passthrough':
       case 'idle':

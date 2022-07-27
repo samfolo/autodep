@@ -217,7 +217,7 @@ export class DependencyBuilder extends AutoDepBase {
 
       return this.buildCallExpressionNode(SUPPORTED_MANAGED_BUILTINS_LOOKUP.glob, [
         this.buildArrayNode(includeMatchers),
-        ...(excludeMatchers ? [this.buildArrayNode(excludeMatchers)] : []),
+        ...(excludeMatchers ? [this.buildRuleFieldKwargNode('exclude', this.buildArrayNode(excludeMatchers))] : []),
       ]);
     },
   };
