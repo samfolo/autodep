@@ -1,9 +1,4 @@
-import {
-  DEFAULT_MODULE_RULE_NAME,
-  DEFAULT_TEST_RULE_NAME,
-  SUPPORTED_MANAGED_BUILTINS,
-  SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES,
-} from '../common/const';
+import {SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES} from '../common/const';
 import {AutoDepConfig} from '../config/types';
 import {
   ASTNode,
@@ -136,28 +131,7 @@ export class RuleNameVisitor extends VisitorBase {
   private visitCallExpressionNode = (node: CallExpression) => {
     const functionName = String(node.functionName?.getTokenLiteral() ?? '');
 
-    const isManagedRule = this._config.manage.rules.has(functionName);
-    const isManagedBuiltin = SUPPORTED_MANAGED_BUILTINS.some((builtin) => functionName === builtin);
-    const isDefaultModuleRule = this._ruleType === 'module' && functionName === DEFAULT_MODULE_RULE_NAME;
-    const isDefaultTestRule = this._ruleType === 'test' && functionName !== DEFAULT_TEST_RULE_NAME;
-
-    this._logger.trace({
-      ctx: 'visitCallExpressionNode',
-      message: TaskMessages.success('entered', 'CallExpression'),
-      details: JSON.stringify(
-        {
-          functionName,
-          isManagedRule,
-          isManagedBuiltin,
-          isDefaultModuleRule,
-          isDefaultTestRule,
-        },
-        null,
-        2
-      ),
-    });
-
-    if (!isManagedRule && !isManagedBuiltin && !isDefaultModuleRule && !isDefaultTestRule) {
+    if (!this._nodeQualifier.isManagedNode(node)) {
       return node;
     }
 

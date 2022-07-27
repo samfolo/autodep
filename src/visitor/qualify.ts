@@ -1,9 +1,15 @@
 import minimatch from 'minimatch';
 import path from 'path';
 
-import {SUPPORTED_MANAGED_BUILTINS_LOOKUP} from '../common/const';
+import {
+  DEFAULT_MODULE_RULE_NAME,
+  DEFAULT_TEST_RULE_NAME,
+  SUPPORTED_MANAGED_BUILTINS,
+  SUPPORTED_MANAGED_BUILTINS_LOOKUP,
+} from '../common/const';
 import {ManagedSchemaFieldEntry} from '../common/types';
 import {AutoDepConfig} from '../config/types';
+import {AutoDepError, ErrorType} from '../errors/error';
 import {AutoDepBase} from '../inheritance/base';
 import {CallExpression, Expression, ArrayLiteral, StringLiteral} from '../language/ast/types';
 import {ErrorMessages} from '../messages/error';
@@ -11,16 +17,35 @@ import {TaskMessages} from '../messages/task';
 
 interface NodeQualifierOptions {
   config: AutoDepConfig.Output.Schema;
-  fileName: string;
+  rootPath: string;
 }
 
 export class NodeQualifier extends AutoDepBase {
+  private _ruleType: 'module' | 'test';
+  private _rootPath: string;
   private _fileName: string;
 
-  constructor({config, fileName}: NodeQualifierOptions) {
+  constructor({config, rootPath}: NodeQualifierOptions) {
     super({config, name: 'NodeQualifier'});
 
-    this._fileName = path.basename(fileName);
+    this._rootPath = rootPath;
+    this._fileName = path.basename(this._rootPath);
+
+    if (this._config.match.isTest(this._rootPath)) {
+      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a test', `"${this._fileName}"`)});
+      this._ruleType = 'test';
+    } else if (this._config.match.isModule(this._rootPath)) {
+      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a module', `"${this._fileName}"`)});
+      this._ruleType = 'module';
+    } else {
+      const message = ErrorMessages.user.unsupportedFileType({path: this._rootPath});
+      this._logger.error({ctx: 'init', message});
+      throw new AutoDepError(ErrorType.USER, message);
+    }
+  }
+
+  get ruleType() {
+    return this._ruleType;
   }
 
   isTargetBuildRule = (node: CallExpression, functionName: string, srcsAliases: Set<ManagedSchemaFieldEntry>) => {
@@ -170,4 +195,31 @@ export class NodeQualifier extends AutoDepBase {
       }),
       details: node.toString(),
     });
+
+  isManagedNode = (node: CallExpression) => {
+    const functionName = String(node.functionName?.getTokenLiteral() ?? '');
+
+    const isManagedRule = this._config.manage.rules.has(functionName);
+    const isManagedBuiltin = SUPPORTED_MANAGED_BUILTINS.some((builtin) => functionName === builtin);
+    const isDefaultModuleRule = this._ruleType === 'module' && functionName === DEFAULT_MODULE_RULE_NAME;
+    const isDefaultTestRule = this._ruleType === 'test' && functionName !== DEFAULT_TEST_RULE_NAME;
+
+    this._logger.trace({
+      ctx: 'visitCallExpressionNode',
+      message: TaskMessages.success('entered', 'CallExpression'),
+      details: JSON.stringify(
+        {
+          functionName,
+          isManagedRule,
+          isManagedBuiltin,
+          isDefaultModuleRule,
+          isDefaultTestRule,
+        },
+        null,
+        2
+      ),
+    });
+
+    return !(isManagedRule || isManagedBuiltin || isDefaultModuleRule || isDefaultTestRule);
+  };
 }

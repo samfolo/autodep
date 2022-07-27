@@ -1,12 +1,10 @@
 import path from 'path';
-
 import {AutoDepConfig} from '../config/types';
-import {AutoDepError, ErrorType} from '../errors/error';
 import {AutoDepBase} from '../inheritance/base';
 import {RootNode} from '../language/ast/types';
 import {DependencyBuilder} from '../language/builder/build';
-import {ErrorMessages} from '../messages/error';
 import {TaskMessages} from '../messages/task';
+
 import {NodeQualifier} from './qualify';
 
 interface VisitorBaseOptions {
@@ -22,7 +20,6 @@ export class VisitorBase extends AutoDepBase {
   protected _rootPath: string;
   protected _fileName: string;
   protected _nodeQualifier: NodeQualifier;
-  protected _ruleType: 'module' | 'test';
 
   constructor(
     {config, name, rootPath}: VisitorBaseOptions,
@@ -37,19 +34,7 @@ export class VisitorBase extends AutoDepBase {
     this._builder = new this._builderCls({config: this._config, rootPath});
     this._rootPath = rootPath;
     this._fileName = path.basename(this._rootPath);
-    this._nodeQualifier = new this._nodeQualifierCls({config: this._config, fileName: this._fileName});
-
-    if (this._config.match.isTest(this._rootPath)) {
-      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a test', `"${this._fileName}"`)});
-      this._ruleType = 'test';
-    } else if (this._config.match.isModule(this._rootPath)) {
-      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a module', `"${this._fileName}"`)});
-      this._ruleType = 'module';
-    } else {
-      const message = ErrorMessages.user.unsupportedFileType({path: this._rootPath});
-      this._logger.error({ctx: 'init', message});
-      throw new AutoDepError(ErrorType.USER, message);
-    }
+    this._nodeQualifier = new this._nodeQualifierCls({config: this._config, rootPath: this._rootPath});
   }
 
   // We need to check whether the first line of any config `fileHeading` is the same as
@@ -57,7 +42,7 @@ export class VisitorBase extends AutoDepBase {
   protected shouldUpdateCommentHeading = (node: RootNode, newFileHeading: string) => {
     const firstLineOfOnUpdateFileHeading = `# ${newFileHeading.split('\n')[0]}`;
 
-    const onCreateFileHeading = this._config.onCreate[this._ruleType].fileHeading ?? '';
+    const onCreateFileHeading = this._config.onCreate[this._nodeQualifier.ruleType].fileHeading ?? '';
     const firstLineOfOnCreateFileHeading = `# ${onCreateFileHeading.split('\n')[0]}`;
 
     const firstStatement = node.statements[0];

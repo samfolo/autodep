@@ -70,7 +70,7 @@ export class RuleInsertionVisitor extends VisitorBase {
   };
 
   private visitRootNode = (node: RootNode) => {
-    const onUpdateFileHeading = this._config.onUpdate[this._ruleType].fileHeading ?? '';
+    const onUpdateFileHeading = this._config.onUpdate[this._nodeQualifier.ruleType].fileHeading ?? '';
 
     if (this.shouldUpdateCommentHeading(node, onUpdateFileHeading)) {
       const [, ...nonFileHeadingStatements] = node.statements;
@@ -134,7 +134,7 @@ export class RuleInsertionVisitor extends VisitorBase {
       !this._didUpdateSubinclude &&
       node.functionName?.getTokenLiteral() === SUPPORTED_MANAGED_BUILTINS_LOOKUP.subinclude
     ) {
-      const newSubincludes = this._config.onUpdate[this._ruleType].subinclude;
+      const newSubincludes = this._config.onUpdate[this._nodeQualifier.ruleType].subinclude;
 
       if (node.args?.elements && node.args.elements.length > 0 && Array.isArray(newSubincludes)) {
         const seen = new Set();
@@ -167,6 +167,6 @@ export class RuleInsertionVisitor extends VisitorBase {
     Object.seal({
       status: this._status,
       reason: this._reason,
-      ruleType: this._ruleType,
+      ruleType: this._nodeQualifier.ruleType,
     });
 }
