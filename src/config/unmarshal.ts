@@ -1,3 +1,4 @@
+import {CompilerOptions} from 'typescript';
 import {
   DEFAULT_INITIAL_VISIBILITY,
   KNOWN_RULE_FIELD_NAMES,
@@ -19,7 +20,10 @@ import {
 import {AutoDepConfig} from '../config/types';
 
 export class ConfigUmarshaller {
-  unmarshal = (input?: AutoDepConfig.Input.Schema): AutoDepConfig.Output.Schema => ({
+  unmarshal = (
+    input?: AutoDepConfig.Input.Schema,
+    tsCompilerOptions: CompilerOptions = {}
+  ): AutoDepConfig.Output.Schema => ({
     rootDir: this.unmarshalStandardField('<unknown>', input?.rootDir),
     outDir: this.unmarshalStandardField(
       `${input?.rootDir || '<unknown>'}/${DEFAULT_NON_BINARY_OUT_DIR}`,
@@ -28,11 +32,12 @@ export class ConfigUmarshaller {
     manage: this.unmarshalManage(input?.manage),
     match: this.unmarshalMatch(input?.match),
     log: this.unmarshalLogLevels(input?.log),
-    paths: this.unmarshalPathsSection(input?.paths),
+    paths: this.unmarshalPathsSection(tsCompilerOptions.paths),
     excludeNodeModules: this.unmarshalExcludeNodeModules(input?.excludeNodeModules),
     enablePropagation: this.unmarshalEnablePropagation(input?.enablePropagation),
     onCreate: this.unmarshalOnCreate(input?.onCreate),
     onUpdate: this.unmarshalOnUpdate(input?.onUpdate),
+    _tsCompilerOptions: tsCompilerOptions,
     toString: function () {
       return JSON.stringify(
         this,

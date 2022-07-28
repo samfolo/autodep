@@ -1,3 +1,4 @@
+import typescript from 'typescript';
 import {
   EnablePropagation,
   ExcludeNodeModules,
@@ -73,7 +74,6 @@ export namespace AutoDepConfig {
       manage?: Manage;
       match?: Match;
       log?: Log;
-      paths?: Paths;
       excludeNodeModules?: ExcludeNodeModules;
       enablePropagation?: EnablePropagation;
       onCreate?: OnCreate;
@@ -143,6 +143,7 @@ export namespace AutoDepConfig {
       enablePropagation: EnablePropagation;
       onCreate: OnCreate;
       onUpdate: OnUpdate;
+      _tsCompilerOptions: typescript.CompilerOptions;
       toString: () => string;
     }
   }

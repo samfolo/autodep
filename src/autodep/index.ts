@@ -67,12 +67,11 @@ export class AutoDep extends AutoDepBase {
     }
   };
 
-  private initialise = (rootPath: string) => {
-    this._logger.info({ctx: 'initialise', message: 'beginning update...'});
-    this._startTime = performance.now();
-
+  private loadAutoDepConfig = (rootPath: string) => {
     this._logger.info({ctx: 'initialise', message: TaskMessages.attempt('load', 'config from workspace...')});
-    const result = this._configLoader.loadConfigFromWorkspace(this._depResolver.resolveClosestConfigFilePath(rootPath));
+    const result = this._configLoader.loadAutoDepConfigFromWorkspace(
+      this._depResolver.resolveClosestConfigFilePath(rootPath)
+    );
 
     switch (result.status) {
       case 'success':
@@ -86,6 +85,40 @@ export class AutoDep extends AutoDepBase {
     }
 
     return result.output;
+  };
+
+  private loadTSConfig = (rootPath: string) => {
+    this._logger.info({
+      ctx: 'initialise',
+      message: TaskMessages.attempt('load', 'TypeScript config from workspace...'),
+    });
+    const result = this._configLoader.loadTsConfigFromWorkspace(rootPath);
+
+    switch (result.status) {
+      case 'success':
+        this._logger.info({
+          ctx: 'initialise',
+          message: TaskMessages.success('loaded', 'typesript config from workspace'),
+          details: JSON.stringify(result.output, null, 2),
+        });
+        this._logger.debug({
+          ctx: 'initialise',
+          message: TaskMessages.using('the following typesript config'),
+          details: JSON.stringify(result.output, null, 2),
+        });
+        return result.output;
+      case 'failed':
+      case 'passthrough':
+        throw new AutoDepError(ErrorType.FAILED_PRECONDITION, result.reason);
+    }
+  };
+
+  private initialise = (rootPath: string) => {
+    this._logger.info({ctx: 'initialise', message: 'beginning update...'});
+    this._startTime = performance.now();
+
+    this.loadTSConfig(rootPath);
+    this.loadAutoDepConfig(rootPath);
   };
 
   private resolveTargetBuildFilePath = (rootPath: string) => {

@@ -1,6 +1,5 @@
 import path from 'node:path';
 import vscode from 'vscode';
-
 import {AutoDep} from './autodep';
 
 // this method is called when your extension is activated

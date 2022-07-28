@@ -185,7 +185,8 @@ export class RuleNameVisitor extends VisitorBase {
             'visitKeywordArgumentExpressionNode',
             node,
             functionName,
-            nameAlias
+            nameAlias.value,
+            nameAlias.as
           );
           this._status = 'failed';
           this._reason = `"${nameAlias.value}"-aliased \`name\` field found, but was not of type "string"`;

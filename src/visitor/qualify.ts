@@ -55,38 +55,64 @@ export class NodeQualifier extends AutoDepBase {
 
     return node.args.elements.some((element) => {
       if (element.kind === 'KeywordArgumentExpression') {
-        return [...srcsAliases].some((srcsAlias) => {
-          if (element.key.getTokenLiteral() === srcsAlias.value) {
-            this._logger.trace({
-              ctx: 'isTargetBuildRule',
-              message: TaskMessages.locate.success(`a rule with \`srcs\` alias "${srcsAlias.value}"`),
-            });
+        const iterableAliases = [...srcsAliases];
+        const relevantAliases = iterableAliases.filter((alias) => alias.value === element.key.getTokenLiteral());
+        const permittedTypeUnion = relevantAliases.map((alias) => alias.as).join('|');
 
-            switch (srcsAlias.as) {
-              case 'string':
-                if (element.value?.kind === 'StringLiteral') {
-                  return this.isTargetStringSrcsField(element.value, functionName, srcsAlias);
-                } else {
-                  this.warnOfBuildSchemaMismatch('isTargetBuildRule', node, functionName, srcsAlias);
+        return relevantAliases.some((srcsAlias) => {
+          this._logger.trace({
+            ctx: 'isTargetBuildRule',
+            message: TaskMessages.locate.success(`a rule with \`srcs\` alias "${srcsAlias.value}"`),
+          });
+
+          switch (srcsAlias.as) {
+            case 'string':
+              if (element.value?.kind === 'StringLiteral') {
+                return this.isTargetStringSrcsField(element.value, functionName, srcsAlias);
+              } else {
+                if (!relevantAliases.find((alias) => alias.as === srcsAlias.as)) {
+                  this.warnOfBuildSchemaMismatch(
+                    'isTargetBuildRule',
+                    node,
+                    functionName,
+                    srcsAlias.value,
+                    permittedTypeUnion
+                  );
                 }
-                break;
-              case 'array':
-                if (element.value?.kind === 'ArrayLiteral') {
-                  return this.isTargetArraySrcsField(element.value, functionName, srcsAlias);
-                } else {
-                  this.warnOfBuildSchemaMismatch('isTargetBuildRule', node, functionName, srcsAlias);
+              }
+              break;
+            case 'array':
+              if (element.value?.kind === 'ArrayLiteral') {
+                return this.isTargetArraySrcsField(element.value, functionName, srcsAlias);
+              } else {
+                if (!relevantAliases.find((alias) => alias.as === srcsAlias.as)) {
+                  this.warnOfBuildSchemaMismatch(
+                    'isTargetBuildRule',
+                    node,
+                    functionName,
+                    srcsAlias.value,
+                    permittedTypeUnion
+                  );
                 }
-                break;
-              case 'glob':
-                if (this.isGlobDeclaration(element.value)) {
-                  return this.isTargetGlobSrcsField(element.value, functionName, srcsAlias);
-                } else {
-                  this.warnOfBuildSchemaMismatch('isTargetBuildRule', node, functionName, srcsAlias);
+              }
+              break;
+            case 'glob':
+              if (this.isGlobDeclaration(element.value)) {
+                return this.isTargetGlobSrcsField(element.value, functionName, srcsAlias);
+              } else {
+                if (!relevantAliases.find((alias) => alias.as === srcsAlias.as)) {
+                  this.warnOfBuildSchemaMismatch(
+                    'isTargetBuildRule',
+                    node,
+                    functionName,
+                    srcsAlias.value,
+                    permittedTypeUnion
+                  );
                 }
-                break;
-              default:
-                break;
-            }
+              }
+              break;
+            default:
+              break;
           }
 
           this._logger.trace({
@@ -185,14 +211,20 @@ export class NodeQualifier extends AutoDepBase {
       return minimatch(this._fileName, String(matcher.getTokenLiteral()));
     });
 
-  warnOfBuildSchemaMismatch = (ctx: string, node: Expression, functionName: string, alias: ManagedSchemaFieldEntry) =>
+  warnOfBuildSchemaMismatch = (
+    ctx: string,
+    node: Expression,
+    functionName: string,
+    fieldAlias: string,
+    expectedFieldType: string
+  ) =>
     this._logger.warn({
       ctx,
       message: ErrorMessages.user.buildRuleSchemaMismatch({
         ruleName: functionName,
         fieldName: 'srcs',
-        fieldAlias: alias.value,
-        expectedFieldType: alias.as,
+        fieldAlias,
+        expectedFieldType,
       }),
       details: node.toString(),
     });

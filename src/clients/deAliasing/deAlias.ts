@@ -9,7 +9,7 @@ import {PackageAlias, PackageName, DeAliasingClientOptions} from './types';
 
 interface DeAliasResult {
   output: string;
-  method: 'package-name-cache' | 'known-config-alias' | 'local-module-resolution' | 'passthrough';
+  method: 'package-name-cache' | 'known-config-alias' | 'local-module-resolution' | 'third-party' | 'passthrough';
 }
 
 export class DeAliasingClient extends AutoDepBase {
@@ -87,6 +87,12 @@ export class DeAliasingClient extends AutoDepBase {
         ),
       });
     }
+
+    this._logger.trace({
+      ctx: 'init',
+      message: TaskMessages.using('the following package name cache:'),
+      details: JSON.stringify(this._packageNameCache, null, 2),
+    });
   }
 
   get packageNames(): string[] {
@@ -101,11 +107,13 @@ export class DeAliasingClient extends AutoDepBase {
     return this._packageAliases;
   }
 
+  private isRelative = (path: string) => ['/', './', '../'].some((start) => path.startsWith(start));
+
   deAlias = (dep: string, supportedExtensions: string[]): DeAliasResult => {
     const relativeRequire = createRequire(this._filePath);
 
-    if (path.isAbsolute(dep)) {
-      this._logger.trace({ctx: 'deAlias', message: TaskMessages.identified('an absolute path', dep)});
+    if (!this.isRelative(dep)) {
+      this._logger.trace({ctx: 'deAlias', message: TaskMessages.identify.failure('a relative path', dep)});
     } else {
       for (const extension of supportedExtensions) {
         const pathWithExtension = dep + extension;
@@ -134,21 +142,36 @@ export class DeAliasingClient extends AutoDepBase {
 
     for (const alias of this._packageAliases) {
       if (dep.startsWith(alias)) {
-        const result: DeAliasResult = {
-          output: dep.replace(alias, this._packageNameCache[alias]),
-          method: 'package-name-cache',
-        };
         this._logger.trace({
           ctx: 'deAlias',
           message: TaskMessages.identified('a workspace-defined aliased path', dep),
-          details: JSON.stringify(result, null, 2),
         });
-        this._logger.trace({
-          ctx: 'deAlias',
-          message: TaskMessages.success('de-aliased', dep),
-        });
+        const deAliasedDep = dep.replace(alias, this._packageNameCache[alias]);
+        const pathToAttempt = path.resolve(this._rootDirPath, deAliasedDep);
 
-        return result;
+        for (const extension of supportedExtensions) {
+          const pathWithExtension = pathToAttempt + extension;
+          try {
+            this._logger.trace({
+              ctx: 'deAlias',
+              message: TaskMessages.resolve.attempt(pathWithExtension, 'module'),
+            });
+            const resolveAttempt = relativeRequire.resolve(pathWithExtension);
+            const result: DeAliasResult = {output: resolveAttempt, method: 'package-name-cache'};
+            this._logger.trace({
+              ctx: 'deAlias',
+              message: TaskMessages.resolve.success(pathWithExtension, 'module'),
+              details: JSON.stringify(result, null, 2),
+            });
+
+            return result;
+          } catch (error) {
+            this._logger.trace({
+              ctx: 'deAlias',
+              message: TaskMessages.resolve.failure(pathWithExtension, 'module') + ' - continuing...',
+            });
+          }
+        }
       }
     }
 
@@ -167,7 +190,7 @@ export class DeAliasingClient extends AutoDepBase {
             const deAliasedDep = dep.replace(sanitisedAlias, sanitisedPathOption);
             const pathToAttempt = path.relative(
               path.resolve(this._rootDirPath, path.dirname(this._relativePath)),
-              path.resolve(this._rootDirPath, deAliasedDep)
+              path.resolve(this._config._tsCompilerOptions.baseUrl ?? '.', deAliasedDep)
             );
 
             for (const extension of supportedExtensions) {
@@ -203,13 +226,25 @@ export class DeAliasingClient extends AutoDepBase {
       }
     }
 
-    const result: DeAliasResult = {output: dep, method: 'passthrough'};
-    this._logger.trace({
-      ctx: 'deAlias',
-      message: TaskMessages.failure('de-alias', dep) + ' - leaving as-is.',
-      details: JSON.stringify(result, null, 2),
-    });
-
-    return result;
+    try {
+      const result: DeAliasResult = {
+        output: relativeRequire.resolve(dep),
+        method: 'third-party',
+      };
+      this._logger.trace({
+        ctx: 'deAlias',
+        message: TaskMessages.identified('a third-party import', dep),
+        details: JSON.stringify(result, null, 2),
+      });
+      return result;
+    } catch {
+      const result: DeAliasResult = {output: dep, method: 'passthrough'};
+      this._logger.trace({
+        ctx: 'deAlias',
+        message: TaskMessages.failure('de-alias', dep) + ' - leaving as-is.',
+        details: JSON.stringify(result, null, 2),
+      });
+      return result;
+    }
   };
 }

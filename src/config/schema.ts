@@ -167,12 +167,6 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
       nullable: true,
     },
     log: {minItems: 1, type: 'array', items: {type: 'string', enum: LOG_LEVELS}, nullable: true},
-    paths: {
-      type: 'object',
-      additionalProperties: {minItems: 1, type: 'array', items: {type: 'string'}},
-      nullable: true,
-      required: [],
-    },
     enablePropagation: {type: 'boolean', nullable: true},
     excludeNodeModules: {type: 'boolean', nullable: true},
     onCreate: {

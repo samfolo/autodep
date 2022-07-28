@@ -95,6 +95,7 @@ export class DependencyResolver extends AutoDepBase {
         case 'package-name-cache':
         case 'known-config-alias':
         case 'local-module-resolution':
+        case 'third-party':
           this._logger.trace({
             ctx: 'resolveAbsoluteImportPaths',
             message: TaskMessages.resolve.success(dep, 'dep'),
