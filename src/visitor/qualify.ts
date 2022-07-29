@@ -7,13 +7,31 @@ import {
   SUPPORTED_MANAGED_BUILTINS,
   SUPPORTED_MANAGED_BUILTINS_LOOKUP,
 } from '../common/const';
-import {ManagedSchemaFieldEntry} from '../common/types';
+import {ManagedSchemaFieldEntry, ManagedSchemaFieldType} from '../common/types';
 import {AutoDepConfig} from '../config/types';
 import {AutoDepError, ErrorType} from '../errors/error';
 import {AutoDepBase} from '../inheritance/base';
 import {CallExpression, Expression, ArrayLiteral, StringLiteral} from '../language/ast/types';
 import {ErrorMessages} from '../messages/error';
 import {TaskMessages} from '../messages/task';
+
+interface SrcsFieldReturnBase {
+  type: ManagedSchemaFieldType;
+  value: any;
+}
+interface StringSrcsFieldReturn extends SrcsFieldReturnBase {
+  type: 'string';
+  value: string;
+}
+interface ArraySrcsFieldReturn extends SrcsFieldReturnBase {
+  type: 'array';
+  value: string[];
+}
+interface GlobSrcsFieldReturn extends SrcsFieldReturnBase {
+  type: 'glob';
+  value: {include: string[]; exclude: string[]};
+}
+export type SrcsFieldReturn = StringSrcsFieldReturn | ArraySrcsFieldReturn | GlobSrcsFieldReturn;
 
 interface NodeQualifierOptions {
   config: AutoDepConfig.Output.Schema;
@@ -47,6 +65,128 @@ export class NodeQualifier extends AutoDepBase {
   get ruleType() {
     return this._ruleType;
   }
+
+  getTargetBuildRuleSrcsField = (
+    node: CallExpression,
+    functionName: string,
+    srcsAliases: Set<ManagedSchemaFieldEntry>
+  ): SrcsFieldReturn | null => {
+    if (!node.args) {
+      return null;
+    }
+
+    for (const element of node.args.elements) {
+      if (element.kind === 'KeywordArgumentExpression') {
+        const iterableAliases = [...srcsAliases];
+        const relevantAliases = iterableAliases.filter((alias) => alias.value === element.key.getTokenLiteral());
+        const permittedTypeUnion = relevantAliases.map((alias) => alias.as).join('|');
+
+        for (const srcsAlias of relevantAliases) {
+          this._logger.trace({
+            ctx: 'getTargetBuildRuleSrcsField',
+            message: TaskMessages.locate.success(`a rule with \`srcs\` alias "${srcsAlias.value}"`),
+          });
+
+          switch (srcsAlias.as) {
+            case 'string':
+              if (element.value?.kind === 'StringLiteral') {
+                return {type: srcsAlias.as, value: element.value.getTokenLiteral()} as StringSrcsFieldReturn;
+              } else {
+                if (!relevantAliases.find((alias) => alias.as === srcsAlias.as)) {
+                  this.warnOfBuildSchemaMismatch(
+                    'getTargetBuildRuleSrcsField',
+                    node,
+                    functionName,
+                    srcsAlias.value,
+                    permittedTypeUnion
+                  );
+                }
+              }
+              continue;
+            case 'array':
+              if (element.value?.kind === 'ArrayLiteral') {
+                return {
+                  type: srcsAlias.as,
+                  value: element.value.elements?.elements.map((element) => String(element.getTokenLiteral())) ?? [],
+                };
+              } else {
+                if (!relevantAliases.find((alias) => alias.as === srcsAlias.as)) {
+                  this.warnOfBuildSchemaMismatch(
+                    'getTargetBuildRuleSrcsField',
+                    node,
+                    functionName,
+                    srcsAlias.value,
+                    permittedTypeUnion
+                  );
+                }
+              }
+              continue;
+            case 'glob':
+              if (this.isGlobDeclaration(element.value)) {
+                const includeExpression = element.value?.args?.elements?.[0];
+                const excludeExpression = element.value?.args?.elements?.[1];
+
+                return {
+                  type: srcsAlias.as,
+                  value: {
+                    include: this.getValuesFromGlobEntry('include', includeExpression),
+                    exclude: this.getValuesFromGlobEntry('exclude', excludeExpression),
+                  },
+                };
+              } else {
+                if (!relevantAliases.find((alias) => alias.as === srcsAlias.as)) {
+                  this.warnOfBuildSchemaMismatch(
+                    'getTargetBuildRuleSrcsField',
+                    node,
+                    functionName,
+                    srcsAlias.value,
+                    permittedTypeUnion
+                  );
+                }
+              }
+              continue;
+            default:
+              break;
+          }
+
+          this._logger.trace({
+            ctx: 'getTargetBuildRuleSrcsField',
+            message:
+              TaskMessages.resolve.failure(
+                `${functionName}(${srcsAlias.value} = <${this._fileName}>)`,
+                `"${this._fileName}"`
+              ) + ' - continuing...',
+            details: node.toString(),
+          });
+        }
+      }
+    }
+
+    return null;
+  };
+
+  /**
+   * Gets the token literal values from a given `glob` declaration AST node. these should be strings,
+   * and if they are not, they are cast to strings anyway.
+   *
+   * @param keyName the name of the key used to identify the entry if the entry is expressed
+   * as a kwarg
+   * @param entry the AST node representing the entry in the `glob` declaration
+   * @returns either an empty array, or a list of string literals present in the given `glob` entry
+   */
+  private getValuesFromGlobEntry = (keyName: string, entry: Expression | undefined) => {
+    if (entry?.kind === 'ArrayLiteral') {
+      return entry.elements?.elements.map((el) => String(el.getTokenLiteral())) ?? [];
+    } else if (
+      entry?.kind === 'KeyValueExpression' &&
+      entry?.key.getTokenLiteral() === keyName &&
+      entry?.value.kind === 'ArrayLiteral'
+    ) {
+      return entry.value.elements?.elements.map((el) => String(el.getTokenLiteral())) ?? [];
+    } else {
+      return [];
+    }
+  };
 
   isTargetBuildRule = (node: CallExpression, functionName: string, srcsAliases: Set<ManagedSchemaFieldEntry>) => {
     if (!node.args) {

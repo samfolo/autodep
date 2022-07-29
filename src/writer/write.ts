@@ -26,7 +26,7 @@ export class Writer extends AutoDepBase {
   private _updatesVisitorCls: typeof DependencyUpdateVisitor;
   private _ruleInsertionVisitorCls: typeof RuleInsertionVisitor;
   private _dependencyBuilderCls: typeof DependencyBuilder;
-  private _buildFileCls: typeof BuildFile;
+  private _buildFileModelCls: typeof BuildFile;
 
   constructor(
     {rootPath, targetBuildFilePath, config, newDeps}: WriterOptions,
@@ -40,7 +40,7 @@ export class Writer extends AutoDepBase {
     this._updatesVisitorCls = updatesVisitorCls;
     this._ruleInsertionVisitorCls = ruleInsertionVisitorCls;
     this._dependencyBuilderCls = dependencyBuilderCls;
-    this._buildFileCls = buildFileCls;
+    this._buildFileModelCls = buildFileCls;
 
     this._newDeps = newDeps;
     this._rootPath = rootPath;
@@ -77,7 +77,11 @@ export class Writer extends AutoDepBase {
       return true;
     }
 
-    const ast = new this._buildFileCls({file: targetBuildFile, config: this._config}).toAST();
+    const ast = new this._buildFileModelCls({
+      path: this._targetBuildFilePath,
+      file: targetBuildFile,
+      config: this._config,
+    }).toAST();
 
     const existingRuleUpdated = this.updateExistingRule(ast);
     if (existingRuleUpdated) {

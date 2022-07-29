@@ -1,3 +1,5 @@
+import {lstatSync, readdirSync} from 'fs';
+import minimatch from 'minimatch';
 import path from 'path';
 import vscode from 'vscode';
 
@@ -10,7 +12,14 @@ import {TaskMessages} from '../messages/task';
 import {BuildFile} from '../models/buildFile';
 import {Dependency} from '../models/dependency';
 import {DependencyResolver} from '../resolver/resolve';
+import {SrcsFieldVisitor} from '../visitor/findSrcsField';
+import {SrcsFieldReturn} from '../visitor/qualify';
 import {Writer} from '../writer/write';
+
+interface FileMatcherDeclaration {
+  include: string[];
+  exclude: string[];
+}
 
 export class AutoDep extends AutoDepBase {
   protected _configLoaderCls: typeof ConfigurationLoader;
@@ -51,20 +60,154 @@ export class AutoDep extends AutoDepBase {
     this._endTime = null;
   }
 
+  private getSiblingSrcsEntries = (rootPath: string, targetBuildFilePath: string) => {
+    const srcsFieldVisitor = new SrcsFieldVisitor({config: this._config, rootPath});
+    const targetBuildFile = this._buildFileModelCls.getASTFromCache(targetBuildFilePath);
+
+    if (targetBuildFile) {
+      srcsFieldVisitor.locateSrcsField(targetBuildFile);
+      const result = srcsFieldVisitor.getResult();
+      switch (result.status) {
+        case 'success':
+          if (result.srcsField) {
+            this._logger.info({
+              ctx: 'initialise',
+              message: TaskMessages.locate.success(`\`srcs\` field value in target BUILD rule`),
+              details: JSON.stringify(result.srcsField, null, 2),
+            });
+            return result.srcsField;
+          }
+          throw new AutoDepError(
+            ErrorType.UNEXPECTED,
+            'SrcsFieldVisitor::locateSrcsField returned `success` status, but result was `null`'
+          );
+        case 'failed':
+        case 'idle':
+        case 'passthrough':
+        case 'processing':
+          throw new AutoDepError(ErrorType.PROCESSING, result.reason);
+      }
+    } else {
+      throw new AutoDepError(ErrorType.PROCESSING, `No cached result found for \`${targetBuildFilePath}\``);
+    }
+  };
+
+  private getSiblingSrcsFileMatcherDeclaration = (srcsFieldReturn: SrcsFieldReturn): FileMatcherDeclaration => {
+    switch (srcsFieldReturn.type) {
+      case 'string':
+        return {
+          include: [srcsFieldReturn.value],
+          exclude: [],
+        };
+      case 'array':
+        return {
+          include: srcsFieldReturn.value,
+          exclude: [],
+        };
+      case 'glob':
+        return srcsFieldReturn.value;
+      default:
+        throw new AutoDepError(ErrorType.UNEXPECTED, `unexpected type... should not happen.`);
+    }
+  };
+
+  /**
+   * Recursively collects the names of all descendant files which are not already
+   * indexed by a BUILD file in a lower directory.
+   *
+   * @param rootDirPath the path to the directory where the search should begin
+   * @returns a flat list of file names descendant from the target directory
+   */
+  private collectAllOrphanDescendantFiles = (rootDirPath: string) => {
+    const result: string[] = [];
+
+    const siblingFileOrFolderNames = readdirSync(rootDirPath, {encoding: 'utf-8'});
+    for (const fileOrFolderName of siblingFileOrFolderNames) {
+      const pathToFileOrFolder = path.resolve(rootDirPath, fileOrFolderName);
+      const statSyncResult = lstatSync(pathToFileOrFolder);
+
+      if (statSyncResult.isDirectory()) {
+        // check whether there is a buildFile in the directory; if so, skip this branch of traversal:
+        const extName = this._config.onCreate.fileExtname;
+        const onCreateBuildFileName = `./BUILD${extName ? `.${extName}` : ''}`;
+        const possibleBuildFileNames = Array.from(
+          new Set([
+            `./${fileOrFolderName}/BUILD`,
+            `./${fileOrFolderName}/BUILD.plz`,
+            `./${fileOrFolderName}/${onCreateBuildFileName}`,
+          ])
+        );
+        const buildFilePath = this._depResolver.findFirstValidPath(pathToFileOrFolder, possibleBuildFileNames);
+
+        if (buildFilePath) {
+          this._logger.trace({
+            ctx: 'collectAllUncapturedDescendantFiles',
+            message:
+              TaskMessages.identified(`the BUILD file for ${fileOrFolderName}`, buildFilePath) + ' - skipping...',
+            details: JSON.stringify(statSyncResult, null, 2),
+          });
+          continue;
+        }
+
+        result.push(...this.collectAllOrphanDescendantFiles(pathToFileOrFolder));
+      } else if (statSyncResult.isFile()) {
+        result.push(fileOrFolderName);
+      } else {
+        this._logger.warn({
+          ctx: 'collectAllUncapturedDescendantFiles',
+          message: TaskMessages.identify.failure('either a file or folder', fileOrFolderName),
+          details: JSON.stringify(statSyncResult, null, 2),
+        });
+      }
+    }
+
+    return result;
+  };
+
+  /**
+   * A boolean predicate to check whether a path matches the `include` and `exclude` conditions of a
+   * file matcher declaration
+   *
+   * @param path the path you are trying to match
+   * @param fileMatcherDeclaration an object containing an `include` and `exclude` array pair
+   * @returns a boolean indicating whether the path is matched the declaration
+   */
+  private matchesFileMatcherDeclaration = (path: string, fileMatcherDeclaration: FileMatcherDeclaration) =>
+    fileMatcherDeclaration.include.some((matcher) => minimatch(path, matcher)) &&
+    (fileMatcherDeclaration.exclude.length > 0 ||
+      fileMatcherDeclaration.exclude.every((matcher) => minimatch(path, matcher)));
+
   processUpdate = (rootPath: string) => {
     try {
       this.initialise(rootPath);
 
       const targetBuildFilePath = this.resolveTargetBuildFilePath(rootPath);
       const newDependencies = this.resolveDeps(rootPath);
+
       const dependencyToBuildFilePathLookup = this.getNearestBuildFilePaths(newDependencies);
       const buildRuleTargets = this.collectBuildRuleTargets(targetBuildFilePath, dependencyToBuildFilePathLookup);
       this.writeUpdatesToFilesystem(rootPath, targetBuildFilePath, buildRuleTargets);
 
+      const targetBuildFileSrcsField = this.getSiblingSrcsEntries(rootPath, targetBuildFilePath);
+      const fileMatcherDeclaration = this.getSiblingSrcsFileMatcherDeclaration(targetBuildFileSrcsField);
+      const descendantFileNames = this.collectAllOrphanDescendantFiles(path.dirname(rootPath));
+
+      const matchingFileNames = descendantFileNames.filter((name) =>
+        this.matchesFileMatcherDeclaration(name, fileMatcherDeclaration)
+      );
+
+      console.log({descendantFileNames, matchingFileNames, fileMatcherDeclaration});
       this.handleSuccess();
     } catch (error) {
       this.handleFailure(error);
+    } finally {
+      this.handleCleanup();
     }
+  };
+
+  private handleCleanup = () => {
+    this._logger.trace({ctx: 'handleCleanup', message: 'Flushing AST cache...'});
+    this._buildFileModelCls.flushASTCache();
   };
 
   private loadAutoDepConfig = (rootPath: string) => {
@@ -81,6 +224,7 @@ export class AutoDep extends AutoDepBase {
         break;
       case 'failed':
       case 'passthrough':
+      default:
         throw new AutoDepError(ErrorType.PROCESSING, result.reason);
     }
 
@@ -109,6 +253,7 @@ export class AutoDep extends AutoDepBase {
         return result.output;
       case 'failed':
       case 'passthrough':
+      default:
         throw new AutoDepError(ErrorType.FAILED_PRECONDITION, result.reason);
     }
   };
@@ -209,12 +354,12 @@ export class AutoDep extends AutoDepBase {
 
     for (const dep in depToBuildFilePathMap) {
       const buildFilePath = depToBuildFilePathMap[dep];
-      const buildRuleTarget = this._depResolver.getBuildRuleName(dep, buildFilePath);
-      if (buildRuleTarget) {
+      const buildRuleName = this._depResolver.getBuildRuleName(dep, buildFilePath);
+      if (buildRuleName) {
         const dependencyObject = new Dependency({
           buildFilePath,
           rootDirName: 'core3',
-          ruleName: buildRuleTarget,
+          ruleName: buildRuleName,
           targetBuildFilePath,
           config: this._config,
         });
