@@ -74,12 +74,22 @@ export class AutoDep extends AutoDepBase {
 
       const descendantFileNames = this.getAllMatchingSrcsFileNames(rootPath, targetBuildFilePath);
 
-      console.log({descendantFileNames});
+      const rootDirPath = path.dirname(rootPath);
       const result = [];
       for (const descendantFileName of descendantFileNames) {
-        result.push(...this.resolveDeps(path.resolve(path.dirname(rootPath), descendantFileName)));
+        const descendantFilePath = path.resolve(rootDirPath, descendantFileName);
+        result.push(...this.resolveDeps(descendantFilePath));
       }
-      console.log({deps: Array.from(new Set(result))});
+
+      const uniqueAggregateAbsoluteDepPaths = Array.from(new Set(result));
+
+      // Avoid including cross-imports, as these files are already caught by the `glob` declaration:
+      const nonCrossImportedUniqueAggregateAbsoluteDepPaths = uniqueAggregateAbsoluteDepPaths.filter(
+        (dep) => !descendantFileNames.has(path.relative(rootDirPath, dep))
+      );
+
+      console.log({newDependencies, nonCrossImportedUniqueAggregateAbsoluteDepPaths});
+
       this.handleSuccess();
     } catch (error) {
       this.handleFailure(error);
@@ -115,7 +125,9 @@ export class AutoDep extends AutoDepBase {
     const srcsFileMatcherDeclaration = this.getSrcsFileMatcherDeclaration(targetBuildFileSrcsField);
     const descendantFileNames = this.collectAllOrphanDescendantFiles(path.dirname(rootPath));
 
-    return descendantFileNames.filter((name) => this.matchesFileMatcherDeclaration(name, srcsFileMatcherDeclaration));
+    return new Set(
+      descendantFileNames.filter((name) => this.matchesFileMatcherDeclaration(name, srcsFileMatcherDeclaration))
+    );
   };
 
   private getSiblingSrcsEntries = (rootPath: string, buildFileAST: RootNode) => {
