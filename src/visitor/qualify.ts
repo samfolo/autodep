@@ -125,7 +125,6 @@ export class NodeQualifier extends AutoDepBase {
               if (this.isGlobDeclaration(element.value)) {
                 const includeExpression = element.value?.args?.elements?.[0];
                 const excludeExpression = element.value?.args?.elements?.[1];
-
                 return {
                   type: srcsAlias.as,
                   value: {
@@ -178,11 +177,11 @@ export class NodeQualifier extends AutoDepBase {
     if (entry?.kind === 'ArrayLiteral') {
       return entry.elements?.elements.map((el) => String(el.getTokenLiteral())) ?? [];
     } else if (
-      entry?.kind === 'KeyValueExpression' &&
-      entry?.key.getTokenLiteral() === keyName &&
-      entry?.value.kind === 'ArrayLiteral'
+      entry?.kind === 'InfixExpression' &&
+      entry?.left?.getTokenLiteral() === keyName &&
+      entry?.right?.kind === 'ArrayLiteral'
     ) {
-      return entry.value.elements?.elements.map((el) => String(el.getTokenLiteral())) ?? [];
+      return entry.right.elements?.elements.map((el) => String(el.getTokenLiteral())) ?? [];
     } else {
       return [];
     }

@@ -17,8 +17,7 @@ export class DeAliasingClient extends AutoDepBase {
   private _rootDirName: string;
   private _rootDirPath: string;
   private _relativePath: string;
-  private _packageJSON: Record<string, any>;
-  private _packageNameCache: Record<PackageAlias, PackageName>;
+  private _packageNameMap: Record<PackageAlias, PackageName>;
   private _packageAliases: Set<PackageAlias>;
 
   constructor({filePath, rootDirName, config}: DeAliasingClientOptions) {
@@ -31,85 +30,21 @@ export class DeAliasingClient extends AutoDepBase {
     this._rootDirPath = this._filePath.substring(0, relativePathIndex);
     this._relativePath = this._filePath.substring(relativePathIndex + 1);
 
-    try {
-      this._logger.trace({ctx: 'init', message: TaskMessages.parse.attempt(`${this._rootDirPath}/package.json`)});
-      const packageJSONString = readFileSync(`${this._rootDirPath}/package.json`);
-      this._packageJSON = JSON.parse(packageJSONString.toString('utf-8'));
-      this._logger.trace({
-        ctx: 'init',
-        message: TaskMessages.parse.success(`${this._rootDirPath}/package.json`),
-        details: JSON.stringify(this._packageJSON, null, 2),
-      });
-    } catch (error) {
-      this._logger.error({
-        ctx: 'init',
-        message: TaskMessages.parse.failure(`${this._rootDirPath}/package.json`),
-        details: JSON.stringify(error, null, 2),
-      });
-      this._packageJSON = {};
-    }
-
-    this._packageNameCache = {};
-    this._packageAliases = new Set();
-
-    if (this._packageJSON?.workspaces?.packages) {
-      for (const packageName of this._packageJSON.workspaces.packages) {
-        try {
-          this._logger.trace({
-            ctx: 'init',
-            message: TaskMessages.resolve.attempt(`${this._rootDirPath}/${packageName}/package.json`, 'package alias'),
-          });
-          const file = readFileSync(`${this._rootDirPath}/${packageName}/package.json`);
-          const packageAlias: string = JSON.parse(file.toString('utf-8')).name;
-          this._packageNameCache[packageAlias] = packageName;
-          this._packageAliases.add(packageAlias);
-          this._logger.trace({
-            ctx: 'init',
-            message: TaskMessages.resolve.success(
-              `${this._rootDirPath}/${packageName}/package.json`,
-              `package alias "${packageAlias}"`
-            ),
-          });
-        } catch (error) {
-          this._logger.error({
-            ctx: 'init',
-            message: TaskMessages.resolve.failure(`${this._rootDirPath}/${packageName}/package.json`, 'package alias'),
-            details: JSON.stringify(error, null, 2),
-          });
-        }
-      }
-    } else {
-      this._logger.info({
-        ctx: 'init',
-        message: TaskMessages.failure(
-          `package names at [${this._rootDirPath}/package.json].workspaces.packages`,
-          'find'
-        ),
-      });
-    }
-
-    this._logger.trace({
-      ctx: 'init',
-      message: TaskMessages.using('the following package name cache:'),
-      details: JSON.stringify(this._packageNameCache, null, 2),
-    });
+    const {aliases, map} = this.getPackageNameLookup(this._rootDirPath);
+    this._packageNameMap = map;
+    this._packageAliases = aliases;
   }
-
-  get packageNames(): string[] {
-    return this._packageJSON?.workspaces?.packages ?? [];
-  }
-
-  get cache(): Record<PackageAlias, PackageName> {
-    return this._packageNameCache;
-  }
-
-  get aliases(): Set<PackageAlias> {
-    return this._packageAliases;
-  }
-
-  private isRelative = (path: string) => ['/', './', '../'].some((start) => path.startsWith(start));
 
   deAlias = (dep: string, supportedExtensions: string[]): DeAliasResult => {
+    if (DeAliasingClient.deAliasingCache[this._filePath]?.[dep]) {
+      this._logger.trace({
+        ctx: 'deAlias',
+        message: TaskMessages.using(`cached value for ${dep}`),
+        details: JSON.stringify(DeAliasingClient.deAliasingCache[this._filePath][dep], null, 2),
+      });
+      return DeAliasingClient.deAliasingCache[this._filePath][dep];
+    }
+
     const relativeRequire = createRequire(this._filePath);
 
     if (!this.isRelative(dep)) {
@@ -130,6 +65,7 @@ export class DeAliasingClient extends AutoDepBase {
             details: JSON.stringify(result, null, 2),
           });
 
+          this.addDeAliasingResultToCache(dep, result);
           return result;
         } catch (error) {
           this._logger.trace({
@@ -146,7 +82,7 @@ export class DeAliasingClient extends AutoDepBase {
           ctx: 'deAlias',
           message: TaskMessages.identified('a workspace-defined aliased path', dep),
         });
-        const deAliasedDep = dep.replace(alias, this._packageNameCache[alias]);
+        const deAliasedDep = dep.replace(alias, this._packageNameMap[alias]);
         const pathToAttempt = path.resolve(this._rootDirPath, deAliasedDep);
 
         for (const extension of supportedExtensions) {
@@ -164,6 +100,7 @@ export class DeAliasingClient extends AutoDepBase {
               details: JSON.stringify(result, null, 2),
             });
 
+            this.addDeAliasingResultToCache(dep, result);
             return result;
           } catch (error) {
             this._logger.trace({
@@ -208,6 +145,7 @@ export class DeAliasingClient extends AutoDepBase {
                   details: JSON.stringify(result, null, 2),
                 });
 
+                this.addDeAliasingResultToCache(dep, result);
                 return result;
               } catch (error) {
                 this._logger.trace({
@@ -236,6 +174,7 @@ export class DeAliasingClient extends AutoDepBase {
         message: TaskMessages.identified('a third-party import', dep),
         details: JSON.stringify(result, null, 2),
       });
+      this.addDeAliasingResultToCache(dep, result);
       return result;
     } catch {
       const result: DeAliasResult = {output: dep, method: 'passthrough'};
@@ -244,7 +183,108 @@ export class DeAliasingClient extends AutoDepBase {
         message: TaskMessages.failure('de-alias', dep) + ' - leaving as-is.',
         details: JSON.stringify(result, null, 2),
       });
+      this.addDeAliasingResultToCache(dep, result);
       return result;
     }
   };
+
+  private isRelative = (path: string) => ['/', './', '../'].some((start) => path.startsWith(start));
+
+  private addDeAliasingResultToCache = (dep: string, result: DeAliasResult) => {
+    this._logger.trace({
+      ctx: 'addDeAliasingResultToCache',
+      message: TaskMessages.using(`caching result for ${dep}`),
+    });
+    if (!DeAliasingClient.deAliasingCache[this._filePath]) {
+      DeAliasingClient.deAliasingCache[this._filePath] = {};
+    }
+
+    DeAliasingClient.deAliasingCache[this._filePath][dep] = result;
+    return true;
+  };
+
+  private getPackageNameLookup = (rootDirPath: string) => {
+    if (DeAliasingClient.packageNameMapCache[rootDirPath]) {
+      this._logger.trace({
+        ctx: 'getPackageNameLookup',
+        message: TaskMessages.using(`cached value of ${rootDirPath}/package.json`),
+      });
+      return DeAliasingClient.packageNameMapCache[rootDirPath];
+    }
+
+    let packageJSON: any;
+
+    try {
+      this._logger.trace({
+        ctx: 'getPackageNameLookup',
+        message: TaskMessages.parse.attempt(`${rootDirPath}/package.json`),
+      });
+      const packageJSONString = readFileSync(`${rootDirPath}/package.json`);
+      packageJSON = JSON.parse(packageJSONString.toString('utf-8'));
+      this._logger.trace({
+        ctx: 'getPackageNameLookup',
+        message: TaskMessages.parse.success(`${rootDirPath}/package.json`),
+        details: JSON.stringify(packageJSON, null, 2),
+      });
+    } catch (error) {
+      this._logger.error({
+        ctx: 'getPackageNameLookup',
+        message: TaskMessages.parse.failure(`${rootDirPath}/package.json`),
+        details: JSON.stringify(error, null, 2),
+      });
+    }
+
+    const packageAliases: Set<PackageAlias> = new Set<PackageAlias>();
+    const packageNameMap: Record<PackageAlias, PackageName> = {};
+
+    if (packageJSON?.workspaces?.packages) {
+      const packageNames = new Set<string>(packageJSON.workspaces.packages);
+
+      for (const packageName of packageNames) {
+        try {
+          this._logger.trace({
+            ctx: 'getPackageNameLookup',
+            message: TaskMessages.resolve.attempt(`${rootDirPath}/${packageName}/package.json`, 'package alias'),
+          });
+          const file = readFileSync(`${rootDirPath}/${packageName}/package.json`);
+          const packageAlias: string = JSON.parse(file.toString('utf-8')).name;
+          packageNameMap[packageAlias] = packageName;
+          packageAliases.add(packageName);
+          this._logger.trace({
+            ctx: 'getPackageNameLookup',
+            message: TaskMessages.resolve.success(
+              `${rootDirPath}/${packageName}/package.json`,
+              `package alias "${packageAlias}"`
+            ),
+          });
+        } catch (error) {
+          this._logger.error({
+            ctx: 'getPackageNameLookup',
+            message: TaskMessages.resolve.failure(`${rootDirPath}/${packageName}/package.json`, 'package alias'),
+            details: JSON.stringify(error, null, 2),
+          });
+        }
+      }
+    } else {
+      this._logger.info({
+        ctx: 'getPackageNameLookup',
+        message: TaskMessages.failure(`package names at [${rootDirPath}/package.json].workspaces.packages`, 'find'),
+      });
+    }
+
+    this._logger.trace({
+      ctx: 'getPackageNameLookup',
+      message: TaskMessages.using('the following package name cache:'),
+      details: JSON.stringify(packageNameMap, null, 2),
+    });
+    const result = {aliases: packageAliases, map: packageNameMap};
+    DeAliasingClient.packageNameMapCache[rootDirPath] = result;
+    return result;
+  };
+
+  private static deAliasingCache: Record<string, Record<string, DeAliasResult>> = {};
+  private static packageNameMapCache: Record<
+    string,
+    {map: Record<PackageAlias, PackageName>; aliases: Set<PackageAlias>}
+  > = {};
 }
