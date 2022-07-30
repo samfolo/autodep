@@ -7,7 +7,7 @@ import {
   SUPPORTED_MANAGED_BUILTINS,
   SUPPORTED_MANAGED_BUILTINS_LOOKUP,
 } from '../common/const';
-import {ManagedSchemaFieldEntry, ManagedSchemaFieldType} from '../common/types';
+import {FileMatcherDeclaration, ManagedSchemaFieldEntry, ManagedSchemaFieldType} from '../common/types';
 import {AutoDepConfig} from '../config/types';
 import {AutoDepError, ErrorType} from '../errors/error';
 import {AutoDepBase} from '../inheritance/base';
@@ -15,23 +15,29 @@ import {CallExpression, Expression, ArrayLiteral, StringLiteral} from '../langua
 import {ErrorMessages} from '../messages/error';
 import {TaskMessages} from '../messages/task';
 
-interface SrcsFieldReturnBase {
+interface FieldLiteral {
   type: ManagedSchemaFieldType;
+  alias: string;
   value: any;
 }
-interface StringSrcsFieldReturn extends SrcsFieldReturnBase {
+interface StringSrcsFieldLiteral extends FieldLiteral {
   type: 'string';
   value: string;
 }
-interface ArraySrcsFieldReturn extends SrcsFieldReturnBase {
+interface ArraySrcsFieldLiteral extends FieldLiteral {
   type: 'array';
   value: string[];
 }
-interface GlobSrcsFieldReturn extends SrcsFieldReturnBase {
+interface GlobSrcsFieldLiteral extends FieldLiteral {
   type: 'glob';
   value: {include: string[]; exclude: string[]};
 }
-export type SrcsFieldReturn = StringSrcsFieldReturn | ArraySrcsFieldReturn | GlobSrcsFieldReturn;
+export type SrcsFieldLiteral = StringSrcsFieldLiteral | ArraySrcsFieldLiteral | GlobSrcsFieldLiteral;
+
+export interface NameFieldLiteral extends FieldLiteral {
+  type: 'string';
+  value: string;
+}
 
 interface NodeQualifierOptions {
   config: AutoDepConfig.Output.Schema;
@@ -66,11 +72,68 @@ export class NodeQualifier extends AutoDepBase {
     return this._ruleType;
   }
 
-  getTargetBuildRuleSrcsField = (
+  getNameFieldLiteral = (
+    node: CallExpression,
+    functionName: string,
+    nameAliases: Set<ManagedSchemaFieldEntry>
+  ): NameFieldLiteral | null => {
+    if (!node.args) {
+      return null;
+    }
+
+    for (const element of node.args.elements) {
+      if (element.kind === 'KeywordArgumentExpression') {
+        const iterableAliases = [...nameAliases];
+        const relevantAliases = iterableAliases.filter((alias) => alias.value === element.key.getTokenLiteral());
+        const permittedTypeUnion = relevantAliases.map((alias) => alias.as).join('|');
+
+        for (const nameAlias of relevantAliases) {
+          this._logger.trace({
+            ctx: 'getNameFieldLiteral',
+            message: TaskMessages.locate.success(`a rule with \`name\` alias "${nameAlias.value}"`),
+          });
+
+          switch (nameAlias.as) {
+            case 'string':
+              if (element.value?.kind === 'StringLiteral') {
+                return {type: nameAlias.as, alias: nameAlias.value, value: String(element.value.getTokenLiteral())};
+              } else {
+                if (!relevantAliases.find((alias) => alias.as === nameAlias.as)) {
+                  this.warnOfBuildSchemaMismatch(
+                    'getNameFieldLiteral',
+                    node,
+                    functionName,
+                    nameAlias.value,
+                    permittedTypeUnion
+                  );
+                }
+              }
+              continue;
+            default:
+              break;
+          }
+
+          this._logger.trace({
+            ctx: 'getNameFieldLiteral',
+            message:
+              TaskMessages.resolve.failure(
+                `${functionName}(${nameAlias.value} = <${this._fileName}>)`,
+                '`name` field value'
+              ) + ' - continuing...',
+            details: node.toString(),
+          });
+        }
+      }
+    }
+
+    return null;
+  };
+
+  getSrcsFieldLiteral = (
     node: CallExpression,
     functionName: string,
     srcsAliases: Set<ManagedSchemaFieldEntry>
-  ): SrcsFieldReturn | null => {
+  ): SrcsFieldLiteral | null => {
     if (!node.args) {
       return null;
     }
@@ -83,18 +146,18 @@ export class NodeQualifier extends AutoDepBase {
 
         for (const srcsAlias of relevantAliases) {
           this._logger.trace({
-            ctx: 'getTargetBuildRuleSrcsField',
+            ctx: 'getSrcsFieldLiteral',
             message: TaskMessages.locate.success(`a rule with \`srcs\` alias "${srcsAlias.value}"`),
           });
 
           switch (srcsAlias.as) {
             case 'string':
               if (element.value?.kind === 'StringLiteral') {
-                return {type: srcsAlias.as, value: element.value.getTokenLiteral()} as StringSrcsFieldReturn;
+                return {type: srcsAlias.as, alias: srcsAlias.value, value: String(element.value.getTokenLiteral())};
               } else {
                 if (!relevantAliases.find((alias) => alias.as === srcsAlias.as)) {
                   this.warnOfBuildSchemaMismatch(
-                    'getTargetBuildRuleSrcsField',
+                    'getSrcsFieldLiteral',
                     node,
                     functionName,
                     srcsAlias.value,
@@ -107,12 +170,13 @@ export class NodeQualifier extends AutoDepBase {
               if (element.value?.kind === 'ArrayLiteral') {
                 return {
                   type: srcsAlias.as,
+                  alias: srcsAlias.value,
                   value: element.value.elements?.elements.map((element) => String(element.getTokenLiteral())) ?? [],
                 };
               } else {
                 if (!relevantAliases.find((alias) => alias.as === srcsAlias.as)) {
                   this.warnOfBuildSchemaMismatch(
-                    'getTargetBuildRuleSrcsField',
+                    'getSrcsFieldLiteral',
                     node,
                     functionName,
                     srcsAlias.value,
@@ -127,6 +191,7 @@ export class NodeQualifier extends AutoDepBase {
                 const excludeExpression = element.value?.args?.elements?.[1];
                 return {
                   type: srcsAlias.as,
+                  alias: srcsAlias.value,
                   value: {
                     include: this.getValuesFromGlobEntry('include', includeExpression),
                     exclude: this.getValuesFromGlobEntry('exclude', excludeExpression),
@@ -135,7 +200,7 @@ export class NodeQualifier extends AutoDepBase {
               } else {
                 if (!relevantAliases.find((alias) => alias.as === srcsAlias.as)) {
                   this.warnOfBuildSchemaMismatch(
-                    'getTargetBuildRuleSrcsField',
+                    'getSrcsFieldLiteral',
                     node,
                     functionName,
                     srcsAlias.value,
@@ -149,7 +214,7 @@ export class NodeQualifier extends AutoDepBase {
           }
 
           this._logger.trace({
-            ctx: 'getTargetBuildRuleSrcsField',
+            ctx: 'getSrcsFieldLiteral',
             message:
               TaskMessages.resolve.failure(
                 `${functionName}(${srcsAlias.value} = <${this._fileName}>)`,
@@ -327,10 +392,15 @@ export class NodeQualifier extends AutoDepBase {
       ctx: 'isTargetGlobSrcsField',
       message: TaskMessages.identified(`a \`glob\` builtin field`, `\`${functionName}.${srcsAlias.value}\``),
     });
-    // TODO: also handle "glob" exclude kwargs
-    const isMatch = !!elementValue.args?.elements?.some(
-      (arg) => arg.kind === 'ArrayLiteral' && this.matchesAtLeastOneGlobDeclarationInclude(arg)
-    );
+
+    const includeExpression = elementValue?.args?.elements?.[0];
+    const excludeExpression = elementValue?.args?.elements?.[1];
+    const globLiteralValue: FileMatcherDeclaration = {
+      include: this.getValuesFromGlobEntry('include', includeExpression),
+      exclude: this.getValuesFromGlobEntry('exclude', excludeExpression),
+    };
+
+    const isMatch = this.matchesFileMatcherDeclaration(this._fileName, globLiteralValue);
     this._logger.trace({
       ctx: 'isTargetGlobSrcsField',
       message: TaskMessages[isMatch ? 'success' : 'failure'](
@@ -341,14 +411,33 @@ export class NodeQualifier extends AutoDepBase {
     return isMatch;
   };
 
-  private matchesAtLeastOneGlobDeclarationInclude = (includes: ArrayLiteral) =>
-    !!includes.elements?.elements.some((matcher) => {
+  /**
+   * A boolean predicate to check whether a path matches the `include` and `exclude` conditions of a
+   * file matcher declaration, typically whether it matches at least one `include` and at most zero
+   * `exclude` entries in the given declaration.
+   *
+   * @param path the path you are trying to match
+   * @param fileMatcherDeclaration an object containing an `include` and `exclude` array pair
+   * @returns a boolean indicating whether the path matches at least one `include` and at most
+   * zero `exclude` entries in the given declaration.
+   */
+  private matchesFileMatcherDeclaration = (path: string, fileMatcherDeclaration: FileMatcherDeclaration) =>
+    fileMatcherDeclaration.include.length > 0 &&
+    fileMatcherDeclaration.include.some((matcher) => {
       this._logger.trace({
-        ctx: 'matchesAtLeastOneGlobDeclarationInclude',
-        message: TaskMessages.attempt('match', `${this._fileName} against "${matcher.getTokenLiteral()}"`),
+        ctx: 'matchesFileMatcherDeclaration',
+        message: TaskMessages.attempt('match', `${this._fileName} against "${matcher}"`),
       });
-      return minimatch(this._fileName, String(matcher.getTokenLiteral()));
-    });
+      return minimatch(path, matcher);
+    }) &&
+    (fileMatcherDeclaration.exclude.length === 0 ||
+      fileMatcherDeclaration.exclude.every((matcher) => {
+        this._logger.trace({
+          ctx: 'matchesFileMatcherDeclaration',
+          message: TaskMessages.attempt('match', `${this._fileName} against "${matcher}"`),
+        });
+        return !minimatch(path, matcher);
+      }));
 
   warnOfBuildSchemaMismatch = (
     ctx: string,

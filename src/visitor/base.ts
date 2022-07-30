@@ -1,8 +1,10 @@
 import path from 'path';
+import {TaskStatusClient} from '../clients/taskStatus/task';
 import {AutoDepConfig} from '../config/types';
 import {AutoDepBase} from '../inheritance/base';
 import {RootNode} from '../language/ast/types';
 import {DependencyBuilder} from '../language/builder/build';
+import {Logger} from '../logger/log';
 import {TaskMessages} from '../messages/task';
 
 import {NodeQualifier} from './qualify';
@@ -20,13 +22,16 @@ export class VisitorBase extends AutoDepBase {
   protected _rootPath: string;
   protected _fileName: string;
   protected _nodeQualifier: NodeQualifier;
+  protected _taskStatusClient: TaskStatusClient;
 
   constructor(
     {config, name, rootPath}: VisitorBaseOptions,
     builderCls: typeof DependencyBuilder = DependencyBuilder,
-    nodeQualifierCls: typeof NodeQualifier = NodeQualifier
+    loggerCls: typeof Logger = Logger,
+    nodeQualifierCls: typeof NodeQualifier = NodeQualifier,
+    taskStatusClientCls: typeof TaskStatusClient = TaskStatusClient
   ) {
-    super({config, name});
+    super({config, name}, loggerCls, taskStatusClientCls);
     this._logger.trace({ctx: 'init', message: TaskMessages.initialise.attempt(this._name)});
 
     this._builderCls = builderCls;
@@ -35,6 +40,7 @@ export class VisitorBase extends AutoDepBase {
     this._rootPath = rootPath;
     this._fileName = path.basename(this._rootPath);
     this._nodeQualifier = new this._nodeQualifierCls({config: this._config, rootPath: this._rootPath});
+    this._taskStatusClient = new this._taskStatusClientCls();
   }
 
   // We need to check whether the first line of any config `fileHeading` is the same as

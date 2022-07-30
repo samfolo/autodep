@@ -10,14 +10,19 @@ export class TaskStatusClient {
     this._reason = 'took no action';
   }
 
-  readonly next = (nextStatus: TaskStatus, nextReason: string = '') => {
-    this._status = TaskStatusClient.STATE_MAP[`${this._status}:${nextStatus}`];
-    this._reason = nextReason;
+  readonly nextEffect = (triggerStatus: TaskStatus, newReason: string = '') => {
+    this._status = TaskStatusClient.STATE_TRIGGER_MAP[`${this._status}:${triggerStatus}`];
+    this._reason = newReason;
+  };
+
+  readonly forceState = (newStatus: TaskStatus, newReason: string = '') => {
+    this._status = newStatus;
+    this._reason = newReason;
   };
 
   readonly getState = () => Object.freeze({status: this._status, reason: this._reason});
 
-  private static STATE_MAP: Record<`${TaskStatus}:${TaskStatus}`, TaskStatus> = {
+  private static STATE_TRIGGER_MAP: Record<`${TaskStatus}:${TaskStatus}`, TaskStatus> = {
     'failed:failed': 'failed',
     'failed:idle': 'idle',
     'failed:partial-success': 'partial-success',

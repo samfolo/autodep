@@ -25,3 +25,8 @@ export type RecursivePartial<T> = {
 };
 
 export type TaskStatus = 'idle' | 'passthrough' | 'success' | 'failed' | 'processing' | 'partial-success';
+
+export interface FileMatcherDeclaration {
+  include: string[];
+  exclude: string[];
+}

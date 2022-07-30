@@ -18,6 +18,8 @@ import {DependencyBuilder} from '../language/builder/build';
 import {TaskMessages} from '../messages/task';
 import {NodeQualifier} from './qualify';
 import {VisitorBase} from './base';
+import {Logger} from '../logger/log';
+import {TaskStatusClient} from '../clients/taskStatus/task';
 
 interface DependencyUpdateVisitorOptions {
   config: AutoDepConfig.Output.Schema;
@@ -28,20 +30,27 @@ interface DependencyUpdateVisitorOptions {
 
 export class DependencyUpdateVisitor extends VisitorBase {
   private _newDeps: string[];
-  private _removedDeps: string[];
 
   constructor(
     {config, rootPath, newDeps}: DependencyUpdateVisitorOptions,
     builderCls: typeof DependencyBuilder = DependencyBuilder,
-    nodeQualifierCls: typeof NodeQualifier = NodeQualifier
+    loggerCls: typeof Logger = Logger,
+    nodeQualifierCls: typeof NodeQualifier = NodeQualifier,
+    taskStatusClientCls: typeof TaskStatusClient = TaskStatusClient
   ) {
-    super({config, rootPath, name: 'DependencyUpdateVisitor'}, builderCls, nodeQualifierCls);
+    super(
+      {config, rootPath, name: 'DependencyUpdateVisitor'},
+      builderCls,
+      loggerCls,
+      nodeQualifierCls,
+      taskStatusClientCls
+    );
     this._newDeps = newDeps;
-    this._removedDeps = [];
   }
 
   updateDeps = (node: ASTNode) => {
     let result: ASTNode;
+    this._taskStatusClient.nextEffect('processing');
 
     switch (node.type) {
       case 'Root':
@@ -61,16 +70,16 @@ export class DependencyUpdateVisitor extends VisitorBase {
         result = this.visitCommentNode(node);
         break;
       default:
-        this._status = 'passthrough';
-        this._reason = 'irrelevant node type passed to `updateDeps` visitor';
+        this._taskStatusClient.nextEffect('passthrough', 'irrelevant node type passed to `updateDeps` visitor');
         return node;
     }
 
-    if (this._status === 'success' || this._status === 'failed') {
+    const taskState = this._taskStatusClient.getState();
+
+    if (taskState.status === 'success' || taskState.status === 'failed') {
       return result;
     } else {
-      this._status = 'failed';
-      this._reason = 'unable to find target rule in given file';
+      this._taskStatusClient.forceState('failed', 'unable to find target rule in given file');
       return node;
     }
   };
@@ -162,8 +171,9 @@ export class DependencyUpdateVisitor extends VisitorBase {
           return element;
         });
 
+        const taskState = this._taskStatusClient.getState();
         // this is specific to updateDeps:
-        if (this._status !== 'success') {
+        if (taskState.status !== 'success') {
           // this means there was no deps array... so we add one:
           const managedSchema = this._config.manage.schema[functionName];
           const [firstDepsAlias] = managedSchema?.deps ?? [SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES.DEPS];
@@ -179,8 +189,10 @@ export class DependencyUpdateVisitor extends VisitorBase {
             this._builder.buildRuleFieldKwargNode(firstDepsAlias.value, this._builder.buildArrayNode(this._newDeps))
           );
 
-          this._status = 'success';
-          this._reason = `target rule found, \`${firstDepsAlias.value}\` field added and dependencies updated`;
+          this._taskStatusClient.forceState(
+            'success',
+            `target rule found, \`${firstDepsAlias.value}\` field added and dependencies updated`
+          );
         }
       } else {
         this._logger.trace({
@@ -210,13 +222,10 @@ export class DependencyUpdateVisitor extends VisitorBase {
 
   private visitArrayLiteralNode = (node: ArrayLiteral) => {
     if (node.elements) {
-      this._removedDeps = node.elements.elements.map(String);
-
       node.elements.elements = this._newDeps.map((dep) =>
         ast.createStringLiteralNode({token: createToken('STRING', dep), value: dep})
       );
-      this._status = 'success';
-      this._reason = 'target rule found, dependencies updated';
+      this._taskStatusClient.nextEffect('success', 'target rule found, dependencies updated');
     } else {
       throw new AutoDepError(
         ErrorType.PARSER,
@@ -228,8 +237,7 @@ export class DependencyUpdateVisitor extends VisitorBase {
 
   getResult = () =>
     Object.seal({
-      status: this._status,
-      reason: this._reason,
-      removedDeps: this._removedDeps,
+      status: this._taskStatusClient.getState().status,
+      reason: this._taskStatusClient.getState().reason,
     });
 }

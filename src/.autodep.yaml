@@ -17,10 +17,20 @@ manage:
     - labels
     - entry
   schema:
+    create_component_mocha:
+      srcs:
+        - value: entry
+          as: string
     css_library:
       srcs:
         - srcs
+        - value: srcs
+          as: glob
         - value: src
+          as: string
+    design_system_jest:
+      srcs:
+        - value: entry
           as: string
     js_library:
       name:
@@ -30,6 +40,8 @@ manage:
         - srcs
         - value: src
           as: string
+        - value: srcs
+          as: glob
       deps:
         - value: deps
           as: array
@@ -51,6 +63,8 @@ manage:
       srcs:
         - value: entry
           as: string
+        - value: srcs
+          as: glob
     genrule:
       srcs:
         - outs
@@ -63,12 +77,6 @@ log:
   - info
   - warn
   - error
-paths:
-  '@plz/*':
-    - ./*
-    - ./plz-out/gen/*
-  '@muistyled-engine':
-    - '@mui/styled-engine-sc'
 excludeNodeModules: true
 enablePropagation: false
 onCreate:
@@ -80,7 +88,7 @@ onCreate:
     And double lines...
   module:
     name: js_library
-    explicitDeps: true
+    explicitDeps: false
     omitEmptyFields: true
     initialVisibility:
       - PUBLIC
@@ -99,7 +107,7 @@ onCreate:
     name: ops_app_jest
     subinclude:
       - //vault/admin_app/apps/ops:ops_app_jest
-    explicitDeps: true
+    explicitDeps: false
     omitEmptyFields: true
     globMatchers:
       include:

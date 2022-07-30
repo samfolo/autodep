@@ -13,6 +13,8 @@ import {DependencyBuilder} from '../language/builder/build';
 import {TaskMessages} from '../messages/task';
 import {NodeQualifier} from './qualify';
 import {VisitorBase} from './base';
+import {Logger} from '../logger/log';
+import {TaskStatusClient} from '../clients/taskStatus/task';
 
 interface RuleInsertionVisitorOptions {
   config: AutoDepConfig.Output.Schema;
@@ -27,15 +29,24 @@ export class RuleInsertionVisitor extends VisitorBase {
   constructor(
     {config, rootPath, newDeps}: RuleInsertionVisitorOptions,
     builderCls: typeof DependencyBuilder = DependencyBuilder,
-    nodeQualifierCls: typeof NodeQualifier = NodeQualifier
+    loggerCls: typeof Logger = Logger,
+    nodeQualifierCls: typeof NodeQualifier = NodeQualifier,
+    taskStatusClientCls: typeof TaskStatusClient = TaskStatusClient
   ) {
-    super({config, rootPath, name: 'RuleInsertionVisitor'}, builderCls, nodeQualifierCls);
+    super(
+      {config, rootPath, name: 'RuleInsertionVisitor'},
+      builderCls,
+      loggerCls,
+      nodeQualifierCls,
+      taskStatusClientCls
+    );
     this._didUpdateSubinclude = false;
     this._newDeps = newDeps;
   }
 
   insertRule = (node: ASTNode) => {
     let result: ASTNode;
+    this._taskStatusClient.nextEffect('processing');
 
     switch (node.type) {
       case 'Root':
@@ -55,16 +66,16 @@ export class RuleInsertionVisitor extends VisitorBase {
         result = this.visitCommentNode(node);
         break;
       default:
-        this._status = 'passthrough';
-        this._reason = 'irrelevant node type passed to `insertRule` visitor';
+        this._taskStatusClient.nextEffect('passthrough', 'irrelevant node type passed to `insertRule` visitor');
         return node;
     }
 
-    if (this._status === 'success') {
+    const taskState = this._taskStatusClient.getState();
+
+    if (taskState.status === 'success' || taskState.status === 'failed') {
       return result;
     } else {
-      this._status = 'failed';
-      this._reason = 'unable to insert rule into given file';
+      this._taskStatusClient.forceState('failed', 'unable to insert rule into given file');
       return node;
     }
   };
@@ -88,9 +99,7 @@ export class RuleInsertionVisitor extends VisitorBase {
 
     node.statements.push(this._builder.buildNewRule(this._newDeps));
 
-    this._status = 'success';
-    this._reason = 'new rule successfully inserted into given file';
-
+    this._taskStatusClient.nextEffect('success', 'new rule successfully inserted into given file');
     return node;
   };
 
@@ -165,8 +174,7 @@ export class RuleInsertionVisitor extends VisitorBase {
 
   getResult = () =>
     Object.seal({
-      status: this._status,
-      reason: this._reason,
-      ruleType: this._nodeQualifier.ruleType,
+      status: this._taskStatusClient.getState().status,
+      reason: this._taskStatusClient.getState().reason,
     });
 }

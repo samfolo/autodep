@@ -2,10 +2,6 @@ import {ErrorObject} from 'ajv';
 import path from 'path';
 import {TaskMessages} from './task';
 
-interface NoBUILDFilesInWorkspaceOptions {
-  proposedPath: string;
-}
-
 interface NoRuleFoundForDependencyOptions {
   dep: string;
   nearestBUILDFile: string;
@@ -27,6 +23,10 @@ interface InvalidConfigOptions {
   validationErrors: ErrorObject[] | null | undefined;
 }
 
+interface NoBUILDRuleNameOptions {
+  filePath: string;
+}
+
 export class ErrorMessages {
   static readonly unexpected = {
     noStartTimeSetForProcess: () =>
@@ -34,10 +34,8 @@ export class ErrorMessages {
       ' and may have had an undesirable outcome.',
   };
   static readonly precondition = {
-    noBUILDFilesInWorkspace: ({proposedPath}: NoBUILDFilesInWorkspaceOptions) =>
-      TaskMessages.locate.failure('any `BUILD` or `BUILD.plz` files in the workspace.') +
-      `\nTo create one at ${proposedPath}, add \`enablePropagation: false\` to an .autodep.yaml file,` +
-      ` either in the target directory or in a parent directory.`,
+    noBUILDRuleName: ({filePath}: NoBUILDRuleNameOptions) =>
+      TaskMessages.locate.failure(`a valid \`name\` value within a valid \`BUILD\` rule for ${filePath}`),
     noRuleFoundForDependency: ({dep, nearestBUILDFile}: NoRuleFoundForDependencyOptions) =>
       TaskMessages.resolve.failure(`${dep} in its nearest \`BUILD\` file ${nearestBUILDFile}.`) +
       '\nTry:' +

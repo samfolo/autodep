@@ -15,6 +15,9 @@ export const SUPPORTED_MODULE_EXTENSIONS = [
   '/index.tsx',
   '/index.js',
   '/index.jsx',
+  '/.scss',
+  '/.css',
+  '/.md',
 ];
 
 export const SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRY_TYPES: readonly ManagedSchemaFieldType[] = [

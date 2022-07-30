@@ -216,7 +216,7 @@ export class DependencyBuilder extends AutoDepBase {
       const excludeMatchers: string[] | null = globMatcherConfig.exclude.length > 0 ? globMatcherConfig.exclude : null;
 
       return this.buildCallExpressionNode(SUPPORTED_MANAGED_BUILTINS_LOOKUP.glob, [
-        this.buildArrayNode(includeMatchers),
+        this.buildRuleFieldKwargNode('include', this.buildArrayNode(includeMatchers)),
         ...(excludeMatchers ? [this.buildRuleFieldKwargNode('exclude', this.buildArrayNode(excludeMatchers))] : []),
       ]);
     },

@@ -110,6 +110,7 @@ export class ConfigurationLoader extends AutoDepBase {
 
   loadAutoDepConfigFromWorkspace = (configPath: string | null) => {
     this._configType = 'default';
+    const taskSatusClient = new this._taskStatusClientCls();
 
     if (configPath) {
       try {
@@ -146,8 +147,7 @@ export class ConfigurationLoader extends AutoDepBase {
           const successMessage = TaskMessages.success('validated', CONFIG_FILENAME);
           this._logger.trace({ctx: 'loadAutoDepConfigFromWorkspace', message: successMessage});
 
-          this._status = 'success';
-          this._reason = successMessage;
+          taskSatusClient.nextEffect('success', successMessage);
           this._config = Object.freeze(this._unmarshaller.unmarshal(configInput, this._tsConfigCompilerOptions));
           this._configType = 'custom';
 
@@ -160,11 +160,13 @@ export class ConfigurationLoader extends AutoDepBase {
           const failureMessage = TaskMessages.failure('validate', CONFIG_FILENAME);
           this._logger.trace({ctx: 'loadAutoDepConfigFromWorkspace', message: failureMessage});
 
-          this._status = 'failed';
-          this._reason = ErrorMessages.user.invalidConfig({
-            configPath,
-            validationErrors: validateConfigInput.errors,
-          });
+          taskSatusClient.nextEffect(
+            'failed',
+            ErrorMessages.user.invalidConfig({
+              configPath,
+              validationErrors: validateConfigInput.errors,
+            })
+          );
           this._config = Object.freeze(this._unmarshaller.unmarshal(undefined, this._tsConfigCompilerOptions));
         }
       } catch (error) {
@@ -174,13 +176,11 @@ export class ConfigurationLoader extends AutoDepBase {
           details: error,
         });
 
-        this._status = 'failed';
-        this._reason = String(error);
+        taskSatusClient.nextEffect('failed', String(error));
         this._config = Object.freeze(this._unmarshaller.unmarshal(undefined, this._tsConfigCompilerOptions));
       }
     } else {
-      this._status = 'passthrough';
-      this._reason = 'no config path passed';
+      taskSatusClient.nextEffect('passthrough', 'no config path passed');
       this._config = Object.freeze(this._unmarshaller.unmarshal(undefined, this._tsConfigCompilerOptions));
     }
 
@@ -190,9 +190,10 @@ export class ConfigurationLoader extends AutoDepBase {
       details: this._config.toString(),
     });
 
+    const taskState = taskSatusClient.getState();
     return {
-      status: this._status,
-      reason: this._reason,
+      status: taskState.status,
+      reason: taskState.reason,
       output: this._config,
     };
   };

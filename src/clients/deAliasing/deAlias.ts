@@ -36,13 +36,9 @@ export class DeAliasingClient extends AutoDepBase {
   }
 
   deAlias = (dep: string, supportedExtensions: string[]): DeAliasResult => {
-    if (DeAliasingClient.deAliasingCache[this._filePath]?.[dep]) {
-      this._logger.trace({
-        ctx: 'deAlias',
-        message: TaskMessages.using(`cached value for ${dep}`),
-        details: JSON.stringify(DeAliasingClient.deAliasingCache[this._filePath][dep], null, 2),
-      });
-      return DeAliasingClient.deAliasingCache[this._filePath][dep];
+    const cachedResult = this.getCachedProcessingResultIfExists(dep);
+    if (cachedResult) {
+      return cachedResult;
     }
 
     const relativeRequire = createRequire(this._filePath);
@@ -190,16 +186,66 @@ export class DeAliasingClient extends AutoDepBase {
 
   private isRelative = (path: string) => ['/', './', '../'].some((start) => path.startsWith(start));
 
-  private addDeAliasingResultToCache = (dep: string, result: DeAliasResult) => {
-    this._logger.trace({
-      ctx: 'addDeAliasingResultToCache',
-      message: TaskMessages.using(`caching result for ${dep}`),
-    });
-    if (!DeAliasingClient.deAliasingCache[this._filePath]) {
-      DeAliasingClient.deAliasingCache[this._filePath] = {};
+  /**
+   * Returns a boolean indicating whether there is already a cached result for the
+   * given dependency in juxtaposition to the importing file's directory path.
+   * Results are cached against the directory path, as the import paths of sibling
+   * files importing the same dependencies will be identical:
+   *
+   * ```typescript
+   * // file path/to/a.ts
+   * import dep from '../../same/place'
+   *
+   * // file path/to/b.ts
+   * import dep from '../../same/place'
+   * ```
+   *
+   * @param dep the target dependency to query a cached result for
+   * @returns a boolean indicating the presence of an existing cached result
+   */
+  private getCachedProcessingResultIfExists = (dep: string): DeAliasResult | null => {
+    const fileDirPath = path.dirname(this._filePath);
+    const result = DeAliasingClient.deAliasingCache[fileDirPath]?.[dep] ?? null;
+
+    if (result) {
+      this._logger.trace({
+        ctx: 'getCachedProcessingResultIfExists',
+        message: TaskMessages.using(`cached value for ${dep}`),
+        details: JSON.stringify(result, null, 2),
+      });
     }
 
-    DeAliasingClient.deAliasingCache[this._filePath][dep] = result;
+    return result;
+  };
+
+  /**
+   * Adds the result of a de-aliasing attempt to a singleton cache instance defined
+   * within the class.  Results are cached against the directory path, as the import
+   * paths of sibling files importing the same dependencies will be identical:
+   *
+   * ```typescript
+   * // file path/to/a.ts
+   * import dep from '../../same/place'
+   *
+   * // file path/to/b.ts
+   * import dep from '../../same/place'
+   * ```
+   *
+   * @param dep the absolute path processed by the de-aliasing client
+   * @param result the result of processing
+   * @returns `true` - to confirm the result has been cached.  Caching cannot fail.
+   */
+  private addDeAliasingResultToCache = (dep: string, result: DeAliasResult) => {
+    const fileDirPath = path.dirname(this._filePath);
+    if (!DeAliasingClient.deAliasingCache[fileDirPath]) {
+      DeAliasingClient.deAliasingCache[fileDirPath] = {};
+    }
+
+    DeAliasingClient.deAliasingCache[fileDirPath][dep] = result;
+    this._logger.trace({
+      ctx: 'addDeAliasingResultToCache',
+      message: TaskMessages.success('cached', `result for ${dep}`),
+    });
     return true;
   };
 
@@ -249,7 +295,7 @@ export class DeAliasingClient extends AutoDepBase {
           const file = readFileSync(`${rootDirPath}/${packageName}/package.json`);
           const packageAlias: string = JSON.parse(file.toString('utf-8')).name;
           packageNameMap[packageAlias] = packageName;
-          packageAliases.add(packageName);
+          packageAliases.add(packageAlias);
           this._logger.trace({
             ctx: 'getPackageNameLookup',
             message: TaskMessages.resolve.success(
