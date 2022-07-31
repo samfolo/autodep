@@ -71,7 +71,7 @@ export class Tokeniser extends AutoDepBase {
 
   // Tokenisation:
 
-  tokeniseString = (quoteToken: TokenValue) => {
+  tokeniseString = (quoteToken: TokenValue, isTaggedString: boolean = false) => {
     let tokenValue: string = '';
 
     while (this.peek() !== quoteToken) {
@@ -79,17 +79,67 @@ export class Tokeniser extends AutoDepBase {
       this.consume();
 
       if (this.peek() === SYMBOLS.EOF) {
-        throw new Error(`Invalid input: unexpected EOF while reading string: "${tokenValue}...`);
+        throw new Error(`Invalid input: unexpected EOF while reading string: ${quoteToken}${tokenValue}...`);
       }
     }
 
-    this.consume(); // move "current" pointer to closing quote
-    return tokenValue;
+    this.consume(); // move "current" pointer to second/closing quote
+
+    // if is triple quote and not part of "f/b/r/u"-string:
+    if (!isTaggedString && tokenValue.length === 0 && this.peek() === quoteToken) {
+      this.consume(); // move "current" pointer to third quote
+      return this.tokeniseDocString(quoteToken);
+    } else {
+      return this.createToken('STRING', tokenValue);
+    }
+  };
+
+  tokeniseDocString = (quoteToken: TokenValue) => {
+    let docStringValue: string = '';
+    docStringValue += this.peek();
+    this.consume();
+
+    const tripleQuoteTokenValue = String(quoteToken).repeat(3);
+    let closingTripleQuote: string = '';
+
+    while (closingTripleQuote.length < 3) {
+      while (this.peek() !== quoteToken) {
+        docStringValue += this.peek();
+        this.consume();
+
+        if (this.peek() === SYMBOLS.EOF) {
+          throw new Error(
+            `Invalid input: unexpected EOF while reading string: ${tripleQuoteTokenValue}${docStringValue}...`
+          );
+        }
+      }
+
+      while (this.peek() === quoteToken) {
+        closingTripleQuote += this.peek();
+        this.consume();
+
+        if (closingTripleQuote.length === 3) {
+          break;
+        }
+
+        if (this.peek() === SYMBOLS.EOF) {
+          throw new Error(
+            `Invalid input: unexpected EOF while reading string: ${tripleQuoteTokenValue}${docStringValue}...`
+          );
+        }
+      }
+
+      if (closingTripleQuote.length < 3) {
+        docStringValue += closingTripleQuote;
+        closingTripleQuote = '';
+      }
+    }
+
+    return this.createToken('DOCSTRING', docStringValue);
   };
 
   tokeniseTaggedString = () => {
     let tokenType: TokenType;
-    let tokenValue: TokenValue = '';
 
     switch (this.current()) {
       case SYMBOLS.FSTRING:
@@ -111,16 +161,11 @@ export class Tokeniser extends AutoDepBase {
 
     switch (this.current()) {
       case SYMBOLS.DOUBLE_QUOTE:
-        tokenValue += this.tokeniseString(SYMBOLS.DOUBLE_QUOTE);
-        break;
+        return {...this.tokeniseString(SYMBOLS.DOUBLE_QUOTE, true), type: tokenType};
       case SYMBOLS.SINGLE_QUOTE:
-        tokenValue += this.tokeniseString(SYMBOLS.SINGLE_QUOTE);
-        break;
       default:
-        break;
+        return {...this.tokeniseString(SYMBOLS.SINGLE_QUOTE, true), type: tokenType};
     }
-
-    return {type: tokenType, value: tokenValue};
   };
 
   tokenise = () => {
@@ -210,11 +255,11 @@ export class Tokeniser extends AutoDepBase {
           break;
         case SYMBOLS.SINGLE_QUOTE:
           this.lockScope();
-          this.tokens.push(this.createToken('STRING', this.tokeniseString(SYMBOLS.SINGLE_QUOTE)));
+          this.tokens.push(this.tokeniseString(SYMBOLS.SINGLE_QUOTE));
           break;
         case SYMBOLS.DOUBLE_QUOTE:
           this.lockScope();
-          this.tokens.push(this.createToken('STRING', this.tokeniseString(SYMBOLS.DOUBLE_QUOTE)));
+          this.tokens.push(this.tokeniseString(SYMBOLS.DOUBLE_QUOTE));
           break;
         case SYMBOLS.COLON:
           this.lockScope();
@@ -278,8 +323,7 @@ export class Tokeniser extends AutoDepBase {
           this.lockScope();
           const current = this.current();
           if (this.isMaybeTaggedString(current) && [SYMBOLS.DOUBLE_QUOTE, SYMBOLS.SINGLE_QUOTE].includes(this.peek())) {
-            const {type, value} = this.tokeniseTaggedString();
-            this.tokens.push(this.createToken(type, value));
+            this.tokens.push(this.tokeniseTaggedString());
           } else if (this.isLetter(this.current())) {
             tokenValue += this.current();
 

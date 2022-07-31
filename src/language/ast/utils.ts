@@ -553,7 +553,7 @@ export const createDocStringLiteralNode = ({
       return this.token.value;
     },
     toLines: function () {
-      return withCommentLines([this.value], this.commentMap);
+      return withCommentLines([`"""${this.value}"""`], this.commentMap);
     },
     toString: function () {
       return this.toLines().join('\n');

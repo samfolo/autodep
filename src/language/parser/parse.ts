@@ -114,6 +114,7 @@ export class Parser extends AutoDepBase {
       BSTRING: this.parseBStringLiteral,
       RSTRING: this.parseRStringLiteral,
       USTRING: this.parseUStringLiteral,
+      DOCSTRING: this.parseDocStringLiteral,
       BANG: this.parsePrefixExpression,
       MINUS: this.parsePrefixExpression,
       TRUE: this.parseBooleanLiteral,
@@ -348,6 +349,14 @@ export class Parser extends AutoDepBase {
       token: this.getCurrentToken(),
       value: String(this.getCurrentToken().value),
       prefix: 'u',
+    });
+  }
+
+  @traceEvents()
+  parseDocStringLiteral() {
+    return ast.createDocStringLiteralNode({
+      token: this.getCurrentToken(),
+      value: String(this.getCurrentToken().value),
     });
   }
 

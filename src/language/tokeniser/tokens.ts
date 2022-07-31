@@ -87,6 +87,7 @@ export const PRIMITIVES: Record<Primitive, Primitive> = {
   IDENT: 'IDENT',
   INT: 'INT',
   STRING: 'STRING',
+  DOCSTRING: 'DOCSTRING',
   BOOLEAN: 'BOOLEAN',
   BUILTIN: 'BUILTIN',
   TYPE_HINT: 'TYPE_HINT',

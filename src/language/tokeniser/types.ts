@@ -59,7 +59,16 @@ export type ReservedTerm =
   | 'ASSERT'
   | 'PASS'
   | 'CONTINUE';
-export type Primitive = 'IDENT' | 'DECORATOR' | 'BUILTIN' | 'INT' | 'STRING' | 'COMMENT' | 'BOOLEAN' | 'TYPE_HINT';
+export type Primitive =
+  | 'IDENT'
+  | 'DECORATOR'
+  | 'BUILTIN'
+  | 'INT'
+  | 'STRING'
+  | 'DOCSTRING'
+  | 'COMMENT'
+  | 'BOOLEAN'
+  | 'TYPE_HINT';
 // TODO: implement full parsing of type hints as per https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
 export type TypeHint = 'STR' | 'INT' | 'FLOAT' | 'BOOL' | 'BYTES' | 'LIST' | 'SET' | 'TUPLE';
 
