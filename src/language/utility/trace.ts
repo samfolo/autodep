@@ -88,12 +88,12 @@ export class EventTracer {
   };
 
   private currentWhitespace = () => ' '.repeat(this._traceIndentation * 2);
-  private formatToken = (token: Token) => `[${token?.type}, "${token?.value}"]`;
+  private formatToken = (token: Token) => `[${token?.type}, "${token?.value}" (${token?.scope})]`;
 
   private readonly formatMessage = (type: TraceEvent, payload: TraceEventPayload) =>
     `${this.currentWhitespace()}${type} ${payload.ctx} ${this.formatToken(payload.token)}` +
     (payload.leadingComment ? `\n${this.currentWhitespace()}leading: ${payload.leadingComment}` : '') +
-    (payload.leadingComment ? `\n${this.currentWhitespace()}trailing: ${payload.leadingComment}` : '') +
+    (payload.trailingComment ? `\n${this.currentWhitespace()}trailing: ${payload.trailingComment}` : '') +
     (payload.message ? `\n${this.currentWhitespace()}${payload.message}` : '') +
     '\n';
 

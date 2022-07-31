@@ -1,4 +1,4 @@
-import {SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES} from '../common/const';
+import {SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES, WHITESPACE_SIZE} from '../common/const';
 import {AutoDepConfig} from '../config/types';
 import {AutoDepError, ErrorType} from '../errors/error';
 import * as ast from '../language/ast/utils';
@@ -186,7 +186,14 @@ export class DependencyUpdateVisitor extends VisitorBase {
             details: node.toString(),
           });
           node.args.elements.push(
-            this._builder.buildRuleFieldKwargNode(firstDepsAlias.value, this._builder.buildArrayNode(this._newDeps))
+            this._builder.buildRuleFieldKwargNode(
+              firstDepsAlias.value,
+              this._builder.buildArrayNode(
+                this._newDeps,
+                node.args.token.scope ? node.args.token.scope + WHITESPACE_SIZE : WHITESPACE_SIZE
+              ),
+              node.args.token.scope ?? 0
+            )
           );
 
           this._taskStatusClient.forceState(
@@ -223,7 +230,10 @@ export class DependencyUpdateVisitor extends VisitorBase {
   private visitArrayLiteralNode = (node: ArrayLiteral) => {
     if (node.elements) {
       node.elements.elements = this._newDeps.map((dep) =>
-        ast.createStringLiteralNode({token: createToken('STRING', dep), value: dep})
+        ast.createStringLiteralNode({
+          token: createToken('STRING', dep, node.token.scope ? node.token.scope + WHITESPACE_SIZE : 0),
+          value: dep,
+        })
       );
       this._taskStatusClient.nextEffect('success', 'target rule found, dependencies updated');
     } else {

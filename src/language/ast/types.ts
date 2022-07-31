@@ -8,8 +8,8 @@ export interface BaseNode {
   type: 'Root' | 'Expression' | 'Statement' | 'Comment';
   kind: string;
   getTokenLiteral: () => TokenValue;
-  toString: (depth?: number) => string;
-  toLines: (depth: number) => string[];
+  toString: (scope?: number) => string;
+  toLines: () => string[];
 }
 
 export interface RootNode extends BaseNode {

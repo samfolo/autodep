@@ -1,3 +1,4 @@
+import {WHITESPACE_SIZE} from '../../common/const';
 import type {
   RootNode,
   Identifier,
@@ -34,14 +35,11 @@ export const createRootNode = ({statements}: UniqueNodeProperties<RootNode>): Ro
     getTokenLiteral: function () {
       return this.statements?.[0]?.getTokenLiteral() ?? '#undefined';
     },
-    toLines: function (depth = 0) {
-      return indent(
-        this.statements.reduce<string[]>((acc, statement) => [...acc, ...statement.toLines(depth), ''], []),
-        depth
-      );
+    toLines: function () {
+      return this.statements.reduce<string[]>((acc, statement) => [...acc, ...statement.toLines(), ''], []);
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
   };
 };
@@ -60,11 +58,11 @@ export const createExpressionStatementNode = ({
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      return indent(withCommentLines(this.expression?.toLines(depth), this.commentMap, depth), depth);
+    toLines: function () {
+      return withCommentLines(this.expression?.toLines(), this.commentMap);
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -81,11 +79,11 @@ export const createIdentifierNode = ({token, value}: UniqueNodeProperties<Identi
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      return withCommentLines([this.value], this.commentMap, depth);
+    toLines: function () {
+      return withCommentLines([this.value], this.commentMap);
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -107,15 +105,12 @@ export const createPrefixExpressionNode = ({
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      const [firstLine, ...otherLines] = this.right?.toLines(depth) ?? [];
-      return indent(
-        withCommentLines([this.operator + (firstLine ?? '#{illegal}'), ...otherLines], this.commentMap, depth),
-        depth
-      );
+    toLines: function () {
+      const [firstLine, ...otherLines] = this.right?.toLines() ?? [];
+      return withCommentLines([this.operator + (firstLine ?? '#{illegal}'), ...otherLines], this.commentMap);
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -139,24 +134,20 @@ export const createInfixExpressionNode = ({
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      const leftLines = this.left?.toLines(Math.max(0, depth - 1)) ?? [];
+    toLines: function () {
+      const leftLines = this.left?.toLines() ?? [];
       const otherLeftLines = leftLines.slice(0, -1);
       const lastLeftLine = leftLines[leftLines.length - 1] ?? '#{illegal}';
 
-      const [firstRightLine, ...otherRightLines] = this.right?.toLines(Math.max(0, depth - 1)) ?? ['#{illegal}'];
+      const [firstRightLine, ...otherRightLines] = this.right?.toLines() ?? ['#{illegal}'];
 
-      return indent(
-        withCommentLines(
-          [...otherLeftLines, `${lastLeftLine} ${this.operator} ${firstRightLine.trimStart()}`, ...otherRightLines],
-          this.commentMap,
-          depth
-        ),
-        depth
+      return withCommentLines(
+        [...otherLeftLines, `${lastLeftLine} ${this.operator} ${firstRightLine}`, ...otherRightLines],
+        this.commentMap
       );
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -173,11 +164,11 @@ export const createIntegerLiteralNode = ({token, value}: UniqueNodeProperties<In
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      return withCommentLines([String(this.value)], this.commentMap, depth);
+    toLines: function () {
+      return withCommentLines([String(this.value)], this.commentMap);
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -194,13 +185,13 @@ export const createBooleanLiteralNode = ({token, value}: UniqueNodeProperties<Bo
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
+    toLines: function () {
       const bool = String(this.value);
       const capitalisedBool = bool[0].toUpperCase() + bool.slice(1);
-      return withCommentLines([capitalisedBool], this.commentMap, depth);
+      return withCommentLines([capitalisedBool], this.commentMap);
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -217,11 +208,11 @@ export const createStringLiteralNode = ({token, value}: UniqueNodeProperties<Str
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      return indent(withCommentLines([`"${this.value}"`], this.commentMap, depth), depth);
+    toLines: function () {
+      return withCommentLines([`"${this.value}"`], this.commentMap);
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -238,12 +229,12 @@ export const createArrayLiteralNode = ({token, elements}: UniqueNodeProperties<A
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      const elementsLines = this.elements?.toLines(depth + 1) ?? ['#{illegal}'];
-      return indent(withCommentLines(['[', ...elementsLines, ']'], this.commentMap, depth), depth);
+    toLines: function () {
+      const elementsLines = this.elements?.toLines() ?? ['#{illegal}'];
+      return withCommentLines(['[', ...elementsLines, ']'], this.commentMap);
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -260,13 +251,13 @@ export const createMapLiteralNode = ({token, map}: UniqueNodeProperties<MapLiter
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      const mapLines = this.map?.toLines(depth + 1) ?? ['#{illegal}'];
+    toLines: function () {
+      const mapLines = this.map?.toLines() ?? ['#{illegal}'];
 
-      return indent(withCommentLines(['{', ...mapLines, '}'], this.commentMap, depth), depth, 'b');
+      return withCommentLines(['{', ...mapLines, '}'], this.commentMap);
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -288,23 +279,19 @@ export const createCallExpressionNode = ({
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      const functionNameLines = this.functionName?.toLines(depth + 1) ?? ['#{illegal}'];
+    toLines: function () {
+      const functionNameLines = this.functionName?.toLines() ?? ['#{illegal}'];
       const lastFunctionNameLine = functionNameLines[functionNameLines.length - 1];
       const otherFunctionNameLines = functionNameLines.slice(0, -1);
-      const argsLines = this.args?.toLines(depth + 1) ?? ['#{illegal}'];
+      const argsLines = this.args?.toLines() ?? ['#{illegal}'];
 
-      return indent(
-        withCommentLines(
-          [...otherFunctionNameLines, lastFunctionNameLine + '(', ...argsLines, ')'],
-          this.commentMap,
-          depth
-        ),
-        depth
+      return withCommentLines(
+        [...otherFunctionNameLines, lastFunctionNameLine + '(', ...argsLines, ')'],
+        this.commentMap
       );
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -326,19 +313,16 @@ export const createIndexExpressionNode = ({
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      const leftLines = this.left?.toLines(Math.max(0, depth - 1)) ?? ['#{illegal}'];
+    toLines: function () {
+      const leftLines = this.left?.toLines() ?? ['#{illegal}'];
       const lastLeftLine = leftLines[leftLines.length - 1];
       const otherLeftLines = leftLines.slice(0, -1);
-      const indexLines = this.index?.toLines(depth - 1) ?? ['#{illegal}'];
+      const indexLines = this.index?.toLines() ?? ['#{illegal}'];
 
-      return indent(
-        withCommentLines([...otherLeftLines, lastLeftLine + '[', ...indexLines, ']'], this.commentMap, depth),
-        depth
-      );
+      return withCommentLines([...otherLeftLines, lastLeftLine + '[', ...indexLines, ']'], this.commentMap);
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -355,21 +339,22 @@ export const createExpressionListNode = ({token, elements}: UniqueNodeProperties
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      return withCommentLines(
-        this.elements.reduce<string[]>((acc, element) => {
-          const elementLines = element.toLines(depth);
-          const otherElementLines = elementLines.slice(0, -1);
-          const lastElementLine = elementLines[elementLines.length - 1] ?? '#{illegal}';
+    toLines: function () {
+      return indent(
+        withCommentLines(
+          this.elements.reduce<string[]>((acc, element) => {
+            const elementLines = element.toLines();
+            const otherElementLines = elementLines.slice(0, -1);
+            const lastElementLine = elementLines[elementLines.length - 1] ?? '#{illegal}';
 
-          return [...acc, ...otherElementLines, lastElementLine + ','];
-        }, []),
-        this.commentMap,
-        depth
+            return [...acc, ...otherElementLines, lastElementLine + ','];
+          }, []),
+          this.commentMap
+        )
       );
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -389,21 +374,22 @@ export const createKeyValueExpressionListNode = ({
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      return withCommentLines(
-        this.pairs.reduce<string[]>((acc, pair) => {
-          const pairLines = pair.toLines(depth);
-          const otherPairLines = pairLines.slice(0, -1);
-          const lastPairLine = pairLines[pairLines.length - 1] ?? '#{illegal}';
+    toLines: function () {
+      return indent(
+        withCommentLines(
+          this.pairs.reduce<string[]>((acc, pair) => {
+            const pairLines = pair.toLines();
+            const otherPairLines = pairLines.slice(0, -1);
+            const lastPairLine = pairLines[pairLines.length - 1] ?? '#{illegal}';
 
-          return [...acc, ...otherPairLines, lastPairLine + ','];
-        }, []),
-        this.commentMap,
-        depth
+            return [...acc, ...otherPairLines, lastPairLine + ','];
+          }, []),
+          this.commentMap
+        )
       );
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -425,24 +411,20 @@ export const createKeyValueExpressionNode = ({
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      const keyLines = this.key?.toLines(Math.max(0, depth - 1)) ?? [];
+    toLines: function () {
+      const keyLines = this.key?.toLines() ?? [];
       const otherKeyLines = keyLines.slice(0, -1);
       const lastKeyLine = keyLines[keyLines.length - 1] ?? '#{illegal}';
 
-      const [firstValueLine, ...otherValueLines] = this.value?.toLines(Math.max(0, depth - 1)) ?? ['#{illegal}'];
+      const [firstValueLine, ...otherValueLines] = this.value?.toLines() ?? ['#{illegal}'];
 
-      return indent(
-        withCommentLines(
-          [...otherKeyLines, `${lastKeyLine}: ${firstValueLine.trimStart()}`, ...otherValueLines],
-          this.commentMap,
-          depth
-        ),
-        depth
+      return withCommentLines(
+        [...otherKeyLines, `${lastKeyLine}: ${firstValueLine}`, ...otherValueLines],
+        this.commentMap
       );
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -462,11 +444,11 @@ export const createDocStringLiteralNode = ({
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      return indent(withCommentLines([this.value], this.commentMap, depth), depth);
+    toLines: function () {
+      return withCommentLines([this.value], this.commentMap);
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -484,11 +466,11 @@ export const createSingleLineCommentNode = ({
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      return indent([comment], depth);
+    toLines: function () {
+      return [comment];
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
   };
 };
@@ -502,14 +484,11 @@ export const createCommentGroupNode = ({token, comments}: UniqueNodeProperties<C
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      return indent(
-        comments.reduce<string[]>((acc, comment) => [...acc, ...comment.toLines(depth)], []),
-        depth
-      );
+    toLines: function () {
+      return comments.reduce<string[]>((acc, comment) => [...acc, ...comment.toLines()], []);
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
   };
 };
@@ -526,11 +505,11 @@ export const createCommentStatementNode = ({
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      return indent(comment.toLines(depth), depth);
+    toLines: function () {
+      return comment.toLines();
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
   };
 };
@@ -546,18 +525,16 @@ export const createBlockStatementNode = ({token, statements}: UniqueNodeProperti
     getTokenLiteral: function () {
       return this.statements?.[0]?.getTokenLiteral() ?? '#undefined';
     },
-    toLines: function (depth = 0) {
+    toLines: function () {
       return indent(
         withCommentLines(
-          this.statements.reduce<string[]>((acc, statement) => [...acc, ...statement.toLines(depth), ''], []),
-          this.commentMap,
-          depth
-        ),
-        depth
+          this.statements.reduce<string[]>((acc, statement) => [...acc, ...statement.toLines(), ''], []),
+          this.commentMap
+        )
       );
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -583,15 +560,18 @@ export const createFunctionDefinitionNode = ({
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      const functionHeadingLine = `def ${this.name}(${this.params?.toString() ?? '#{illegal}'})${
-        this.typeHint?.toString() ?? ''
-      }:`;
-      const blockStatementLines = this.body.toLines(depth + 1);
-      return indent(withCommentLines([functionHeadingLine, ...blockStatementLines], this.commentMap, depth), depth);
+    toLines: function () {
+      const functionOpeningLine = `def ${this.name}(`;
+      const parameterLines = this.params?.toLines() ?? ['#{illegal}'];
+      const functionClosingLine = `)${this.typeHint ? ` -> ${this.typeHint?.toString()}` : ''}:`;
+      const blockStatementLines = this.body.toLines();
+      return withCommentLines(
+        [functionOpeningLine, ...parameterLines, functionClosingLine, ...blockStatementLines],
+        this.commentMap
+      );
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -608,21 +588,22 @@ export const createParameterListNode = ({token, elements}: UniqueNodeProperties<
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      return withCommentLines(
-        this.elements.reduce<string[]>((acc, element) => {
-          const elementLines = element.toLines(depth);
-          const otherElementLines = elementLines.slice(0, -1);
-          const lastElementLine = elementLines[elementLines.length - 1] ?? '#{illegal}';
+    toLines: function () {
+      return indent(
+        withCommentLines(
+          this.elements.reduce<string[]>((acc, element) => {
+            const elementLines = element.toLines();
+            const otherElementLines = elementLines.slice(0, -1);
+            const lastElementLine = elementLines[elementLines.length - 1] ?? '#{illegal}';
 
-          return [...acc, ...otherElementLines, lastElementLine];
-        }, []),
-        this.commentMap,
-        depth
+            return [...acc, ...otherElementLines, lastElementLine + ','];
+          }, []),
+          this.commentMap
+        )
       );
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -646,22 +627,20 @@ export const createParameterNode = ({
     getTokenLiteral: function () {
       return this.token.value;
     },
-    toLines: function (depth = 0) {
-      const nameLines = this.name?.toLines(Math.max(0, depth - 1)) ?? [];
+    toLines: function () {
+      const nameLines = this.name?.toLines() ?? [];
       const otherNameLines = nameLines.slice(0, -1);
       const lastNameLine = nameLines[nameLines.length - 1] ?? '#{illegal}';
 
-      const typeHintLines = this.typeHint?.toLines(Math.max(0, depth - 1)) ?? [];
-      const [firstTypeHintLine, ...otherTypeHintLines] = typeHintLines.slice(0, -1) ?? [];
+      const typeHintLines = this.typeHint?.toLines() ?? [];
+      const [firstTypeHintLine, ...otherTypeHintLines] = typeHintLines.slice(0, -1);
       const lastTypeHintLine = typeHintLines[typeHintLines.length - 1];
 
-      const [firstDefaultValueLine, ...otherDefaultValueLines] = this.defaultValue?.toLines(Math.max(0, depth - 1)) ?? [
-        '#{illegal}',
-      ];
+      const [firstDefaultValueLine, ...otherDefaultValueLines] = this.defaultValue?.toLines() ?? [];
 
-      const nameToTypeHint = `${lastNameLine || ''}${firstTypeHintLine ? `: ${firstTypeHintLine.trimStart()}` : ''}`;
-      const typeHintToDefaultValue = `${lastTypeHintLine || ''}${
-        firstDefaultValueLine ? ` = ${firstDefaultValueLine.trimStart()}` : ''
+      const nameToTypeHint = `${lastNameLine || ''}${firstTypeHintLine ? `: ${firstTypeHintLine}` : ''}`;
+      const typeHintToDefaultValue = `${lastTypeHintLine ? `: ${lastTypeHintLine}` : ''}${
+        firstDefaultValueLine ? ` = ${firstDefaultValueLine}` : ''
       }`;
 
       const adjoiningLines =
@@ -669,13 +648,10 @@ export const createParameterNode = ({
           ? [nameToTypeHint, ...otherTypeHintLines, typeHintToDefaultValue]
           : [`${nameToTypeHint}${typeHintToDefaultValue}`];
 
-      return indent(
-        withCommentLines([...otherNameLines, ...adjoiningLines, ...otherDefaultValueLines], this.commentMap, depth),
-        depth
-      );
+      return withCommentLines([...otherNameLines, ...adjoiningLines, ...otherDefaultValueLines], this.commentMap);
     },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
+    toString: function () {
+      return this.toLines().join('\n');
     },
     commentMap,
   };
@@ -683,15 +659,14 @@ export const createParameterNode = ({
 
 // Util:
 
-const getIndentation = (depth: number, char: string = ' ') => char.repeat(4 * depth);
+const getIndentation = (char: string = ' ') => char.repeat(WHITESPACE_SIZE);
 
-const indent = (lines: string[], depth: number, char: string = ' ') =>
-  lines.map((line) => getIndentation(depth, char) + line);
+const indent = (lines: string[], char: string = ' ') => lines.map((line) => getIndentation(char) + line);
 
-const withCommentLines = (valueLines: string[] = [], commentMap: CommentMap, depth: number) => {
+const withCommentLines = (valueLines: string[] = [], commentMap: CommentMap) => {
   let result = [];
 
-  const leadingComments = commentMap.leading?.toLines(Math.max(0, depth - 1)) ?? [];
+  const leadingComments = commentMap.leading?.toLines() ?? [];
   if (leadingComments.length > 0) {
     result.push(...leadingComments);
   }
@@ -701,18 +676,12 @@ const withCommentLines = (valueLines: string[] = [], commentMap: CommentMap, dep
   }
 
   const lastValueLine = valueLines[valueLines.length - 1] ?? '';
-  const trailingComments = commentMap.trailing?.toLines(depth) ?? [];
-
-  // all trailing comment expressions should end in a newline:
-  const lastTrailing = trailingComments[trailingComments.length - 1];
-  if (lastTrailing) {
-    trailingComments[trailingComments.length - 1] = `${lastTrailing}\n${getIndentation(depth)}`;
-  }
+  const trailingComments = commentMap.trailing?.toLines() ?? [];
 
   const [firstTrailingComment, ...otherTrailingComments] = trailingComments ?? [];
 
   if (lastValueLine && firstTrailingComment) {
-    const trailedLine = lastValueLine + '  ' + firstTrailingComment.trimStart();
+    const trailedLine = lastValueLine + '  ' + firstTrailingComment;
     result.push(trailedLine);
   } else if (lastValueLine) {
     result.push(lastValueLine);

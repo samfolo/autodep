@@ -33,8 +33,10 @@ export type SymbolName =
   | 'PIPE'
   | 'FTAG'
   | 'RTAG'
+  | 'BTAG'
   | 'MODULO'
-  | 'EOF';
+  | 'EOF'
+  | 'ILLEGAL';
 export type ReservedTerm =
   | 'TRUE'
   | 'FALSE'
@@ -56,11 +58,14 @@ export type ReservedTerm =
   | 'ASSERT'
   | 'PASS'
   | 'CONTINUE';
-export type Primitive = 'IDENT' | 'DECORATOR' | 'BUILTIN' | 'INT' | 'STRING' | 'COMMENT' | 'BOOLEAN';
+export type Primitive = 'IDENT' | 'DECORATOR' | 'BUILTIN' | 'INT' | 'STRING' | 'COMMENT' | 'BOOLEAN' | 'TYPE_HINT';
+// TODO: implement full parsing of type hints as per https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html
+export type TypeHint = 'STR' | 'INT' | 'FLOAT' | 'BOOL' | 'BYTES' | 'LIST' | 'SET' | 'TUPLE';
 
-export type TokenType = ReservedTerm | SymbolName | Primitive;
+export type TokenType = ReservedTerm | SymbolName | Primitive | TypeHint;
 
 export interface Token {
   type: TokenType;
   value: TokenValue;
+  scope: number;
 }

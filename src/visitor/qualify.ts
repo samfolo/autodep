@@ -11,7 +11,7 @@ import {FileMatcherDeclaration, ManagedSchemaFieldEntry, ManagedSchemaFieldType}
 import {AutoDepConfig} from '../config/types';
 import {AutoDepError, ErrorType} from '../errors/error';
 import {AutoDepBase} from '../inheritance/base';
-import {CallExpression, Expression, ArrayLiteral, StringLiteral} from '../language/ast/types';
+import {CallExpression, Expression, StringLiteral} from '../language/ast/types';
 import {ErrorMessages} from '../messages/error';
 import {TaskMessages} from '../messages/task';
 
@@ -253,7 +253,6 @@ export class NodeQualifier extends AutoDepBase {
   };
 
   isTargetBuildRule = (node: CallExpression, functionName: string, srcsAliases: Set<ManagedSchemaFieldEntry>) => {
-    console.log(node);
     if (!node.args) {
       return false;
     }
@@ -287,7 +286,7 @@ export class NodeQualifier extends AutoDepBase {
               }
               break;
             case 'array':
-              if (element.left?.kind === 'ArrayLiteral') {
+              if (element.right?.kind === 'ArrayLiteral') {
                 return this.isTargetArraySrcsField(element.right, functionName, srcsAlias);
               } else {
                 if (!relevantAliases.find((alias) => alias.as === srcsAlias.as)) {
@@ -470,7 +469,7 @@ export class NodeQualifier extends AutoDepBase {
 
     this._logger.trace({
       ctx: 'isManagedNode',
-      message: TaskMessages.success('entered', 'CallExpression'),
+      message: TaskMessages.success('entered', 'managed node'),
       details: JSON.stringify(
         {
           functionName,

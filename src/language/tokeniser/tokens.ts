@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {Primitive, ReservedTerm, SymbolName, TokenValue} from './types';
+import {Primitive, ReservedTerm, SymbolName, TokenValue, TypeHint} from './types';
 
 const keysAsValues = <T extends Record<any, any>>(record: T) =>
   Object.entries(record).reduce<Record<T[keyof T], keyof T>>((acc, [k, v]: [keyof T, T[keyof T]]) => {
@@ -40,8 +40,10 @@ export const SYMBOLS: Record<SymbolName, TokenValue> = {
   PIPE: '|',
   FTAG: 'f',
   RTAG: 'r',
+  BTAG: 'b',
   MODULO: '%',
   EOF: 0,
+  ILLEGAL: 0,
 } as const;
 
 export const RESERVED_TERMS: Record<ReservedTerm, TokenValue> = {
@@ -68,12 +70,25 @@ export const RESERVED_TERMS: Record<ReservedTerm, TokenValue> = {
 };
 export const RESERVED_TERM_LOOKUP = keysAsValues(RESERVED_TERMS);
 
+export const TYPE_HINTS: Record<TypeHint, TokenValue> = {
+  STR: 'str',
+  BOOL: 'bool',
+  FLOAT: 'float',
+  BYTES: 'bytes',
+  INT: 'int',
+  LIST: 'list',
+  SET: 'set',
+  TUPLE: 'tuple',
+};
+export const TYPE_HINT_LOOKUP = keysAsValues(TYPE_HINTS);
+
 export const PRIMITIVES: Record<Primitive, Primitive> = {
   IDENT: 'IDENT',
   INT: 'INT',
   STRING: 'STRING',
   BOOLEAN: 'BOOLEAN',
   BUILTIN: 'BUILTIN',
+  TYPE_HINT: 'TYPE_HINT',
   COMMENT: 'COMMENT',
   DECORATOR: 'DECORATOR',
 };

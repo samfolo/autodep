@@ -106,6 +106,8 @@ export class Parser extends AutoDepBase {
 
     this.prefixParseFunctions = {
       IDENT: this.parseIdentifier,
+      // TODO: "parseTypeHint" for complex type hints
+      TYPE_HINT: this.parseIdentifier,
       INT: this.parseIntegerLiteral,
       STRING: this.parseStringLiteral,
       BANG: this.parsePrefixExpression,
@@ -145,7 +147,7 @@ export class Parser extends AutoDepBase {
         return this.parseFunctionDefinition(leadingComment);
       case 'RETURN':
       case 'DOUBLE_NEW_LINE':
-        while (this.peekNextToken().type === 'DOUBLE_NEW_LINE') {
+        while (this.peekNextTokenIs(['DOUBLE_NEW_LINE'])) {
           this.getNextToken();
         }
         return null;
@@ -153,7 +155,7 @@ export class Parser extends AutoDepBase {
         const comment = this.parseLeadingComment();
         this.getNextToken();
 
-        if (this.getCurrentToken().type === 'DOUBLE_NEW_LINE') {
+        if (this.peekCurrentTokenIs(['DOUBLE_NEW_LINE'])) {
           return this.parseCommentStatement(comment);
         }
         return this.parseStatement(comment);
@@ -174,11 +176,14 @@ export class Parser extends AutoDepBase {
 
   @traceEvents()
   parseBlockStatement(leadingComment?: Comment) {
-    const blockStatement = ast.createBlockStatementNode({token: this.getCurrentToken(), statements: []});
+    const blockStatementToken = this.getCurrentToken();
+    const blockStatement = ast.createBlockStatementNode({token: blockStatementToken, statements: []});
     blockStatement.commentMap.leading = leadingComment;
 
-    // TODO: handle "unindent" logic...
-    while (this.getCurrentToken().type !== 'NEW_LINE' && this.getCurrentToken().type !== 'EOF') {
+    const isInBlockStatement = () =>
+      blockStatementToken.scope <= this.getCurrentToken().scope && this.getCurrentToken().type !== 'EOF';
+
+    while (isInBlockStatement()) {
       const statement = this.parseStatement();
       if (statement) {
         blockStatement.statements.push(statement);
@@ -201,7 +206,7 @@ export class Parser extends AutoDepBase {
 
   @traceEvents()
   parseLeadingComment() {
-    if (this.peekNextToken().type === 'COMMENT') {
+    if (this.peekNextTokenIs(['COMMENT'])) {
       const commentGroup = ast.createCommentGroupNode({token: this.getCurrentToken(), comments: []});
 
       commentGroup.comments.push(
@@ -211,7 +216,7 @@ export class Parser extends AutoDepBase {
         })
       );
 
-      while (this.peekNextToken().type === 'COMMENT') {
+      while (this.peekNextTokenIs(['COMMENT'])) {
         this.getNextToken();
 
         commentGroup.comments.push(
@@ -273,7 +278,7 @@ export class Parser extends AutoDepBase {
       // need to bind `this` here so `this` context is not lost in the `@traceEvents` decorator.
       const infixFunction = this.infixParseFunctions[this.peekNextToken().type]?.bind(this);
       if (!infixFunction) {
-        if (leftExpression && this.peekNextToken().type === 'COMMENT') {
+        if (leftExpression && this.peekNextTokenIs(['COMMENT'])) {
           this.getNextToken();
           leftExpression.commentMap.trailing = this.parseTrailingComment(trailingCommentType);
         }
@@ -284,7 +289,7 @@ export class Parser extends AutoDepBase {
       leftExpression = infixFunction(leftExpression);
     }
 
-    if (leftExpression && this.peekNextToken().type === 'COMMENT') {
+    if (leftExpression && this.peekNextTokenIs(['COMMENT'])) {
       this.getNextToken();
       leftExpression.commentMap.trailing = this.parseTrailingComment(trailingCommentType);
     }
@@ -344,7 +349,7 @@ export class Parser extends AutoDepBase {
   parseKeyValueExpressionList(endToken: TokenType) {
     const pairsExpression = ast.createKeyValueExpressionListNode({token: this.getCurrentToken(), pairs: []});
 
-    if (this.peekNextToken().type === endToken) {
+    if (this.peekNextTokenIs([endToken])) {
       this.getNextToken();
       return pairsExpression;
     }
@@ -353,9 +358,9 @@ export class Parser extends AutoDepBase {
       this.getNextToken();
 
       let keyLeadingComment: Comment | undefined;
-      if (this.getCurrentToken().type === 'COMMENT') {
+      if (this.peekCurrentTokenIs(['COMMENT'])) {
         // short-circuit:
-        if (this.peekNextToken().type === endToken) {
+        if (this.peekNextTokenIs([endToken])) {
           pairsExpression.commentMap.trailing = this.parseTrailingComment('multiline-trail');
           this.getNextToken();
           return pairsExpression;
@@ -384,7 +389,7 @@ export class Parser extends AutoDepBase {
       this.getNextToken();
 
       let valueLeadingComment: Comment | undefined;
-      if (this.getCurrentToken().type === 'COMMENT') {
+      if (this.peekCurrentTokenIs(['COMMENT'])) {
         valueLeadingComment = this.parseLeadingComment();
         this.getNextToken();
       }
@@ -404,7 +409,7 @@ export class Parser extends AutoDepBase {
     }
 
     let trailingComment: Comment | undefined;
-    if (this.peekNextToken().type === 'COMMENT') {
+    if (this.peekNextTokenIs(['COMMENT'])) {
       this.getNextToken();
       trailingComment = this.parseTrailingComment();
     }
@@ -435,7 +440,7 @@ export class Parser extends AutoDepBase {
 
     if (this.peekNextTokenIs(['POINT'])) {
       this.getNextToken();
-      if (!this.getNextTokenOfTypeOrFail(['IDENT'])) {
+      if (!this.getNextTokenOfTypeOrFail(['NONE', 'TYPE_HINT'])) {
         return null;
       }
       typeHint = this.parseExpression(Precedence.LOWEST, leadingComment, 'multiline-trail');
@@ -472,7 +477,7 @@ export class Parser extends AutoDepBase {
     this.getNextToken();
 
     let leadingComment: Comment | undefined;
-    if (this.peekNextTokenIs(['COMMENT'])) {
+    if (this.peekCurrentTokenIs(['COMMENT'])) {
       leadingComment = this.parseLeadingComment();
       this.getNextToken();
     }
@@ -536,17 +541,33 @@ export class Parser extends AutoDepBase {
     let typeHint: Expression | undefined;
     if (this.peekNextTokenIs(['COLON'])) {
       this.getNextToken();
-      if (this.getNextTokenOfTypeOrFail(['IDENT'])) {
+
+      let typeHintComment: Comment | undefined;
+      if (this.peekNextTokenIs(['COMMENT'])) {
+        this.getNextToken();
+        typeHintComment = this.parseLeadingComment();
+      }
+
+      if (!this.getNextTokenOfTypeOrFail(['NONE', 'TYPE_HINT'])) {
         return;
       }
-      typeHint = this.parseExpression(Precedence.LOWEST, leadingComment, 'multiline-trail');
+
+      typeHint = this.parseExpression(Precedence.LOWEST, typeHintComment, 'multiline-trail');
     }
 
     let defaultValue: Expression | undefined;
     if (this.peekNextTokenIs(['ASSIGN'])) {
       this.getNextToken();
+
+      let defaultValueComment: Comment | undefined;
+      if (this.peekNextTokenIs(['COMMENT'])) {
+        this.getNextToken();
+        defaultValueComment = this.parseLeadingComment();
+      }
+
       this.getNextToken();
-      defaultValue = this.parseExpression(Precedence.LOWEST, leadingComment, 'multiline-trail');
+
+      defaultValue = this.parseExpression(Precedence.LOWEST, defaultValueComment, 'multiline-trail');
     }
 
     const parameter = ast.createParameterNode({
@@ -622,7 +643,7 @@ export class Parser extends AutoDepBase {
   @traceEvents()
   parseExpressionList(endToken: TokenType) {
     const expressionList = ast.createExpressionListNode({token: this.getCurrentToken(), elements: []});
-    if (this.peekNextToken().type === endToken) {
+    if (this.peekNextTokenIs([endToken])) {
       this.getNextToken();
       return expressionList;
     }
@@ -633,6 +654,10 @@ export class Parser extends AutoDepBase {
     if (this.peekCurrentTokenIs(['COMMENT'])) {
       leadingComment = this.parseLeadingComment();
       this.getNextToken();
+    }
+
+    if (this.peekCurrentTokenIs([endToken])) {
+      return expressionList;
     }
 
     const firstEl = this.parseExpression(Precedence.LOWEST, leadingComment);

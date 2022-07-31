@@ -94,3 +94,5 @@ export const LOG_LEVELS = ['trace', 'debug', 'info', 'warn', 'error'] as const;
 
 export const DEFAULT_BINARY_OUT_DIR = 'plz-out/bin';
 export const DEFAULT_NON_BINARY_OUT_DIR = 'plz-out/gen';
+
+export const WHITESPACE_SIZE = 4;

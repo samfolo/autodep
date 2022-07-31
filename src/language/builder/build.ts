@@ -1,5 +1,9 @@
 import path from 'path';
-import {SUPPORTED_MANAGED_BUILTINS_LOOKUP, SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES} from '../../common/const';
+import {
+  SUPPORTED_MANAGED_BUILTINS_LOOKUP,
+  SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES,
+  WHITESPACE_SIZE,
+} from '../../common/const';
 
 import {ManagedSchemaFieldEntry, ManagedSchemaFieldType, ManagedSchemaFieldName} from '../../common/types';
 import {AutoDepConfig} from '../../config/types';
@@ -9,6 +13,7 @@ import {ErrorMessages} from '../../messages/error';
 
 import {Expression} from '../ast/types';
 import * as ast from '../ast/utils';
+import {createToken} from '../tokeniser/tokenise';
 
 interface DependencyBuilderOptions {
   config: AutoDepConfig.Output.Schema;
@@ -52,7 +57,7 @@ export class DependencyBuilder extends AutoDepBase {
     return root;
   };
 
-  readonly buildNewRule = (newDeps: string[]) => {
+  readonly buildNewRule = (newDeps: string[], scope: number = 0) => {
     const fileConfig = this._config.onCreate[this._ruleType];
 
     const {name, srcs, deps, visibility, testOnly} = this.getRuleFieldSchema(
@@ -65,103 +70,145 @@ export class DependencyBuilder extends AutoDepBase {
     const buildVisibilityNode = this.schemaBuilderMap[visibility.as];
     const buildTestOnlyNode = this.schemaBuilderMap[testOnly.as];
 
+    const nextScope = scope + WHITESPACE_SIZE;
+    const thirdScope = scope + WHITESPACE_SIZE * 2;
+
     return ast.createExpressionStatementNode({
-      token: {type: 'IDENT', value: fileConfig.name},
-      expression: this.buildCallExpressionNode(fileConfig.name, [
-        this.buildRuleFieldKwargNode(name.value, buildNameNode(path.parse(this._fileName).name)),
-        this.buildRuleFieldKwargNode(srcs.value, buildSrcsNode(this._fileName)),
-        ...(newDeps.length > 0 || !fileConfig.omitEmptyFields
-          ? [this.buildRuleFieldKwargNode(deps.value, buildDepsNode(newDeps))]
-          : []),
-        ...('initialVisibility' in fileConfig && fileConfig.initialVisibility
-          ? [this.buildRuleFieldKwargNode(visibility.value, buildVisibilityNode(fileConfig.initialVisibility))]
-          : []),
-        ...('testOnly' in fileConfig && fileConfig.testOnly !== null
-          ? [this.buildRuleFieldKwargNode(testOnly.value, buildTestOnlyNode(fileConfig.testOnly))]
-          : []),
-      ]),
+      token: createToken('IDENT', fileConfig.name, scope),
+      expression: this.buildCallExpressionNode(
+        fileConfig.name,
+        [
+          this.buildRuleFieldKwargNode(
+            name.value,
+            buildNameNode(path.parse(this._fileName).name, thirdScope),
+            nextScope
+          ),
+          this.buildRuleFieldKwargNode(srcs.value, buildSrcsNode(this._fileName, thirdScope), nextScope),
+          ...(newDeps.length > 0 || !fileConfig.omitEmptyFields
+            ? [this.buildRuleFieldKwargNode(deps.value, buildDepsNode(newDeps, thirdScope), nextScope)]
+            : []),
+          ...('initialVisibility' in fileConfig && fileConfig.initialVisibility
+            ? [
+                this.buildRuleFieldKwargNode(
+                  visibility.value,
+                  buildVisibilityNode(fileConfig.initialVisibility, thirdScope),
+                  nextScope
+                ),
+              ]
+            : []),
+          ...('testOnly' in fileConfig && fileConfig.testOnly !== null
+            ? [
+                this.buildRuleFieldKwargNode(
+                  testOnly.value,
+                  buildTestOnlyNode(fileConfig.testOnly, thirdScope),
+                  nextScope
+                ),
+              ]
+            : []),
+        ],
+        scope
+      ),
     });
   };
 
   readonly buildFileHeadingCommentStatement = (fileHeading: string) => {
     const commentLines = fileHeading.split('\n').map((line) => '# ' + line);
+    const commentStatementToken = createToken('COMMENT', commentLines[0], 0);
     return ast.createCommentStatementNode({
-      token: {type: 'COMMENT', value: commentLines[0]},
+      token: commentStatementToken,
       comment: ast.createCommentGroupNode({
-        token: {type: 'COMMENT', value: commentLines[0]},
+        token: commentStatementToken,
         comments: commentLines.map((commentLine) =>
-          ast.createSingleLineCommentNode({token: {type: 'COMMENT', value: commentLine}, comment: commentLine})
+          ast.createSingleLineCommentNode({token: createToken('COMMENT', commentLine, 0), comment: commentLine})
         ),
       }),
     });
   };
 
-  readonly buildSubincludeStatement = (subincludes: string[]) =>
-    ast.createExpressionStatementNode({
-      token: {type: 'IDENT', value: 'subinclude'},
+  readonly buildSubincludeStatement = (subincludes: string[]) => {
+    const subincludeCallToken = createToken('IDENT', 'subinclude', 0);
+    return ast.createExpressionStatementNode({
+      token: subincludeCallToken,
       expression: this.buildCallExpressionNode(
         'subinclude',
-        subincludes.map((subinclude) =>
-          ast.createStringLiteralNode({token: {type: 'STRING', value: subinclude}, value: subinclude})
-        )
+        subincludes.map((subinclude) => {
+          const subincludeToken = createToken('STRING', subinclude, WHITESPACE_SIZE);
+          return ast.createStringLiteralNode({token: subincludeToken, value: subinclude});
+        })
       ),
     });
+  };
 
-  readonly buildRuleFieldKwargNode = (key: string, right: Expression) =>
-    ast.createInfixExpressionNode({
-      token: {type: 'IDENT', value: key},
+  readonly buildRuleFieldKwargNode = (key: string, value: Expression, scope: number) => {
+    const ruleFieldKwargToken = createToken('IDENT', key, scope);
+    return ast.createInfixExpressionNode({
+      token: ruleFieldKwargToken,
       left: ast.createIdentifierNode({
-        token: {type: 'IDENT', value: key},
+        token: ruleFieldKwargToken,
         value: key,
       }),
       operator: '=',
-      right,
+      right: value,
     });
+  };
 
-  readonly buildStringLiteralNode = (value: string) =>
-    ast.createStringLiteralNode({
-      token: {type: 'STRING', value},
+  readonly buildStringLiteralNode = (value: string, scope: number) => {
+    const stringLiteralToken = createToken('STRING', value, scope);
+    return ast.createStringLiteralNode({
+      token: stringLiteralToken,
       value,
     });
+  };
 
-  readonly buildIntegerLiteralNode = (value: number) =>
-    ast.createIntegerLiteralNode({
-      token: {type: 'INT', value: String(value)},
+  readonly buildIntegerLiteralNode = (value: number, scope: number) => {
+    const integerLiteralToken = createToken('INT', String(value), scope);
+    return ast.createIntegerLiteralNode({
+      token: integerLiteralToken,
       value,
     });
+  };
 
-  readonly buildBooleanLiteralNode = (value: boolean) =>
-    ast.createBooleanLiteralNode({
-      token: {type: 'BOOLEAN', value: String(value)},
+  readonly buildBooleanLiteralNode = (value: boolean, scope: number) => {
+    const booleanLiteralToken = createToken('BOOLEAN', String(value), scope);
+    return ast.createBooleanLiteralNode({
+      token: booleanLiteralToken,
       value,
     });
+  };
 
-  readonly buildArrayNode = (values: string[]) =>
-    ast.createArrayLiteralNode({
-      token: {type: 'OPEN_BRACKET', value: '['},
+  readonly buildArrayNode = (values: string[], scope: number) => {
+    const arrayLiteralToken = createToken('OPEN_BRACKET', '[', scope);
+    return ast.createArrayLiteralNode({
+      token: arrayLiteralToken,
       elements: ast.createExpressionListNode({
-        token: {type: 'IDENT', value: 'name'},
-        elements: values.map((value) =>
-          ast.createStringLiteralNode({
-            token: {type: 'STRING', value},
+        token: arrayLiteralToken,
+        elements: values.map((value) => {
+          const stringLiteralToken = createToken('STRING', value, scope + WHITESPACE_SIZE);
+          return ast.createStringLiteralNode({
+            token: stringLiteralToken,
             value,
-          })
-        ),
+          });
+        }),
       }),
     });
+  };
 
-  readonly buildCallExpressionNode = (functionName: string, args: Expression[]) =>
-    ast.createCallExpressionNode({
-      token: {type: 'OPEN_PAREN', value: '('},
+  readonly buildCallExpressionNode = (functionName: string, args: Expression[], scope: number = 0) => {
+    const callExpressionToken = createToken('OPEN_PAREN', '(', scope);
+    const functionNameToken = createToken('IDENT', functionName, scope);
+    const argsToken = createToken(args[0].token.type, args[0].getTokenLiteral(), scope + WHITESPACE_SIZE);
+    return ast.createCallExpressionNode({
+      token: callExpressionToken,
       functionName: ast.createIdentifierNode({
-        token: {type: 'IDENT', value: functionName},
+        token: functionNameToken,
         value: functionName,
       }),
       args: ast.createExpressionListNode({
-        token: {type: args[0].token.type, value: args[0].getTokenLiteral()},
+        token: argsToken,
         elements: args,
       }),
     });
+  };
 
   // Utils:
 
@@ -181,25 +228,25 @@ export class DependencyBuilder extends AutoDepBase {
     };
   };
 
-  private schemaBuilderMap: Record<ManagedSchemaFieldType, (arg: any) => Expression> = {
-    string: (arg) =>
+  private schemaBuilderMap: Record<ManagedSchemaFieldType, (arg: any, scope: number) => Expression> = {
+    string: (arg, scope) =>
       Array.isArray(arg) && arg.length > 0
-        ? this.buildStringLiteralNode(arg[0])
-        : this.buildStringLiteralNode(String(arg)),
-    array: (arg) => (Array.isArray(arg) ? this.buildArrayNode(arg) : this.buildArrayNode([arg])),
-    number: (arg) =>
+        ? this.buildStringLiteralNode(arg[0], scope)
+        : this.buildStringLiteralNode(String(arg), scope),
+    array: (arg, scope) => (Array.isArray(arg) ? this.buildArrayNode(arg, scope) : this.buildArrayNode([arg], scope)),
+    number: (arg, scope) =>
       Array.isArray(arg) && arg.length > 0
-        ? this.buildIntegerLiteralNode(Number(arg[0]))
+        ? this.buildIntegerLiteralNode(Number(arg[0]), scope)
         : typeof arg === 'number'
-        ? this.buildIntegerLiteralNode(arg)
-        : this.buildIntegerLiteralNode(Number(arg)),
-    bool: (arg) =>
+        ? this.buildIntegerLiteralNode(arg, scope)
+        : this.buildIntegerLiteralNode(Number(arg), scope),
+    bool: (arg, scope) =>
       Array.isArray(arg) && arg.length > 0
-        ? this.buildBooleanLiteralNode(Boolean(arg[0]))
+        ? this.buildBooleanLiteralNode(Boolean(arg[0]), scope)
         : typeof arg === 'boolean'
-        ? this.buildBooleanLiteralNode(arg)
-        : this.buildBooleanLiteralNode(Boolean(arg)),
-    glob: (arg) => {
+        ? this.buildBooleanLiteralNode(arg, scope)
+        : this.buildBooleanLiteralNode(Boolean(arg), scope),
+    glob: (arg, scope) => {
       const globMatcherConfig = this._config.onCreate[this._ruleType].globMatchers;
 
       let includeMatchers: string[];
@@ -216,10 +263,19 @@ export class DependencyBuilder extends AutoDepBase {
 
       const excludeMatchers: string[] | null = globMatcherConfig.exclude.length > 0 ? globMatcherConfig.exclude : null;
 
-      return this.buildCallExpressionNode(SUPPORTED_MANAGED_BUILTINS_LOOKUP.glob, [
-        this.buildRuleFieldKwargNode('include', this.buildArrayNode(includeMatchers)),
-        ...(excludeMatchers ? [this.buildRuleFieldKwargNode('exclude', this.buildArrayNode(excludeMatchers))] : []),
-      ]);
+      const nextScope = scope + WHITESPACE_SIZE;
+      const thirdScope = scope + WHITESPACE_SIZE * 2;
+
+      return this.buildCallExpressionNode(
+        SUPPORTED_MANAGED_BUILTINS_LOOKUP.glob,
+        [
+          this.buildRuleFieldKwargNode('include', this.buildArrayNode(includeMatchers, thirdScope), nextScope),
+          ...(excludeMatchers
+            ? [this.buildRuleFieldKwargNode('exclude', this.buildArrayNode(excludeMatchers, thirdScope), nextScope)]
+            : []),
+        ],
+        scope
+      );
     },
   };
 

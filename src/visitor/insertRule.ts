@@ -158,7 +158,7 @@ export class RuleInsertionVisitor extends VisitorBase {
 
         for (const newSubinclude of newSubincludes) {
           if (!seen.has(newSubinclude)) {
-            uniqueSubincludes.push(this._builder.buildStringLiteralNode(newSubinclude));
+            uniqueSubincludes.push(this._builder.buildStringLiteralNode(newSubinclude, node.args.token.scope ?? 0));
             seen.add(newSubinclude);
           }
         }
