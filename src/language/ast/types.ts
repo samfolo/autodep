@@ -108,17 +108,17 @@ export interface IndexExpression extends BaseExpression {
   index: Expression | undefined;
 }
 
-export interface KeywordArgumentExpression extends BaseExpression {
-  token: Token;
-  kind: 'KeywordArgumentExpression';
-  key: Expression;
-  value: Expression | undefined;
-}
-
 export interface MapLiteral extends BaseExpression {
   token: Token;
   kind: 'MapLiteral';
   map: KeyValueExpressionList | undefined;
+}
+
+export interface LambdaLiteral extends BaseExpression {
+  token: Token;
+  kind: 'LambdaLiteral';
+  // TODO: what are the fields for this?
+  // map: KeyValueExpressionList | undefined;
 }
 
 export interface ExpressionList extends BaseExpression {
@@ -140,6 +140,20 @@ export interface KeyValueExpression extends BaseExpression {
   value: Expression;
 }
 
+export interface ParameterList extends BaseExpression {
+  token: Token;
+  kind: 'ParameterList';
+  elements: Parameter[];
+}
+
+export interface Parameter extends BaseExpression {
+  token: Token;
+  kind: 'Parameter';
+  name: Expression | undefined;
+  typeHint: Expression | undefined;
+  defaultValue: Expression | undefined;
+}
+
 export interface DocStringLiteral extends BaseExpression {
   token: Token;
   kind: 'DocStringLiteral';
@@ -158,7 +172,6 @@ export type Expression =
   | StringLiteral
   | ArrayLiteral
   | IndexExpression
-  | KeywordArgumentExpression
   | MapLiteral
   | ExpressionList
   | KeyValueExpressionList
@@ -173,13 +186,28 @@ export interface ExpressionStatement extends BaseStatement {
   expression: Expression | undefined;
 }
 
+export interface FunctionDefinition extends BaseStatement {
+  token: Token;
+  kind: 'FunctionDefinition';
+  name: Expression | undefined;
+  params: ParameterList | undefined;
+  body: BlockStatement;
+  typeHint: Expression | undefined;
+}
+
+export interface BlockStatement extends BaseStatement {
+  token: Token;
+  kind: 'BlockStatement';
+  statements: Statement[];
+}
+
 export interface CommentStatement extends Omit<BaseStatement, 'commentMap'> {
   token: Token;
   kind: 'CommentStatement';
   comment: Comment;
 }
 
-export type Statement = ExpressionStatement | CommentStatement;
+export type Statement = ExpressionStatement | CommentStatement | BlockStatement | FunctionDefinition;
 
 // Comments:
 

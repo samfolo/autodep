@@ -82,9 +82,9 @@ export class NodeQualifier extends AutoDepBase {
     }
 
     for (const element of node.args.elements) {
-      if (element.kind === 'KeywordArgumentExpression') {
+      if (element.kind === 'InfixExpression' && element.operator === '=') {
         const iterableAliases = [...nameAliases];
-        const relevantAliases = iterableAliases.filter((alias) => alias.value === element.key.getTokenLiteral());
+        const relevantAliases = iterableAliases.filter((alias) => alias.value === element.left?.getTokenLiteral());
         const permittedTypeUnion = relevantAliases.map((alias) => alias.as).join('|');
 
         for (const nameAlias of relevantAliases) {
@@ -95,8 +95,8 @@ export class NodeQualifier extends AutoDepBase {
 
           switch (nameAlias.as) {
             case 'string':
-              if (element.value?.kind === 'StringLiteral') {
-                return {type: nameAlias.as, alias: nameAlias.value, value: String(element.value.getTokenLiteral())};
+              if (element.right?.kind === 'StringLiteral') {
+                return {type: nameAlias.as, alias: nameAlias.value, value: String(element.right?.getTokenLiteral())};
               } else {
                 if (!relevantAliases.find((alias) => alias.as === nameAlias.as)) {
                   this.warnOfBuildSchemaMismatch(
@@ -139,9 +139,9 @@ export class NodeQualifier extends AutoDepBase {
     }
 
     for (const element of node.args.elements) {
-      if (element.kind === 'KeywordArgumentExpression') {
+      if (element.kind === 'InfixExpression' && element.operator === '=') {
         const iterableAliases = [...srcsAliases];
-        const relevantAliases = iterableAliases.filter((alias) => alias.value === element.key.getTokenLiteral());
+        const relevantAliases = iterableAliases.filter((alias) => alias.value === element.left?.getTokenLiteral());
         const permittedTypeUnion = relevantAliases.map((alias) => alias.as).join('|');
 
         for (const srcsAlias of relevantAliases) {
@@ -152,8 +152,8 @@ export class NodeQualifier extends AutoDepBase {
 
           switch (srcsAlias.as) {
             case 'string':
-              if (element.value?.kind === 'StringLiteral') {
-                return {type: srcsAlias.as, alias: srcsAlias.value, value: String(element.value.getTokenLiteral())};
+              if (element.right?.kind === 'StringLiteral') {
+                return {type: srcsAlias.as, alias: srcsAlias.value, value: String(element.right?.getTokenLiteral())};
               } else {
                 if (!relevantAliases.find((alias) => alias.as === srcsAlias.as)) {
                   this.warnOfBuildSchemaMismatch(
@@ -167,11 +167,11 @@ export class NodeQualifier extends AutoDepBase {
               }
               continue;
             case 'array':
-              if (element.value?.kind === 'ArrayLiteral') {
+              if (element.right?.kind === 'ArrayLiteral') {
                 return {
                   type: srcsAlias.as,
                   alias: srcsAlias.value,
-                  value: element.value.elements?.elements.map((element) => String(element.getTokenLiteral())) ?? [],
+                  value: element.right.elements?.elements.map((element) => String(element.getTokenLiteral())) ?? [],
                 };
               } else {
                 if (!relevantAliases.find((alias) => alias.as === srcsAlias.as)) {
@@ -186,9 +186,9 @@ export class NodeQualifier extends AutoDepBase {
               }
               continue;
             case 'glob':
-              if (this.isGlobDeclaration(element.value)) {
-                const includeExpression = element.value?.args?.elements?.[0];
-                const excludeExpression = element.value?.args?.elements?.[1];
+              if (this.isGlobDeclaration(element.right)) {
+                const includeExpression = element.right?.args?.elements?.[0];
+                const excludeExpression = element.right?.args?.elements?.[1];
                 return {
                   type: srcsAlias.as,
                   alias: srcsAlias.value,
@@ -253,14 +253,15 @@ export class NodeQualifier extends AutoDepBase {
   };
 
   isTargetBuildRule = (node: CallExpression, functionName: string, srcsAliases: Set<ManagedSchemaFieldEntry>) => {
+    console.log(node);
     if (!node.args) {
       return false;
     }
 
     return node.args.elements.some((element) => {
-      if (element.kind === 'KeywordArgumentExpression') {
+      if (element.kind === 'InfixExpression' && element.operator === '=') {
         const iterableAliases = [...srcsAliases];
-        const relevantAliases = iterableAliases.filter((alias) => alias.value === element.key.getTokenLiteral());
+        const relevantAliases = iterableAliases.filter((alias) => alias.value === element.left?.getTokenLiteral());
         const permittedTypeUnion = relevantAliases.map((alias) => alias.as).join('|');
 
         return relevantAliases.some((srcsAlias) => {
@@ -271,8 +272,8 @@ export class NodeQualifier extends AutoDepBase {
 
           switch (srcsAlias.as) {
             case 'string':
-              if (element.value?.kind === 'StringLiteral') {
-                return this.isTargetStringSrcsField(element.value, functionName, srcsAlias);
+              if (element.right?.kind === 'StringLiteral') {
+                return this.isTargetStringSrcsField(element.right, functionName, srcsAlias);
               } else {
                 if (!relevantAliases.find((alias) => alias.as === srcsAlias.as)) {
                   this.warnOfBuildSchemaMismatch(
@@ -286,8 +287,8 @@ export class NodeQualifier extends AutoDepBase {
               }
               break;
             case 'array':
-              if (element.value?.kind === 'ArrayLiteral') {
-                return this.isTargetArraySrcsField(element.value, functionName, srcsAlias);
+              if (element.left?.kind === 'ArrayLiteral') {
+                return this.isTargetArraySrcsField(element.right, functionName, srcsAlias);
               } else {
                 if (!relevantAliases.find((alias) => alias.as === srcsAlias.as)) {
                   this.warnOfBuildSchemaMismatch(
@@ -301,8 +302,8 @@ export class NodeQualifier extends AutoDepBase {
               }
               break;
             case 'glob':
-              if (this.isGlobDeclaration(element.value)) {
-                return this.isTargetGlobSrcsField(element.value, functionName, srcsAlias);
+              if (this.isGlobDeclaration(element.right)) {
+                return this.isTargetGlobSrcsField(element.right, functionName, srcsAlias);
               } else {
                 if (!relevantAliases.find((alias) => alias.as === srcsAlias.as)) {
                   this.warnOfBuildSchemaMismatch(
@@ -357,7 +358,7 @@ export class NodeQualifier extends AutoDepBase {
   };
 
   private isTargetArraySrcsField = (
-    elementValue: ArrayLiteral,
+    elementValue: Expression | undefined,
     functionName: string,
     srcsAlias: ManagedSchemaFieldEntry
   ) => {
@@ -365,11 +366,13 @@ export class NodeQualifier extends AutoDepBase {
       ctx: 'isTargetArraySrcsField',
       message: TaskMessages.identified(`an array field`, `\`${functionName}.${srcsAlias.value}\``),
     });
-    const isMatch = !!elementValue.elements?.elements.some((subElement) => {
-      if (subElement?.kind === 'StringLiteral') {
-        return subElement.getTokenLiteral() === this._fileName;
-      }
-    });
+    const isMatch =
+      elementValue?.kind === 'ArrayLiteral' &&
+      !!elementValue?.elements?.elements.some((subElement) => {
+        if (subElement?.kind === 'StringLiteral') {
+          return subElement.getTokenLiteral() === this._fileName;
+        }
+      });
     this._logger.trace({
       ctx: 'isTargetArraySrcsField',
       message: TaskMessages.locate[isMatch ? 'success' : 'failure'](

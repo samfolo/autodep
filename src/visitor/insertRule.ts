@@ -131,7 +131,7 @@ export class RuleInsertionVisitor extends VisitorBase {
   };
 
   private visitExpressionStatementNode = (node: ExpressionStatement) => {
-    if (node.token.type === 'RULE_NAME' && node.expression?.kind === 'CallExpression') {
+    if (node.token.type === 'IDENT' && node.expression?.kind === 'CallExpression') {
       node.expression = this.visitCallExpressionNode(node.expression);
     }
 

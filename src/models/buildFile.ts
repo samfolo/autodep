@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
+
 import {AutoDepConfig} from '../config/types';
 import {AutoDepBase} from '../inheritance/base';
 import {RootNode} from '../language/ast/types';
@@ -50,8 +51,6 @@ export class BuildFile extends AutoDepBase {
   private static ASTCache: Record<string, RootNode> = {};
 
   readonly toAST = () => {
-    // using the whole file as a key, in case the contents change and need to be re-parsed
-    // this cache won't carry over between arcs-of-operation:
     if (BuildFile.ASTCache[this._path]) {
       this._logger.trace({ctx: 'toAST', message: TaskMessages.using(`cached AST for ${this._path}`)});
       return BuildFile.ASTCache[this._path];

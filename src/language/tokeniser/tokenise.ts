@@ -1,4 +1,3 @@
-import {SUPPORTED_MANAGED_BUILTINS} from '../../common/const';
 import {AutoDepConfig} from '../../config/types';
 import {AutoDepBase} from '../../inheritance/base';
 
@@ -36,12 +35,7 @@ export class Tokeniser extends AutoDepBase {
     this.readPosition++;
   };
 
-  getIdentTokenType = (ident: string): TokenType =>
-    RESERVED_TERM_LOOKUP[ident] ||
-    (SUPPORTED_MANAGED_BUILTINS.some((builtin) => builtin === ident) && 'BUILTIN') ||
-    (this._config.manage.rules.has(ident) && 'RULE_NAME') ||
-    (this._config.manage.fields.has(ident) && 'RULE_FIELD_NAME') ||
-    'IDENT';
+  getIdentTokenType = (ident: string): TokenType => RESERVED_TERM_LOOKUP[ident] || 'IDENT';
 
   createToken = createToken;
 
@@ -74,8 +68,32 @@ export class Tokeniser extends AutoDepBase {
         case SYMBOLS.PLUS:
           this.tokens.push(this.createToken('PLUS', this.current()));
           break;
+        case SYMBOLS.GT:
+          if (this.peek() === SYMBOLS.ASSIGN) {
+            tokenValue += this.current();
+            this.consume();
+            this.tokens.push(this.createToken('GT_EQ', tokenValue + this.current()));
+          } else {
+            this.tokens.push(this.createToken('GT', this.current()));
+          }
+          break;
+        case SYMBOLS.LT:
+          if (this.peek() === SYMBOLS.ASSIGN) {
+            tokenValue += this.current();
+            this.consume();
+            this.tokens.push(this.createToken('LT_EQ', tokenValue + this.current()));
+          } else {
+            this.tokens.push(this.createToken('LT', this.current()));
+          }
+          break;
         case SYMBOLS.MINUS:
-          this.tokens.push(this.createToken('MINUS', this.current()));
+          if (this.peek() === SYMBOLS.GT) {
+            tokenValue += this.current();
+            this.consume();
+            this.tokens.push(this.createToken('POINT', tokenValue + this.current()));
+          } else {
+            this.tokens.push(this.createToken('MINUS', this.current()));
+          }
           break;
         case SYMBOLS.FORWARD_SLASH:
           this.tokens.push(this.createToken('FORWARD_SLASH', this.current()));
@@ -83,8 +101,14 @@ export class Tokeniser extends AutoDepBase {
         case SYMBOLS.ASTERISK:
           this.tokens.push(this.createToken('ASTERISK', this.current()));
           break;
-        case SYMBOLS.EQUALS:
-          this.tokens.push(this.createToken('EQUALS', this.current()));
+        case SYMBOLS.ASSIGN:
+          if (this.peek() === SYMBOLS.ASSIGN) {
+            tokenValue += this.current();
+            this.consume();
+            this.tokens.push(this.createToken('EQ', tokenValue + this.current()));
+          } else {
+            this.tokens.push(this.createToken('ASSIGN', this.current()));
+          }
           break;
         case SYMBOLS.SINGLE_QUOTE:
           while (this.peek() !== SYMBOLS.SINGLE_QUOTE) {
@@ -114,6 +138,30 @@ export class Tokeniser extends AutoDepBase {
           break;
         case SYMBOLS.COLON:
           this.tokens.push(this.createToken('COLON', this.current()));
+          break;
+        case SYMBOLS.BANG:
+          if (this.peek() === SYMBOLS.ASSIGN) {
+            tokenValue += this.current();
+            this.consume();
+            this.tokens.push(this.createToken('NOT_EQ', tokenValue + this.current()));
+          } else {
+            this.tokens.push(this.createToken('BANG', this.current()));
+          }
+          break;
+        case SYMBOLS.ASPERAND:
+          const asperand = this.current();
+          tokenValue += this.current();
+
+          while (/[a-zA-Z_$]/.test(this.peek())) {
+            tokenValue += this.peek();
+            this.pushCursor();
+          }
+
+          if (asperand === tokenValue) {
+            this.tokens.push(this.createToken('ASPERAND', tokenValue));
+          } else {
+            this.tokens.push(this.createToken('DECORATOR', tokenValue));
+          }
           break;
         case SYMBOLS.POUND_SIGN:
           tokenValue += this.current();

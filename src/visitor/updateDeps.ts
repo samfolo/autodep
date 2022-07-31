@@ -6,12 +6,12 @@ import {
   ASTNode,
   CallExpression,
   ArrayLiteral,
-  KeywordArgumentExpression,
   ExpressionStatement,
   RootNode,
   Expression,
   Statement,
   Comment,
+  InfixExpression,
 } from '../language/ast/types';
 import {createToken} from '../language/tokeniser/tokenise';
 import {DependencyBuilder} from '../language/builder/build';
@@ -115,7 +115,7 @@ export class DependencyUpdateVisitor extends VisitorBase {
   };
 
   private visitExpressionStatementNode = (node: ExpressionStatement) => {
-    if (node.token.type === 'RULE_NAME' && node.expression?.kind === 'CallExpression') {
+    if (node.token.type === 'IDENT' && node.expression?.kind === 'CallExpression') {
       node.expression = this.visitCallExpressionNode(node.expression);
     }
 
@@ -165,8 +165,8 @@ export class DependencyUpdateVisitor extends VisitorBase {
 
         // where the deps are added, find the `deps` kwarg field and replace:
         node.args.elements = node.args.elements.map((element) => {
-          if (element.kind === 'KeywordArgumentExpression') {
-            return this.visitKeywordArgumentExpressionNode(element, functionName);
+          if (element.kind === 'InfixExpression' && element.operator === '=') {
+            return this.visitInfixExpressionNode(element, functionName);
           }
           return element;
         });
@@ -206,13 +206,13 @@ export class DependencyUpdateVisitor extends VisitorBase {
     return node;
   };
 
-  private visitKeywordArgumentExpressionNode = (node: KeywordArgumentExpression, functionName: string) => {
+  private visitInfixExpressionNode = (node: InfixExpression, functionName: string) => {
     const managedSchema = this._config.manage.schema[functionName];
     const depsSchemaFieldEntries = managedSchema?.deps ?? [SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES.DEPS];
 
     for (const depsAlias of depsSchemaFieldEntries) {
-      if (node.key.getTokenLiteral() === depsAlias.value && node.value?.kind === 'ArrayLiteral') {
-        node.value = this.visitArrayLiteralNode(node.value);
+      if (node.left?.getTokenLiteral() === depsAlias.value && node.right?.kind === 'ArrayLiteral') {
+        node.right = this.visitArrayLiteralNode(node.right);
         break;
       }
     }

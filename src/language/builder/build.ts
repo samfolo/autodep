@@ -66,7 +66,7 @@ export class DependencyBuilder extends AutoDepBase {
     const buildTestOnlyNode = this.schemaBuilderMap[testOnly.as];
 
     return ast.createExpressionStatementNode({
-      token: {type: 'RULE_NAME', value: fileConfig.name},
+      token: {type: 'IDENT', value: fileConfig.name},
       expression: this.buildCallExpressionNode(fileConfig.name, [
         this.buildRuleFieldKwargNode(name.value, buildNameNode(path.parse(this._fileName).name)),
         this.buildRuleFieldKwargNode(srcs.value, buildSrcsNode(this._fileName)),
@@ -98,7 +98,7 @@ export class DependencyBuilder extends AutoDepBase {
 
   readonly buildSubincludeStatement = (subincludes: string[]) =>
     ast.createExpressionStatementNode({
-      token: {type: 'RULE_NAME', value: 'subinclude'},
+      token: {type: 'IDENT', value: 'subinclude'},
       expression: this.buildCallExpressionNode(
         'subinclude',
         subincludes.map((subinclude) =>
@@ -107,14 +107,15 @@ export class DependencyBuilder extends AutoDepBase {
       ),
     });
 
-  readonly buildRuleFieldKwargNode = (key: string, value: Expression) =>
-    ast.createKeywordArgumentExpressionNode({
-      token: {type: 'RULE_FIELD_NAME', value: key},
-      key: ast.createIdentifierNode({
-        token: {type: 'RULE_FIELD_NAME', value: key},
+  readonly buildRuleFieldKwargNode = (key: string, right: Expression) =>
+    ast.createInfixExpressionNode({
+      token: {type: 'IDENT', value: key},
+      left: ast.createIdentifierNode({
+        token: {type: 'IDENT', value: key},
         value: key,
       }),
-      value,
+      operator: '=',
+      right,
     });
 
   readonly buildStringLiteralNode = (value: string) =>
@@ -153,7 +154,7 @@ export class DependencyBuilder extends AutoDepBase {
     ast.createCallExpressionNode({
       token: {type: 'OPEN_PAREN', value: '('},
       functionName: ast.createIdentifierNode({
-        token: {type: 'RULE_NAME', value: functionName},
+        token: {type: 'IDENT', value: functionName},
         value: functionName,
       }),
       args: ast.createExpressionListNode({

@@ -10,7 +10,6 @@ import type {
   StringLiteral,
   ArrayLiteral,
   IndexExpression,
-  KeywordArgumentExpression,
   MapLiteral,
   UniqueNodeProperties,
   SingleLineComment,
@@ -21,6 +20,10 @@ import type {
   CommentMap,
   KeyValueExpressionList,
   KeyValueExpression,
+  BlockStatement,
+  FunctionDefinition,
+  ParameterList,
+  Parameter,
 } from './types';
 
 export const createRootNode = ({statements}: UniqueNodeProperties<RootNode>): RootNode => {
@@ -341,45 +344,6 @@ export const createIndexExpressionNode = ({
   };
 };
 
-export const createKeywordArgumentExpressionNode = ({
-  token,
-  key,
-  value,
-}: UniqueNodeProperties<KeywordArgumentExpression>): KeywordArgumentExpression => {
-  const commentMap: CommentMap = {leading: undefined, trailing: undefined};
-
-  return {
-    type: 'Expression',
-    kind: 'KeywordArgumentExpression',
-    token,
-    key,
-    value,
-    getTokenLiteral: function () {
-      return this.token.value;
-    },
-    toLines: function (depth = 0) {
-      const keyLines = this.key?.toLines(Math.max(0, depth - 1)) ?? [];
-      const otherKeyLines = keyLines.slice(0, -1);
-      const lastKeyLine = keyLines[keyLines.length - 1] ?? '#{illegal}';
-
-      const [firstValueLine, ...otherValueLines] = this.value?.toLines(Math.max(0, depth - 1)) ?? ['#{illegal}'];
-
-      return indent(
-        withCommentLines(
-          [...otherKeyLines, `${lastKeyLine} = ${firstValueLine.trimStart()}`, ...otherValueLines],
-          this.commentMap,
-          depth
-        ),
-        depth
-      );
-    },
-    toString: function (depth = 0) {
-      return this.toLines(Number(depth)).join('\n');
-    },
-    commentMap,
-  };
-};
-
 export const createExpressionListNode = ({token, elements}: UniqueNodeProperties<ExpressionList>): ExpressionList => {
   const commentMap: CommentMap = {leading: undefined, trailing: undefined};
 
@@ -568,6 +532,152 @@ export const createCommentStatementNode = ({
     toString: function (depth = 0) {
       return this.toLines(Number(depth)).join('\n');
     },
+  };
+};
+
+export const createBlockStatementNode = ({token, statements}: UniqueNodeProperties<BlockStatement>): BlockStatement => {
+  const commentMap: CommentMap = {leading: undefined, trailing: undefined};
+
+  return {
+    token,
+    type: 'Statement',
+    kind: 'BlockStatement',
+    statements,
+    getTokenLiteral: function () {
+      return this.statements?.[0]?.getTokenLiteral() ?? '#undefined';
+    },
+    toLines: function (depth = 0) {
+      return indent(
+        withCommentLines(
+          this.statements.reduce<string[]>((acc, statement) => [...acc, ...statement.toLines(depth), ''], []),
+          this.commentMap,
+          depth
+        ),
+        depth
+      );
+    },
+    toString: function (depth = 0) {
+      return this.toLines(Number(depth)).join('\n');
+    },
+    commentMap,
+  };
+};
+
+export const createFunctionDefinitionNode = ({
+  token,
+  name,
+  params,
+  body,
+  typeHint,
+}: UniqueNodeProperties<FunctionDefinition>): FunctionDefinition => {
+  const commentMap: CommentMap = {leading: undefined, trailing: undefined};
+
+  return {
+    token,
+    type: 'Statement',
+    kind: 'FunctionDefinition',
+    name,
+    params,
+    body,
+    typeHint,
+    getTokenLiteral: function () {
+      return this.token.value;
+    },
+    toLines: function (depth = 0) {
+      const functionHeadingLine = `def ${this.name}(${this.params?.toString() ?? '#{illegal}'})${
+        this.typeHint?.toString() ?? ''
+      }:`;
+      const blockStatementLines = this.body.toLines(depth + 1);
+      return indent(withCommentLines([functionHeadingLine, ...blockStatementLines], this.commentMap, depth), depth);
+    },
+    toString: function (depth = 0) {
+      return this.toLines(Number(depth)).join('\n');
+    },
+    commentMap,
+  };
+};
+
+export const createParameterListNode = ({token, elements}: UniqueNodeProperties<ParameterList>): ParameterList => {
+  const commentMap: CommentMap = {leading: undefined, trailing: undefined};
+
+  return {
+    token,
+    type: 'Expression',
+    kind: 'ParameterList',
+    elements,
+    getTokenLiteral: function () {
+      return this.token.value;
+    },
+    toLines: function (depth = 0) {
+      return withCommentLines(
+        this.elements.reduce<string[]>((acc, element) => {
+          const elementLines = element.toLines(depth);
+          const otherElementLines = elementLines.slice(0, -1);
+          const lastElementLine = elementLines[elementLines.length - 1] ?? '#{illegal}';
+
+          return [...acc, ...otherElementLines, lastElementLine];
+        }, []),
+        this.commentMap,
+        depth
+      );
+    },
+    toString: function (depth = 0) {
+      return this.toLines(Number(depth)).join('\n');
+    },
+    commentMap,
+  };
+};
+
+export const createParameterNode = ({
+  token,
+  name,
+  typeHint,
+  defaultValue,
+}: UniqueNodeProperties<Parameter>): Parameter => {
+  const commentMap: CommentMap = {leading: undefined, trailing: undefined};
+
+  return {
+    type: 'Expression',
+    kind: 'Parameter',
+    token,
+    name,
+    typeHint,
+    defaultValue,
+    getTokenLiteral: function () {
+      return this.token.value;
+    },
+    toLines: function (depth = 0) {
+      const nameLines = this.name?.toLines(Math.max(0, depth - 1)) ?? [];
+      const otherNameLines = nameLines.slice(0, -1);
+      const lastNameLine = nameLines[nameLines.length - 1] ?? '#{illegal}';
+
+      const typeHintLines = this.typeHint?.toLines(Math.max(0, depth - 1)) ?? [];
+      const [firstTypeHintLine, ...otherTypeHintLines] = typeHintLines.slice(0, -1) ?? [];
+      const lastTypeHintLine = typeHintLines[typeHintLines.length - 1];
+
+      const [firstDefaultValueLine, ...otherDefaultValueLines] = this.defaultValue?.toLines(Math.max(0, depth - 1)) ?? [
+        '#{illegal}',
+      ];
+
+      const nameToTypeHint = `${lastNameLine || ''}${firstTypeHintLine ? `: ${firstTypeHintLine.trimStart()}` : ''}`;
+      const typeHintToDefaultValue = `${lastTypeHintLine || ''}${
+        firstDefaultValueLine ? ` = ${firstDefaultValueLine.trimStart()}` : ''
+      }`;
+
+      const adjoiningLines =
+        otherTypeHintLines.length > 0
+          ? [nameToTypeHint, ...otherTypeHintLines, typeHintToDefaultValue]
+          : [`${nameToTypeHint}${typeHintToDefaultValue}`];
+
+      return indent(
+        withCommentLines([...otherNameLines, ...adjoiningLines, ...otherDefaultValueLines], this.commentMap, depth),
+        depth
+      );
+    },
+    toString: function (depth = 0) {
+      return this.toLines(Number(depth)).join('\n');
+    },
+    commentMap,
   };
 };
 

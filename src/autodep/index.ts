@@ -64,15 +64,21 @@ export class AutoDep extends AutoDepBase {
     this._endTime = null;
   }
 
+  /**
+   * Manages the entire update process for the file at the given path:
+   * - Loads `autodep` and `typescript` configuration (if any),
+   * - Gathers information about the target file, as well as its `BUILD` file (if it exists),
+   * - Resolves direct dependencies,
+   * - Discerns which dependencies are safe to prune (if any),
+   * - Converts the dependencies into `BUILD` targets,
+   * - Writes the update to the target `BUILD` file, or creates one if the conditions
+   *   dictate as such.
+   *
+   * Logging and duration metrics are reported to the relevant output channels
+   *
+   * @param rootPath the path to the target file
+   */
   processUpdate = (rootPath: string) => {
-    /**
-     * CURRENT ISSUE:
-     * - first bubble up to *nearest* BUILD file
-     *   - anything higher isn't your concern...
-     * - if one doesn't exist, or if a target rule doesn't exist, THEN consider `enablePropagation`:
-     *   - if `true`, then insert a rule in the nearest BUILD file
-     *   - if `false`, make a new one in the current working directory
-     */
     try {
       this.initialise(rootPath);
 
@@ -83,7 +89,7 @@ export class AutoDep extends AutoDepBase {
         targetBuildRuleMetadata,
       } = this.probeTargetBuildFile(rootPath);
 
-      // TODO: derive defaultBuildRuleName from config settings
+      // TODO: derive `defaultBuildRuleName` from config settings
       const baseName = path.basename(rootPath);
       const defaultBuildRuleName = baseName.slice(0, baseName.indexOf(path.extname(baseName)));
       const targetBuildRuleName = targetBuildRuleMetadata.name?.value ?? defaultBuildRuleName;
@@ -257,9 +263,6 @@ export class AutoDep extends AutoDepBase {
             targetBuildFilePath: nearestBuildFilePath,
           };
         case 'failed':
-          // THIS SHOULD NOT THROW
-          // IT SHOULD RETURN "THERE IS A BUILD FILE, BUT NO PRE-EXISTING RULE"
-
           this._logger.error({
             ctx: 'probeTargetBuildFile',
             message: ruleMetadataVisitorResult.reason,
@@ -370,7 +373,7 @@ export class AutoDep extends AutoDepBase {
             this._logger.debug({
               ctx: 'collectBuildRuleTargets',
               message: TaskMessages.locate.success(`metadata for ${dep}`),
-              details: JSON.stringify(ruleMetadataVisitorResult.output.node?.toString() ?? '<none>', null, 2),
+              details: ruleMetadataVisitorResult.output.node?.toString() ?? '<none>',
             });
             break;
           case 'failed':
@@ -491,11 +494,22 @@ export class AutoDep extends AutoDepBase {
         file: targetBuildFile,
         config: this._config,
       }).toAST();
-    } catch {
-      this._logger.trace({
-        ctx: 'parseBuildFileIfExists',
-        message: TaskMessages.resolve.failure(`\`BUILD\` or \`BUILD.plz\` file at ${targetBuildFilePath}`),
-      });
+    } catch (error) {
+      const err = error as Error;
+      switch (err.constructor) {
+        case TypeError:
+          this._logger.error({
+            ctx: 'parseBuildFileIfExists',
+            message: TaskMessages.resolve.failure(`\`BUILD\` or \`BUILD.plz\` file at ${targetBuildFilePath}`),
+            details: String(err),
+          });
+        default:
+          this._logger.trace({
+            ctx: 'parseBuildFileIfExists',
+            message: TaskMessages.resolve.failure(`\`BUILD\` or \`BUILD.plz\` file at ${targetBuildFilePath}`),
+            details: String(err),
+          });
+      }
       return null;
     }
   };

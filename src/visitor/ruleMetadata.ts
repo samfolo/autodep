@@ -114,7 +114,6 @@ export class RuleMetadataVisitor extends VisitorBase {
       case 'StringLiteral':
       case 'ArrayLiteral':
       case 'IndexExpression':
-      case 'KeywordArgumentExpression':
       case 'MapLiteral':
       case 'ExpressionList':
       case 'KeyValueExpressionList':
@@ -136,7 +135,7 @@ export class RuleMetadataVisitor extends VisitorBase {
   };
 
   private visitExpressionStatementNode = (node: ExpressionStatement) => {
-    if (node.token.type === 'RULE_NAME' && node.expression?.kind === 'CallExpression') {
+    if (node.token.type === 'IDENT' && node.expression?.kind === 'CallExpression') {
       node.expression = this.visitCallExpressionNode(node.expression);
     }
 
