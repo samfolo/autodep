@@ -164,8 +164,14 @@ export class AutoDep extends AutoDepBase {
           details: JSON.stringify(result.output, null, 2),
         });
         return result.output;
-      case 'failed':
       case 'passthrough':
+        this._logger.info({
+          ctx: 'initialise',
+          message: TaskMessages.failure('load', 'typesript config from workspace'),
+          details: result.reason,
+        });
+        return result.output;
+      case 'failed':
       default:
         throw new AutoDepError(ErrorType.FAILED_PRECONDITION, result.reason);
     }
@@ -580,7 +586,6 @@ export class AutoDep extends AutoDepBase {
           ctx: 'collectAllOrphanDescendantFiles',
           message: TaskMessages.identified(`a directory`, pathToFileOrFolder),
         });
-        // check whether there is a buildFile in the directory; if so, skip this branch of traversal:
         const possibleBuildFileNames = Array.from(
           new Set([
             `./${fileOrFolderName}/BUILD`,
@@ -590,6 +595,7 @@ export class AutoDep extends AutoDepBase {
         );
         const buildFilePath = this._depResolver.findFirstValidPath(pathToFileOrFolder, possibleBuildFileNames);
 
+        // if there is no `BUILD` file in the directory, skip this branch of traversal:
         if (buildFilePath) {
           this._logger.trace({
             ctx: 'collectAllOrphanDescendantFiles',

@@ -25,6 +25,10 @@ import type {
   FunctionDefinition,
   ParameterList,
   Parameter,
+  FStringLiteral,
+  BStringLiteral,
+  RStringLiteral,
+  UStringLiteral,
 } from './types';
 
 export const createRootNode = ({statements}: UniqueNodeProperties<RootNode>): RootNode => {
@@ -210,6 +214,110 @@ export const createStringLiteralNode = ({token, value}: UniqueNodeProperties<Str
     },
     toLines: function () {
       return withCommentLines([`"${this.value}"`], this.commentMap);
+    },
+    toString: function () {
+      return this.toLines().join('\n');
+    },
+    commentMap,
+  };
+};
+
+export const createFStringLiteralNode = ({
+  token,
+  prefix,
+  value,
+}: UniqueNodeProperties<FStringLiteral>): FStringLiteral => {
+  const commentMap: CommentMap = {leading: undefined, trailing: undefined};
+
+  return {
+    type: 'Expression',
+    kind: 'FStringLiteral',
+    prefix,
+    token,
+    value,
+    getTokenLiteral: function () {
+      return this.token.value;
+    },
+    toLines: function () {
+      return withCommentLines([`${this.prefix}"${this.value}"`], this.commentMap);
+    },
+    toString: function () {
+      return this.toLines().join('\n');
+    },
+    commentMap,
+  };
+};
+
+export const createBStringLiteralNode = ({
+  token,
+  prefix,
+  value,
+}: UniqueNodeProperties<BStringLiteral>): BStringLiteral => {
+  const commentMap: CommentMap = {leading: undefined, trailing: undefined};
+
+  return {
+    type: 'Expression',
+    kind: 'BStringLiteral',
+    prefix,
+    token,
+    value,
+    getTokenLiteral: function () {
+      return this.token.value;
+    },
+    toLines: function () {
+      return withCommentLines([`${this.prefix}"${this.value}"`], this.commentMap);
+    },
+    toString: function () {
+      return this.toLines().join('\n');
+    },
+    commentMap,
+  };
+};
+
+export const createRStringLiteralNode = ({
+  token,
+  prefix,
+  value,
+}: UniqueNodeProperties<RStringLiteral>): RStringLiteral => {
+  const commentMap: CommentMap = {leading: undefined, trailing: undefined};
+
+  return {
+    type: 'Expression',
+    kind: 'RStringLiteral',
+    prefix,
+    token,
+    value,
+    getTokenLiteral: function () {
+      return this.token.value;
+    },
+    toLines: function () {
+      return withCommentLines([`${this.prefix}"${this.value}"`], this.commentMap);
+    },
+    toString: function () {
+      return this.toLines().join('\n');
+    },
+    commentMap,
+  };
+};
+
+export const createUStringLiteralNode = ({
+  token,
+  prefix,
+  value,
+}: UniqueNodeProperties<UStringLiteral>): UStringLiteral => {
+  const commentMap: CommentMap = {leading: undefined, trailing: undefined};
+
+  return {
+    type: 'Expression',
+    kind: 'UStringLiteral',
+    prefix,
+    token,
+    value,
+    getTokenLiteral: function () {
+      return this.token.value;
+    },
+    toLines: function () {
+      return withCommentLines([`${this.prefix}"${this.value}"`], this.commentMap);
     },
     toString: function () {
       return this.toLines().join('\n');

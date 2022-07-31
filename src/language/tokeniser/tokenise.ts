@@ -71,6 +71,58 @@ export class Tokeniser extends AutoDepBase {
 
   // Tokenisation:
 
+  tokeniseString = (quoteToken: TokenValue) => {
+    let tokenValue: string = '';
+
+    while (this.peek() !== quoteToken) {
+      tokenValue += this.peek();
+      this.consume();
+
+      if (this.peek() === SYMBOLS.EOF) {
+        throw new Error(`Invalid input: unexpected EOF while reading string: "${tokenValue}...`);
+      }
+    }
+
+    this.consume(); // move "current" pointer to closing quote
+    return tokenValue;
+  };
+
+  tokeniseTaggedString = () => {
+    let tokenType: TokenType;
+    let tokenValue: TokenValue = '';
+
+    switch (this.current()) {
+      case SYMBOLS.FSTRING:
+        tokenType = 'FSTRING';
+        break;
+      case SYMBOLS.RSTRING:
+        tokenType = 'RSTRING';
+        break;
+      case SYMBOLS.BSTRING:
+        tokenType = 'BSTRING';
+        break;
+      case SYMBOLS.USTRING:
+      default:
+        tokenType = 'USTRING';
+        break;
+    }
+
+    this.consume();
+
+    switch (this.current()) {
+      case SYMBOLS.DOUBLE_QUOTE:
+        tokenValue += this.tokeniseString(SYMBOLS.DOUBLE_QUOTE);
+        break;
+      case SYMBOLS.SINGLE_QUOTE:
+        tokenValue += this.tokeniseString(SYMBOLS.SINGLE_QUOTE);
+        break;
+      default:
+        break;
+    }
+
+    return {type: tokenType, value: tokenValue};
+  };
+
   tokenise = () => {
     while (this.current() !== SYMBOLS.EOF) {
       let tokenValue = '';
@@ -158,31 +210,11 @@ export class Tokeniser extends AutoDepBase {
           break;
         case SYMBOLS.SINGLE_QUOTE:
           this.lockScope();
-          while (this.peek() !== SYMBOLS.SINGLE_QUOTE) {
-            tokenValue += this.peek();
-            this.consume();
-
-            if (this.peek() === SYMBOLS.EOF) {
-              throw new Error(`Invalid input: unexpected EOF while reading string: "${tokenValue}...`);
-            }
-          }
-
-          this.consume(); // move "current" pointer to closing quote
-          this.tokens.push(this.createToken('STRING', tokenValue));
+          this.tokens.push(this.createToken('STRING', this.tokeniseString(SYMBOLS.SINGLE_QUOTE)));
           break;
         case SYMBOLS.DOUBLE_QUOTE:
           this.lockScope();
-          while (this.peek() !== SYMBOLS.DOUBLE_QUOTE) {
-            tokenValue += this.peek();
-            this.consume();
-
-            if (this.peek() === SYMBOLS.EOF) {
-              throw new Error(`Invalid input: unexpected EOF while reading string: "${tokenValue}...`);
-            }
-          }
-
-          this.consume(); // move "current" pointer to closing quote
-          this.tokens.push(this.createToken('STRING', tokenValue));
+          this.tokens.push(this.createToken('STRING', this.tokeniseString(SYMBOLS.DOUBLE_QUOTE)));
           break;
         case SYMBOLS.COLON:
           this.lockScope();
@@ -244,7 +276,11 @@ export class Tokeniser extends AutoDepBase {
           break;
         default:
           this.lockScope();
-          if (this.isLetter(this.current())) {
+          const current = this.current();
+          if (this.isMaybeTaggedString(current) && [SYMBOLS.DOUBLE_QUOTE, SYMBOLS.SINGLE_QUOTE].includes(this.peek())) {
+            const {type, value} = this.tokeniseTaggedString();
+            this.tokens.push(this.createToken(type, value));
+          } else if (this.isLetter(this.current())) {
             tokenValue += this.current();
 
             while (this.isLetter(this.peek())) {
@@ -276,6 +312,7 @@ export class Tokeniser extends AutoDepBase {
     return this.tokens;
   };
 
+  private isMaybeTaggedString = (char: TokenValue) => typeof char === 'string' && /[frub]/.test(char);
   private isLetter = (char: TokenValue) => typeof char === 'string' && /[A-Za-z_]/.test(char);
   private isDigit = (char: TokenValue) => typeof char === 'string' && !isNaN(Number(char));
 }

@@ -95,6 +95,34 @@ export interface StringLiteral extends BaseExpression {
   value: string;
 }
 
+export interface FStringLiteral extends BaseExpression {
+  token: Token;
+  kind: 'FStringLiteral';
+  prefix: string;
+  value: string;
+}
+
+export interface BStringLiteral extends BaseExpression {
+  token: Token;
+  kind: 'BStringLiteral';
+  prefix: string;
+  value: string;
+}
+
+export interface RStringLiteral extends BaseExpression {
+  token: Token;
+  kind: 'RStringLiteral';
+  prefix: string;
+  value: string;
+}
+
+export interface UStringLiteral extends BaseExpression {
+  token: Token;
+  kind: 'UStringLiteral';
+  prefix: string;
+  value: string;
+}
+
 export interface ArrayLiteral extends BaseExpression {
   token: Token;
   kind: 'ArrayLiteral';
@@ -170,6 +198,10 @@ export type Expression =
   | BooleanLiteral
   | CallExpression
   | StringLiteral
+  | FStringLiteral
+  | BStringLiteral
+  | RStringLiteral
+  | UStringLiteral
   | ArrayLiteral
   | IndexExpression
   | MapLiteral

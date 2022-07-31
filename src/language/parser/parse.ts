@@ -110,11 +110,15 @@ export class Parser extends AutoDepBase {
       TYPE_HINT: this.parseIdentifier,
       INT: this.parseIntegerLiteral,
       STRING: this.parseStringLiteral,
+      FSTRING: this.parseFStringLiteral,
+      BSTRING: this.parseBStringLiteral,
+      RSTRING: this.parseRStringLiteral,
+      USTRING: this.parseUStringLiteral,
       BANG: this.parsePrefixExpression,
       MINUS: this.parsePrefixExpression,
       TRUE: this.parseBooleanLiteral,
       FALSE: this.parseBooleanLiteral,
-      NONE: this.parseBooleanLiteral,
+      NONE: this.parseIdentifier,
       OPEN_PAREN: this.parseGroupedExpression,
       OPEN_BRACKET: this.parseArrayLiteral,
       OPEN_BRACE: this.parseMapLiteral,
@@ -309,6 +313,42 @@ export class Parser extends AutoDepBase {
   @traceEvents()
   parseStringLiteral() {
     return ast.createStringLiteralNode({token: this.getCurrentToken(), value: String(this.getCurrentToken().value)});
+  }
+
+  @traceEvents()
+  parseFStringLiteral() {
+    return ast.createFStringLiteralNode({
+      token: this.getCurrentToken(),
+      value: String(this.getCurrentToken().value),
+      prefix: 'f',
+    });
+  }
+
+  @traceEvents()
+  parseBStringLiteral() {
+    return ast.createBStringLiteralNode({
+      token: this.getCurrentToken(),
+      value: String(this.getCurrentToken().value),
+      prefix: 'b',
+    });
+  }
+
+  @traceEvents()
+  parseRStringLiteral() {
+    return ast.createRStringLiteralNode({
+      token: this.getCurrentToken(),
+      value: String(this.getCurrentToken().value),
+      prefix: 'r',
+    });
+  }
+
+  @traceEvents()
+  parseUStringLiteral() {
+    return ast.createUStringLiteralNode({
+      token: this.getCurrentToken(),
+      value: String(this.getCurrentToken().value),
+      prefix: 'u',
+    });
   }
 
   @traceEvents()

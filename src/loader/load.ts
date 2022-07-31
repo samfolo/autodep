@@ -52,9 +52,9 @@ export class ConfigurationLoader extends AutoDepBase {
       });
 
       return {
-        status: 'failed',
+        status: 'passthrough',
         reason: 'no tsconfig',
-        output: tsConfig,
+        output: tsConfig ?? {},
       };
     }
 

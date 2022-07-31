@@ -31,9 +31,10 @@ export type SymbolName =
   | 'EQ'
   | 'NOT_EQ'
   | 'PIPE'
-  | 'FTAG'
-  | 'RTAG'
-  | 'BTAG'
+  | 'FSTRING'
+  | 'RSTRING'
+  | 'BSTRING'
+  | 'USTRING'
   | 'MODULO'
   | 'EOF'
   | 'ILLEGAL';
