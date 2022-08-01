@@ -3,7 +3,7 @@ import merge from 'lodash.merge';
 import typescript from 'typescript';
 import {parse} from 'yaml';
 
-import {CONFIG_FILENAME} from '../common/const';
+import {CONFIG_FILENAME, DEFAULT_NON_BINARY_OUT_DIR} from '../common/const';
 import {AutoDepConfig} from '../config/types';
 import {validateConfigInput} from '../config/schema';
 import {ConfigUmarshaller} from '../config/unmarshal';
@@ -89,7 +89,7 @@ export class ConfigurationLoader extends AutoDepBase {
           this._logger.trace({
             ctx: 'getExtendedTsConfigFromWorkspace',
             message:
-              TaskMessages.identified(`"\`extends\` clause within ${tsConfigPath}`, configFile.config.extends) +
+              TaskMessages.identified(`\`extends\` clause within ${tsConfigPath}`, configFile.config.extends) +
               ' - merging configs...',
           });
           const {extends: _parentConfigRelativePath, ...thisConfig} = configFile.config;
@@ -118,23 +118,10 @@ export class ConfigurationLoader extends AutoDepBase {
           ctx: 'loadAutoDepConfigFromWorkspace',
           message: TaskMessages.resolve.attempt(configPath, CONFIG_FILENAME),
         });
-        const configInputFile = readFileSync(configPath, {
-          encoding: 'utf-8',
-          flag: 'r',
-        });
+        const configInput = this.getExtendedAutoDepConfigFromWorkspace(configPath);
         this._logger.trace({
           ctx: 'loadAutoDepConfigFromWorkspace',
           message: TaskMessages.resolve.success(configPath, CONFIG_FILENAME),
-        });
-
-        this._logger.trace({
-          ctx: 'loadAutoDepConfigFromWorkspace',
-          message: TaskMessages.parse.attempt(CONFIG_FILENAME),
-        });
-        const configInput: AutoDepConfig.Input.Schema = parse(configInputFile);
-        this._logger.trace({
-          ctx: 'loadAutoDepConfigFromWorkspace',
-          message: TaskMessages.parse.success(CONFIG_FILENAME),
         });
 
         this._logger.trace({
@@ -196,5 +183,54 @@ export class ConfigurationLoader extends AutoDepBase {
       reason: taskState.reason,
       output: this._config,
     };
+  };
+
+  private getExtendedAutoDepConfigFromWorkspace = (
+    configPath: string,
+    seenCache: Record<string, boolean> = {}
+  ): AutoDepConfig.Input.Schema => {
+    if (!seenCache[configPath]) {
+      this._logger.trace({
+        ctx: 'getExtendedAutoDepConfigFromWorkspace',
+        message: TaskMessages.resolve.attempt(configPath, CONFIG_FILENAME),
+      });
+      const configInputFile = readFileSync(configPath, {
+        encoding: 'utf-8',
+        flag: 'r',
+      });
+      this._logger.trace({
+        ctx: 'getExtendedAutoDepConfigFromWorkspace',
+        message: TaskMessages.resolve.success(configPath, CONFIG_FILENAME),
+      });
+
+      this._logger.trace({
+        ctx: 'getExtendedAutoDepConfigFromWorkspace',
+        message: TaskMessages.parse.attempt(CONFIG_FILENAME),
+      });
+      let configInput: AutoDepConfig.Input.Schema = parse(configInputFile);
+      this._logger.trace({
+        ctx: 'getExtendedAutoDepConfigFromWorkspace',
+        message: TaskMessages.parse.success(CONFIG_FILENAME),
+      });
+
+      if (configInput.extends) {
+        this._logger.trace({
+          ctx: 'getExtendedAutoDepConfigFromWorkspace',
+          message:
+            TaskMessages.identified(
+              `\`<autodepConfig>.extends\` clause within ${CONFIG_FILENAME} at ${configPath}`,
+              configInput.extends
+            ) + ' - merging configs...',
+        });
+
+        const {extends: _parentConfigRelativePath, ...thisConfig} = configInput;
+        const parentConfigPath = path.resolve(path.dirname(configPath), _parentConfigRelativePath);
+        configInput = merge({}, this.getExtendedAutoDepConfigFromWorkspace(parentConfigPath, seenCache), thisConfig);
+      }
+
+      return configInput;
+    }
+
+    return {rootDir: '', outDir: DEFAULT_NON_BINARY_OUT_DIR};
   };
 }

@@ -167,6 +167,7 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
       nullable: true,
     },
     log: {minItems: 1, type: 'array', items: {type: 'string', enum: LOG_LEVELS}, nullable: true},
+    extends: {type: 'string', nullable: true},
     enablePropagation: {type: 'boolean', nullable: true},
     excludeNodeModules: {type: 'boolean', nullable: true},
     onCreate: {
@@ -318,11 +319,3 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
 };
 
 export const validateConfigInput = ajv.compile<InputConfig>(AUTODEP_CONFIG_INPUT_SCHEMA);
-
-`Type '{ type: "object"; properties: { manage: { type: "object"; minProperties: number; properties: { rules: { minItems: number; type: "array"; items: { type: "string"; }; nullable: true; }; fields: { minItems: number; type: "array"; items: { ...; }; nullable: true; }; schema: { ...; }; }; nullable: true; required: never[]...' is not assignable to type 'UncheckedJSONSchemaType<Schema, false>'.\n` +
-  "  The types of 'properties.match' are incompatible between these types.\n" +
-  `    Type '{ type: "object"; minProperties: number; properties: { module: { anyOf: ({ type: "string"; } | { minItems: number; type: "array"; items: { type: "string"; }; })[]; }; test: { anyOf: ({ type: "string"; } | { minItems: number; type: "array"; items: { ...; }; })[]; }; }; required: never[]; }' is not assignable to type '{ $ref: string; } | (UncheckedJSONSchemaType<Match | undefined, false> & { nullable: true; const?: null | undefined; enum?: readonly (Match | null | undefined)[] | undefined; default?: Match | ... 1 more ... | undefined; })'.\n` +
-  "      The types of 'properties.module' are incompatible between these types.\n" +
-  `        Type '{ anyOf: ({ type: "string"; } | { minItems: number; type: "array"; items: { type: "string"; }; })[]; }' is not assignable to type '{ $ref: string; } | (UncheckedJSONSchemaType<string | string[] | undefined, false> & { nullable: true; const?: null | undefined; enum?: readonly (string | string[] | null | undefined)[] | undefined; default?: string | ... 2 more ... | undefined; })'.\n` +
-  `          Type '{ anyOf: ({ type: "string"; } | { minItems: number; type: "array"; items: { type: "string"; }; })[]; }' is not assignable to type '{ type: "array"; items: UncheckedJSONSchemaType<string, false>; contains?: UncheckedPartialSchema<string> | undefined; minItems?: number | undefined; ... 4 more ...; additionalItems?: undefined; } & { ...; } & { ...; } & { ...; }'.\n` +
-  `            Type '{ anyOf: ({ type: "string"; } | { minItems: number; type: "array"; items: { type: "string"; }; })[]; }' is missing the following properties from type '{ type: "array"; items: UncheckedJSONSchemaType<string, false>; contains?: UncheckedPartialSchema<string> | undefined; minItems?: number | undefined; ... 4 more ...; additionalItems?: undefined; }': type, items`;

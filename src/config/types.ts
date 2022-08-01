@@ -74,6 +74,7 @@ export namespace AutoDepConfig {
       manage?: Manage;
       match?: Match;
       log?: Log;
+      extends?: string;
       excludeNodeModules?: ExcludeNodeModules;
       enablePropagation?: EnablePropagation;
       onCreate?: OnCreate;

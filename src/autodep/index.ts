@@ -2,13 +2,13 @@ import {lstatSync, readdirSync, readFileSync} from 'fs';
 import minimatch from 'minimatch';
 import path from 'path';
 import vscode from 'vscode';
-import {FileMatcherDeclaration} from '../common/types';
 
+import {FileMatcherDeclaration} from '../common/types';
+import {ConfigurationLoader} from '../config/load';
 import {ConfigUmarshaller} from '../config/unmarshal';
 import {AutoDepError, ErrorType} from '../errors/error';
 import {AutoDepBase} from '../inheritance/base';
 import {CallExpression, RootNode} from '../language/ast/types';
-import {ConfigurationLoader} from '../loader/load';
 import {ErrorMessages} from '../messages/error';
 import {TaskMessages} from '../messages/task';
 import {BuildFile} from '../models/buildFile';

@@ -163,7 +163,7 @@ export class DependencyUpdateVisitor extends VisitorBase {
           details: node.toString(),
         });
 
-        // where the deps are added, find the `deps` kwarg field and replace:
+        // this is where the deps are added; find the `deps` kwarg field and replace:
         node.args.elements = node.args.elements.map((element) => {
           if (element.kind === 'InfixExpression' && element.operator === '=') {
             return this.visitInfixExpressionNode(element, functionName);
