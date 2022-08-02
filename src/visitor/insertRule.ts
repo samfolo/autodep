@@ -20,6 +20,7 @@ interface RuleInsertionVisitorOptions {
   config: AutoDepConfig.Output.Schema;
   rootPath: string;
   newDeps: string[];
+  targetBuildFilePath: string;
 }
 
 export class RuleInsertionVisitor extends VisitorBase {
@@ -27,14 +28,14 @@ export class RuleInsertionVisitor extends VisitorBase {
   private _newDeps: string[];
 
   constructor(
-    {config, rootPath, newDeps}: RuleInsertionVisitorOptions,
+    {config, rootPath, newDeps, targetBuildFilePath}: RuleInsertionVisitorOptions,
     builderCls: typeof DependencyBuilder = DependencyBuilder,
     loggerCls: typeof Logger = Logger,
     nodeQualifierCls: typeof NodeQualifier = NodeQualifier,
     taskStatusClientCls: typeof TaskStatusClient = TaskStatusClient
   ) {
     super(
-      {config, rootPath, name: 'RuleInsertionVisitor'},
+      {config, rootPath, name: 'RuleInsertionVisitor', targetBuildFilePath},
       builderCls,
       loggerCls,
       nodeQualifierCls,

@@ -25,21 +25,21 @@ interface DependencyUpdateVisitorOptions {
   config: AutoDepConfig.Output.Schema;
   rootPath: string;
   newDeps: string[];
-  builderCls?: typeof DependencyBuilder;
+  targetBuildFilePath: string;
 }
 
 export class DependencyUpdateVisitor extends VisitorBase {
   private _newDeps: string[];
 
   constructor(
-    {config, rootPath, newDeps}: DependencyUpdateVisitorOptions,
+    {config, rootPath, newDeps, targetBuildFilePath}: DependencyUpdateVisitorOptions,
     builderCls: typeof DependencyBuilder = DependencyBuilder,
     loggerCls: typeof Logger = Logger,
     nodeQualifierCls: typeof NodeQualifier = NodeQualifier,
     taskStatusClientCls: typeof TaskStatusClient = TaskStatusClient
   ) {
     super(
-      {config, rootPath, name: 'DependencyUpdateVisitor'},
+      {config, rootPath, name: 'DependencyUpdateVisitor', targetBuildFilePath},
       builderCls,
       loggerCls,
       nodeQualifierCls,
@@ -159,7 +159,7 @@ export class DependencyUpdateVisitor extends VisitorBase {
       if (this._nodeQualifier.isTargetBuildRule(node, functionName, srcsAliases)) {
         this._logger.trace({
           ctx: 'visitCallExpressionNode',
-          message: TaskMessages.identify.success(`target BUILD rule for "${this._fileName}"`, functionName),
+          message: TaskMessages.identify.success(`target BUILD rule for "${this._relativeFileName}"`, functionName),
           details: node.toString(),
         });
 
@@ -204,7 +204,7 @@ export class DependencyUpdateVisitor extends VisitorBase {
       } else {
         this._logger.trace({
           ctx: 'visitCallExpressionNode',
-          message: TaskMessages.identify.failure(`target BUILD rule for "${this._fileName}"`, functionName),
+          message: TaskMessages.identify.failure(`target BUILD rule for "${this._relativeFileName}"`, functionName),
           details: node.toString(),
         });
       }

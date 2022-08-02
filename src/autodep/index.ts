@@ -124,19 +124,35 @@ export class AutoDep extends AutoDepBase {
   };
 
   private loadAutoDepConfig = (rootPath: string) => {
-    this._logger.info({ctx: 'initialise', message: TaskMessages.attempt('load', 'config from workspace...')});
+    this._logger.info({ctx: 'initialise', message: TaskMessages.attempt('load', 'autodep config from workspace...')});
     const result = this._configLoader.loadAutoDepConfigFromWorkspace(
       this._depResolver.resolveClosestConfigFilePath(rootPath)
     );
 
     switch (result.status) {
       case 'success':
+        this._logger.info({
+          ctx: 'initialise',
+          message: TaskMessages.success('loaded', 'autodep config from workspace'),
+          details: JSON.stringify(result.output, null, 2),
+        });
+        this._logger.debug({
+          ctx: 'initialise',
+          message: TaskMessages.using('the following autodep config'),
+          details: JSON.stringify(result.output, null, 2),
+        });
         this._depResolver.setConfig(result.output);
         this._logger.setConfig(result.output);
         this.setConfig(result.output);
         break;
-      case 'failed':
       case 'passthrough':
+        this._logger.info({
+          ctx: 'initialise',
+          message: TaskMessages.failure('load', 'autodep config from workspace'),
+          details: result.reason,
+        });
+        return result.output;
+      case 'failed':
       default:
         throw new AutoDepError(ErrorType.PROCESSING, result.reason);
     }
@@ -244,7 +260,11 @@ export class AutoDep extends AutoDepBase {
         );
       }
 
-      const ruleMetadataVisitor = new this._ruleMetadataVisitorCls({config: this._config, rootPath});
+      const ruleMetadataVisitor = new this._ruleMetadataVisitorCls({
+        config: this._config,
+        rootPath,
+        targetBuildFilePath: nearestBuildFilePath,
+      });
       ruleMetadataVisitor.collectMetadata(targetBuildFileAST);
       const ruleMetadataVisitorResult = ruleMetadataVisitor.getResult();
       switch (ruleMetadataVisitorResult.status) {
@@ -361,7 +381,11 @@ export class AutoDep extends AutoDepBase {
       const buildFilePath = depToBuildFilePathMap[dep];
       const buildFileAST = this.parseBuildFileIfExists(buildFilePath);
       if (buildFileAST) {
-        const ruleMetadataVisitor = new this._ruleMetadataVisitorCls({config: this._config, rootPath: dep});
+        const ruleMetadataVisitor = new this._ruleMetadataVisitorCls({
+          config: this._config,
+          rootPath: dep,
+          targetBuildFilePath: buildFilePath,
+        });
         ruleMetadataVisitor.collectMetadata(buildFileAST);
         const ruleMetadataVisitorResult = ruleMetadataVisitor.getResult();
 

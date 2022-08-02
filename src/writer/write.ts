@@ -117,10 +117,15 @@ export class Writer extends AutoDepBase {
    * @returns a boolean indicating whether this strategy was successful
    */
   private updateExistingRule = (ast: RootNode) => {
+    this._logger.trace({
+      ctx: 'processUpdate',
+      message: TaskMessages.update.attempt(this._targetBuildFilePath, 'new BUILD dependencies'),
+    });
     const visitor = new this._updatesVisitorCls({
       config: this._config,
       rootPath: this._rootPath,
       newDeps: this._newDeps,
+      targetBuildFilePath: this._targetBuildFilePath,
     });
     const updatedAST = visitor.updateDeps(cloneDeep(ast));
     const result = visitor.getResult();
@@ -160,6 +165,7 @@ export class Writer extends AutoDepBase {
       config: this._config,
       rootPath: this._rootPath,
       newDeps: this._newDeps,
+      targetBuildFilePath: this._targetBuildFilePath,
     });
     const updatedAST = visitor.insertRule(cloneDeep(ast));
     const result = visitor.getResult();

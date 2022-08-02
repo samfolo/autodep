@@ -1,5 +1,6 @@
 import {readFileSync} from 'fs';
 import merge from 'lodash.merge';
+import mergeWith from 'lodash.mergewith';
 import typescript from 'typescript';
 import {parse} from 'yaml';
 
@@ -223,9 +224,21 @@ export class ConfigurationLoader extends AutoDepBase {
             ) + ' - merging configs...',
         });
 
+        // We need this to concatenate arrays in special circumstances:
+        const mergeCustomiser = (objectValue: any, sourceValue: any, key: string) => {
+          if (key === 'rules' && Array.isArray(objectValue) && Array.isArray(sourceValue)) {
+            return Array.from(new Set(objectValue.concat(sourceValue)));
+          }
+        };
+
         const {extends: _parentConfigRelativePath, ...thisConfig} = configInput;
         const parentConfigPath = path.resolve(path.dirname(configPath), _parentConfigRelativePath);
-        configInput = merge({}, this.getExtendedAutoDepConfigFromWorkspace(parentConfigPath, seenCache), thisConfig);
+        configInput = mergeWith(
+          {},
+          this.getExtendedAutoDepConfigFromWorkspace(parentConfigPath, seenCache),
+          thisConfig,
+          mergeCustomiser
+        );
       }
 
       return configInput;

@@ -1,5 +1,4 @@
 import minimatch from 'minimatch';
-import path from 'path';
 
 import {
   DEFAULT_MODULE_RULE_NAME,
@@ -42,24 +41,25 @@ export interface NameFieldLiteral extends FieldLiteral {
 interface NodeQualifierOptions {
   config: AutoDepConfig.Output.Schema;
   rootPath: string;
+  relativeFileName: string;
 }
 
 export class NodeQualifier extends AutoDepBase {
   private _ruleType: 'module' | 'test';
   private _rootPath: string;
-  private _fileName: string;
+  private _relativeFileName: string;
 
-  constructor({config, rootPath}: NodeQualifierOptions) {
+  constructor({config, rootPath, relativeFileName}: NodeQualifierOptions) {
     super({config, name: 'NodeQualifier'});
 
     this._rootPath = rootPath;
-    this._fileName = path.basename(this._rootPath);
+    this._relativeFileName = relativeFileName;
 
     if (this._config.match.isTest(this._rootPath)) {
-      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a test', `"${this._fileName}"`)});
+      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a test', `"${this._relativeFileName}"`)});
       this._ruleType = 'test';
     } else if (this._config.match.isModule(this._rootPath)) {
-      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a module', `"${this._fileName}"`)});
+      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a module', `"${this._relativeFileName}"`)});
       this._ruleType = 'module';
     } else {
       const message = ErrorMessages.user.unsupportedFileType({path: this._rootPath});
@@ -117,7 +117,7 @@ export class NodeQualifier extends AutoDepBase {
             ctx: 'getNameFieldLiteral',
             message:
               TaskMessages.resolve.failure(
-                `${functionName}(${nameAlias.value} = <${this._fileName}>)`,
+                `${functionName}(${nameAlias.value} = <${this._relativeFileName}>)`,
                 '`name` field value'
               ) + ' - continuing...',
             details: node.toString(),
@@ -217,8 +217,8 @@ export class NodeQualifier extends AutoDepBase {
             ctx: 'getSrcsFieldLiteral',
             message:
               TaskMessages.resolve.failure(
-                `${functionName}(${srcsAlias.value} = <${this._fileName}>)`,
-                `"${this._fileName}"`
+                `${functionName}(${srcsAlias.value} = <${this._relativeFileName}>)`,
+                `"${this._relativeFileName}"`
               ) + ' - continuing...',
             details: node.toString(),
           });
@@ -323,8 +323,8 @@ export class NodeQualifier extends AutoDepBase {
             ctx: 'isTargetBuildRule',
             message:
               TaskMessages.resolve.failure(
-                `${functionName}(${srcsAlias.value} = <${this._fileName}>)`,
-                `"${this._fileName}"`
+                `${functionName}(${srcsAlias.value} = <${this._relativeFileName}>)`,
+                `"${this._relativeFileName}"`
               ) + ' - continuing...',
             details: node.toString(),
           });
@@ -346,11 +346,11 @@ export class NodeQualifier extends AutoDepBase {
       ctx: 'isTargetStringSrcsField',
       message: TaskMessages.identified(`a string field`, `\`${functionName}.${srcsAlias.value}\``),
     });
-    const isMatch = elementValue?.getTokenLiteral() === this._fileName;
+    const isMatch = elementValue?.getTokenLiteral() === this._relativeFileName;
     this._logger.trace({
       ctx: 'isTargetStringSrcsField',
       message: TaskMessages.locate[isMatch ? 'success' : 'failure'](
-        `"${this._fileName}" at \`${functionName}.${srcsAlias.value}\``
+        `"${this._relativeFileName}" at \`${functionName}.${srcsAlias.value}\``
       ),
     });
     return isMatch;
@@ -369,13 +369,13 @@ export class NodeQualifier extends AutoDepBase {
       elementValue?.kind === 'ArrayLiteral' &&
       !!elementValue?.elements?.elements.some((subElement) => {
         if (subElement?.kind === 'StringLiteral') {
-          return subElement.getTokenLiteral() === this._fileName;
+          return subElement.getTokenLiteral() === this._relativeFileName;
         }
       });
     this._logger.trace({
       ctx: 'isTargetArraySrcsField',
       message: TaskMessages.locate[isMatch ? 'success' : 'failure'](
-        `"${this._fileName}" in \`${functionName}.${srcsAlias.value}\``
+        `"${this._relativeFileName}" in \`${functionName}.${srcsAlias.value}\``
       ),
     });
     return isMatch;
@@ -402,12 +402,12 @@ export class NodeQualifier extends AutoDepBase {
       exclude: this.getValuesFromGlobEntry('exclude', excludeExpression),
     };
 
-    const isMatch = this.matchesFileMatcherDeclaration(this._fileName, globLiteralValue);
+    const isMatch = this.matchesFileMatcherDeclaration(this._relativeFileName, globLiteralValue);
     this._logger.trace({
       ctx: 'isTargetGlobSrcsField',
       message: TaskMessages[isMatch ? 'success' : 'failure'](
         isMatch ? 'matched' : 'match',
-        `"${this._fileName}" against a matcher in \`${functionName}.${srcsAlias.value}\``
+        `"${this._relativeFileName}" against a matcher in \`${functionName}.${srcsAlias.value}\``
       ),
     });
     return isMatch;
@@ -428,7 +428,7 @@ export class NodeQualifier extends AutoDepBase {
     fileMatcherDeclaration.include.some((matcher) => {
       this._logger.trace({
         ctx: 'matchesFileMatcherDeclaration',
-        message: TaskMessages.attempt('match', `${this._fileName} against "${matcher}"`),
+        message: TaskMessages.attempt('match', `${this._relativeFileName} against "${matcher}"`),
       });
       return minimatch(path, matcher);
     }) &&
@@ -436,7 +436,7 @@ export class NodeQualifier extends AutoDepBase {
       fileMatcherDeclaration.exclude.every((matcher) => {
         this._logger.trace({
           ctx: 'matchesFileMatcherDeclaration',
-          message: TaskMessages.attempt('match', `${this._fileName} against "${matcher}"`),
+          message: TaskMessages.attempt('match', `${this._relativeFileName} against "${matcher}"`),
         });
         return !minimatch(path, matcher);
       }));
@@ -469,7 +469,7 @@ export class NodeQualifier extends AutoDepBase {
 
     this._logger.trace({
       ctx: 'isManagedNode',
-      message: TaskMessages.success('entered', 'managed node'),
+      message: TaskMessages.success('entered', 'build rule'),
       details: JSON.stringify(
         {
           functionName,

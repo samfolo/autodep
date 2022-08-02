@@ -13,6 +13,7 @@ interface VisitorBaseOptions {
   name: string;
   config: AutoDepConfig.Output.Schema;
   rootPath: string;
+  targetBuildFilePath: string;
 }
 
 export class VisitorBase extends AutoDepBase {
@@ -20,12 +21,12 @@ export class VisitorBase extends AutoDepBase {
   protected _nodeQualifierCls: typeof NodeQualifier;
   protected _builder: DependencyBuilder;
   protected _rootPath: string;
-  protected _fileName: string;
+  protected _relativeFileName: string;
   protected _nodeQualifier: NodeQualifier;
   protected _taskStatusClient: TaskStatusClient;
 
   constructor(
-    {config, name, rootPath}: VisitorBaseOptions,
+    {config, name, rootPath, targetBuildFilePath}: VisitorBaseOptions,
     builderCls: typeof DependencyBuilder = DependencyBuilder,
     loggerCls: typeof Logger = Logger,
     nodeQualifierCls: typeof NodeQualifier = NodeQualifier,
@@ -38,8 +39,12 @@ export class VisitorBase extends AutoDepBase {
     this._nodeQualifierCls = nodeQualifierCls;
     this._builder = new this._builderCls({config: this._config, rootPath});
     this._rootPath = rootPath;
-    this._fileName = path.basename(this._rootPath);
-    this._nodeQualifier = new this._nodeQualifierCls({config: this._config, rootPath: this._rootPath});
+    this._relativeFileName = path.relative(path.dirname(targetBuildFilePath), rootPath);
+    this._nodeQualifier = new this._nodeQualifierCls({
+      config: this._config,
+      rootPath: this._rootPath,
+      relativeFileName: this._relativeFileName,
+    });
     this._taskStatusClient = new this._taskStatusClientCls();
   }
 
