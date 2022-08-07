@@ -6,7 +6,7 @@ import {
   SUPPORTED_MANAGED_BUILTINS,
   SUPPORTED_MANAGED_BUILTINS_LOOKUP,
 } from '../common/const';
-import {FileMatcherDeclaration, ManagedSchemaFieldEntry, ManagedSchemaFieldType} from '../common/types';
+import {FileMatcherDeclaration, ManagedSchemaFieldEntry, ManagedSchemaFieldType, RuleType} from '../common/types';
 import {AutoDepConfig} from '../config/types';
 import {AutoDepError, ErrorType} from '../errors/error';
 import {AutoDepBase} from '../inheritance/base';
@@ -45,7 +45,7 @@ interface NodeQualifierOptions {
 }
 
 export class NodeQualifier extends AutoDepBase {
-  private _ruleType: 'module' | 'test';
+  private _ruleType: RuleType;
   private _rootPath: string;
   private _relativeFileName: string;
 
@@ -55,10 +55,13 @@ export class NodeQualifier extends AutoDepBase {
     this._rootPath = rootPath;
     this._relativeFileName = relativeFileName;
 
-    if (this._config.match.isTest(this._rootPath)) {
+    if (this._config.match.isTest(this._relativeFileName)) {
       this._logger.trace({ctx: 'init', message: TaskMessages.identified('a test', `"${this._relativeFileName}"`)});
       this._ruleType = 'test';
-    } else if (this._config.match.isModule(this._rootPath)) {
+    } else if (this._config.match.isFixture(this._relativeFileName)) {
+      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a fixture', `"${this._relativeFileName}"`)});
+      this._ruleType = 'fixture';
+    } else if (this._config.match.isModule(this._relativeFileName)) {
       this._logger.trace({ctx: 'init', message: TaskMessages.identified('a module', `"${this._relativeFileName}"`)});
       this._ruleType = 'module';
     } else {

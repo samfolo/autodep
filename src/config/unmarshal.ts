@@ -10,6 +10,8 @@ import {
   DEFAULT_TEST_RULE_NAME,
   DEFAULT_NON_BINARY_OUT_DIR,
   DEFAULT_TARGET_FORMAT_STRING,
+  DEFAULT_FIXTURE_FILENAME_MATCHER,
+  DEFAULT_FIXTURE_RULE_NAME,
 } from '../common/const';
 import {
   ManagedSchemaFieldEntry,
@@ -108,6 +110,10 @@ export class ConfigUmarshaller {
     isModule: function (filePath: string) {
       return qualifyFilePath(this.module, filePath);
     },
+    fixture: this.unmarshalMatcher(DEFAULT_FIXTURE_FILENAME_MATCHER, input?.fixture),
+    isFixture: function (filePath: string) {
+      return qualifyFilePath(this.fixture, filePath);
+    },
     test: this.unmarshalMatcher(DEFAULT_TEST_FILENAME_MATCHER, input?.test),
     isTest: function (filePath: string) {
       return qualifyFilePath(this.test, filePath);
@@ -133,6 +139,7 @@ export class ConfigUmarshaller {
   ): AutoDepConfig.Output.OnCreate => ({
     fileExtname: this.unmarshalFileExtname(input?.fileExtname),
     module: this.unmarshalOnCreateModule(input),
+    fixture: this.unmarshalOnCreateFixture(input),
     test: this.unmarshalOnCreateTest(input),
   });
 
@@ -158,6 +165,24 @@ export class ConfigUmarshaller {
     ),
   });
 
+  private unmarshalOnCreateFixture = (
+    input?: RecursivePartial<AutoDepConfig.Input.OnCreate>
+  ): AutoDepConfig.Output.OnCreate['fixture'] => ({
+    name: this.unmarshalStandardField(DEFAULT_FIXTURE_RULE_NAME, input?.fixture?.name ?? input?.name),
+    formatTarget: (targetPath) =>
+      formatTarget(targetPath, input?.fixture?.targetFormat ?? input?.targetFormat ?? DEFAULT_TARGET_FORMAT_STRING),
+    fileHeading: this.unmarshalStandardField('', input?.fileHeading),
+    explicitDeps: this.unmarshalStandardField(false, input?.fixture?.explicitDeps ?? input?.explicitDeps),
+    globMatchers: this.unmarshalOnCreateFixtureGlobMatchers(input),
+    omitEmptyFields: this.unmarshalStandardField(false, input?.fixture?.omitEmptyFields ?? input?.omitEmptyFields),
+    subinclude: this.unmarshalNullableField(input?.fixture?.subinclude ?? input?.subinclude),
+    testOnly: this.unmarshalNullableField(input?.fixture?.testOnly ?? input?.testOnly),
+    initialVisibility: this.unmarshalInitialVisibility(
+      DEFAULT_INITIAL_VISIBILITY,
+      input?.fixture?.initialVisibility ?? input?.initialVisibility
+    ),
+  });
+
   private unmarshalOnCreateTest = (
     input?: RecursivePartial<AutoDepConfig.Input.OnCreate>
   ): AutoDepConfig.Output.OnCreate['test'] => ({
@@ -175,6 +200,7 @@ export class ConfigUmarshaller {
     input?: RecursivePartial<AutoDepConfig.Input.OnUpdate>
   ): AutoDepConfig.Output.OnUpdate => ({
     module: this.unmarshalOnUpdateModule(input),
+    fixture: this.unmarshalOnUpdateFixture(input),
     test: this.unmarshalOnUpdateTest(input),
   });
 
@@ -184,6 +210,14 @@ export class ConfigUmarshaller {
     fileHeading: this.unmarshalStandardField('', input?.fileHeading),
     omitEmptyFields: this.unmarshalStandardField(false, input?.module?.omitEmptyFields ?? input?.omitEmptyFields),
     subinclude: this.unmarshalNullableField(input?.module?.subinclude ?? input?.subinclude),
+  });
+
+  private unmarshalOnUpdateFixture = (
+    input?: RecursivePartial<AutoDepConfig.Input.OnUpdate>
+  ): AutoDepConfig.Output.OnUpdate['fixture'] => ({
+    fileHeading: this.unmarshalStandardField('', input?.fileHeading),
+    omitEmptyFields: this.unmarshalStandardField(false, input?.fixture?.omitEmptyFields ?? input?.omitEmptyFields),
+    subinclude: this.unmarshalNullableField(input?.fixture?.subinclude ?? input?.subinclude),
   });
 
   private unmarshalOnUpdateTest = (
@@ -204,6 +238,21 @@ export class ConfigUmarshaller {
       ? {
           include: input?.module?.globMatchers?.include ?? [],
           exclude: input?.module?.globMatchers?.exclude ?? [],
+        }
+      : input?.globMatchers?.include
+      ? {
+          include: input?.globMatchers?.include ?? [],
+          exclude: input?.globMatchers?.exclude ?? [],
+        }
+      : {include: [], exclude: []};
+
+  private unmarshalOnCreateFixtureGlobMatchers = (
+    input?: RecursivePartial<AutoDepConfig.Input.OnCreate>
+  ): AutoDepConfig.Output.GlobMatchers =>
+    input?.fixture?.globMatchers
+      ? {
+          include: input?.fixture?.globMatchers?.include ?? [],
+          exclude: input?.fixture?.globMatchers?.exclude ?? [],
         }
       : input?.globMatchers?.include
       ? {

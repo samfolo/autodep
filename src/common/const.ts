@@ -85,8 +85,10 @@ export const SUPPORTED_MANAGED_BUILTINS_LOOKUP = Object.seal(
 );
 
 export const DEFAULT_MODULE_FILENAME_MATCHER = new RegExp('.*?\\.(js|jsx|ts|tsx)$');
+export const DEFAULT_FIXTURE_FILENAME_MATCHER = new RegExp('[]');
 export const DEFAULT_TEST_FILENAME_MATCHER = new RegExp('.*?\\.(spec|test)\\.(js|jsx|ts|tsx)$');
 export const DEFAULT_MODULE_RULE_NAME = 'filegroup';
+export const DEFAULT_FIXTURE_RULE_NAME = 'filegroup';
 export const DEFAULT_TEST_RULE_NAME = 'filegroup';
 export const DEFAULT_INITIAL_VISIBILITY = ['PUBLIC'] as const;
 export const DEFAULT_TARGET_FORMAT_STRING = '<filename>';

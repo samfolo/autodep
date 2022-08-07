@@ -156,6 +156,12 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
           minItems: 1,
           nullable: true,
         },
+        fixture: {
+          type: ['string', 'array'],
+          oneOf: [{type: 'string'}, {type: 'array', minItems: 1, items: {type: 'string'}}],
+          minItems: 1,
+          nullable: true,
+        },
         test: {
           type: ['string', 'array'],
           oneOf: [{type: 'string'}, {type: 'array', minItems: 1, items: {type: 'string'}}],
@@ -241,6 +247,42 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
           },
           nullable: true,
         },
+        fixture: {
+          type: 'object',
+          properties: {
+            name: {type: 'string', nullable: true},
+            targetFormat: {type: 'string', nullable: true},
+            explicitDeps: {type: 'boolean', nullable: true},
+            globMatchers: {
+              type: 'object',
+              properties: {
+                include: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
+                exclude: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
+              },
+              required: [],
+              nullable: true,
+            },
+            omitEmptyFields: {type: 'boolean', nullable: true},
+            subinclude: {
+              minItems: 1,
+              type: 'array',
+              items: {
+                type: 'string',
+              },
+              nullable: true,
+            },
+            initialVisibility: {
+              minItems: 1,
+              type: 'array',
+              items: {
+                type: 'string',
+              },
+              nullable: true,
+            },
+            testOnly: {type: 'boolean', nullable: true},
+          },
+          nullable: true,
+        },
         test: {
           type: 'object',
           properties: {
@@ -285,6 +327,21 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
           nullable: true,
         },
         module: {
+          type: 'object',
+          properties: {
+            omitEmptyFields: {type: 'boolean', nullable: true},
+            subinclude: {
+              minItems: 1,
+              type: 'array',
+              items: {
+                type: 'string',
+              },
+              nullable: true,
+            },
+          },
+          nullable: true,
+        },
+        fixture: {
           type: 'object',
           properties: {
             omitEmptyFields: {type: 'boolean', nullable: true},

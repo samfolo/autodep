@@ -1,5 +1,7 @@
 import {SUPPORTED_MANAGED_BUILTINS, KNOWN_RULE_FIELD_NAMES, LOG_LEVELS} from './const';
 
+export type RuleType = 'module' | 'test' | 'fixture';
+
 export type KnownRuleFieldName = typeof KNOWN_RULE_FIELD_NAMES[number];
 
 export type LogLevel = typeof LOG_LEVELS[number];

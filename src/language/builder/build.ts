@@ -5,11 +5,12 @@ import {
   WHITESPACE_SIZE,
 } from '../../common/const';
 
-import {ManagedSchemaFieldEntry, ManagedSchemaFieldType, ManagedSchemaFieldName} from '../../common/types';
+import {ManagedSchemaFieldEntry, ManagedSchemaFieldType, ManagedSchemaFieldName, RuleType} from '../../common/types';
 import {AutoDepConfig} from '../../config/types';
 import {AutoDepError, ErrorType} from '../../errors/error';
 import {AutoDepBase} from '../../inheritance/base';
 import {ErrorMessages} from '../../messages/error';
+import {TaskMessages} from '../../messages/task';
 
 import {Expression} from '../ast/types';
 import * as ast from '../ast/utils';
@@ -22,7 +23,7 @@ interface DependencyBuilderOptions {
 
 export class DependencyBuilder extends AutoDepBase {
   private _relativeFileName: string;
-  private _ruleType: 'module' | 'test';
+  private _ruleType: RuleType;
 
   constructor({config, relativeFileName}: DependencyBuilderOptions) {
     super({config, name: 'DependencyBuilder'});
@@ -30,11 +31,18 @@ export class DependencyBuilder extends AutoDepBase {
     this._relativeFileName = relativeFileName;
 
     if (this._config.match.isTest(this._relativeFileName)) {
+      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a test', `"${this._relativeFileName}"`)});
       this._ruleType = 'test';
+    } else if (this._config.match.isFixture(this._relativeFileName)) {
+      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a fixture', `"${this._relativeFileName}"`)});
+      this._ruleType = 'fixture';
     } else if (this._config.match.isModule(this._relativeFileName)) {
+      this._logger.trace({ctx: 'init', message: TaskMessages.identified('a module', `"${this._relativeFileName}"`)});
       this._ruleType = 'module';
     } else {
-      throw new AutoDepError(ErrorType.USER, ErrorMessages.user.unsupportedFileType({path: this._relativeFileName}));
+      const message = ErrorMessages.user.unsupportedFileType({path: this._relativeFileName});
+      this._logger.error({ctx: 'init', message});
+      throw new AutoDepError(ErrorType.USER, message);
     }
   }
 

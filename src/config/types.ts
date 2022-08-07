@@ -28,6 +28,7 @@ export namespace AutoDepConfig {
 
     export interface Match {
       module?: string | string[];
+      fixture?: string | string[];
       test?: string | string[];
     }
 
@@ -59,12 +60,14 @@ export namespace AutoDepConfig {
       fileHeading?: string;
       targetFormat?: string;
       module?: BaseOnCreateFields & ExtraOnCreateFields;
+      fixture?: BaseOnCreateFields & ExtraOnCreateFields;
       test?: BaseOnCreateFields;
     }
 
     export interface OnUpdate extends BaseEventFields {
       fileHeading?: string;
       module?: BaseOnUpdateFields;
+      fixture?: BaseOnUpdateFields;
       test?: BaseOnUpdateFields;
     }
 
@@ -104,6 +107,8 @@ export namespace AutoDepConfig {
       isModule: (filePath: string) => boolean;
       test: RegExp | Set<string>;
       isTest: (filePath: string) => boolean;
+      fixture: RegExp | Set<string>;
+      isFixture: (filePath: string) => boolean;
     }
 
     export interface GlobMatchers {
@@ -132,11 +137,13 @@ export namespace AutoDepConfig {
     export interface OnCreate {
       fileExtname: string;
       module: BaseOnCreateFields & ExtraOnCreateFields;
+      fixture: BaseOnCreateFields & ExtraOnCreateFields;
       test: BaseOnCreateFields;
     }
 
     export interface OnUpdate {
       module: BaseOnUpdateFields;
+      fixture: BaseOnUpdateFields;
       test: BaseOnUpdateFields;
     }
 
