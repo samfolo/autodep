@@ -87,14 +87,10 @@ export class AutoDep extends AutoDepBase {
       },
       (progress) => {
         try {
-          setTimeout(() => {
-            progress.report({increment: 0, message: 'Loading config from workspace...'});
-          }, 1);
+          progress.report({increment: 0, message: 'Loading config from workspace...'});
           this.initialise(rootPath);
 
-          setTimeout(() => {
-            progress.report({increment: 10, message: 'Probing target build file...'});
-          }, 1);
+          progress.report({increment: 10, message: 'Probing target build file...'});
           const {
             containsPreExistingBuildRule,
             targetBuildFilePath,
@@ -102,22 +98,15 @@ export class AutoDep extends AutoDepBase {
             targetBuildRuleMetadata,
           } = this.probeTargetBuildFile(rootPath);
 
-          // TODO: derive `defaultBuildRuleName` from config settings
-          const baseName = path.basename(rootPath);
-          const defaultBuildRuleName = baseName.slice(0, baseName.indexOf(path.extname(baseName)));
-          const targetBuildRuleName = targetBuildRuleMetadata.name?.value ?? defaultBuildRuleName;
-
           const rootPathBuildTarget = new this._depModelCls({
             config: this._config,
-            ruleName: targetBuildRuleName,
+            ruleName: targetBuildRuleMetadata.name?.value ?? '',
             buildFilePath: targetBuildFilePath,
             rootDirName: path.dirname(rootPath),
             targetBuildFilePath: targetBuildFilePath,
           }).toBuildTarget();
 
-          setTimeout(() => {
-            progress.report({increment: 30, message: 'Resolving dependencies...'});
-          }, 1);
+          progress.report({increment: 30, message: 'Resolving dependencies...'});
           const directDependencies = this.resolveDeps(rootPath);
           const persistedDependencies =
             containsPreExistingBuildRule && targetBuildRuleMetadata.srcs
@@ -126,16 +115,12 @@ export class AutoDep extends AutoDepBase {
           const newDependencies = Array.from(new Set([...directDependencies, ...persistedDependencies]));
 
           const dependencyToBuildFilePathLookup = this.getNearestBuildFilePaths(newDependencies);
-          setTimeout(() => {
-            progress.report({increment: 30, message: 'Collecting new BUILD targets...'});
-          }, 1);
+          progress.report({increment: 30, message: 'Collecting new BUILD targets...'});
           const buildRuleTargets = this.collectBuildRuleTargets(targetBuildFilePath, dependencyToBuildFilePathLookup, [
             rootPathBuildTarget,
           ]);
 
-          setTimeout(() => {
-            progress.report({increment: 20, message: 'Writing targets to BUILD file...'});
-          }, 1);
+          progress.report({increment: 20, message: 'Writing targets to BUILD file...'});
           this.writeUpdatesToFilesystem(rootPath, targetBuildFilePath, buildRuleTargets);
 
           this.handleSuccess();

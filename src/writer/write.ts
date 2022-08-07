@@ -1,5 +1,6 @@
 import {readFileSync, writeFileSync} from 'fs';
 import cloneDeep from 'lodash.clonedeep';
+import path from 'path';
 
 import {AutoDepConfig} from '../config/types';
 import {AutoDepError, ErrorType} from '../errors/error';
@@ -192,7 +193,7 @@ export class Writer extends AutoDepBase {
   private beginNewFile = () => {
     const ast = new this._dependencyBuilderCls({
       config: this._config,
-      rootPath: this._rootPath,
+      relativeFileName: path.relative(path.dirname(this._targetBuildFilePath), this._rootPath),
     }).buildNewFile(this._newDeps);
 
     writeFileSync(this._targetBuildFilePath, ast.toString(), {encoding: 'utf-8', flag: 'w'});

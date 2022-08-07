@@ -1,3 +1,4 @@
+import path from 'node:path';
 import {CompilerOptions} from 'typescript';
 import {
   DEFAULT_INITIAL_VISIBILITY,
@@ -8,6 +9,7 @@ import {
   DEFAULT_TEST_FILENAME_MATCHER,
   DEFAULT_TEST_RULE_NAME,
   DEFAULT_NON_BINARY_OUT_DIR,
+  DEFAULT_TARGET_FORMAT_STRING,
 } from '../common/const';
 import {
   ManagedSchemaFieldEntry,
@@ -141,6 +143,8 @@ export class ConfigUmarshaller {
     input?: RecursivePartial<AutoDepConfig.Input.OnCreate>
   ): AutoDepConfig.Output.OnCreate['module'] => ({
     name: this.unmarshalStandardField(DEFAULT_MODULE_RULE_NAME, input?.module?.name ?? input?.name),
+    formatTarget: (targetPath) =>
+      this.formatTarget(targetPath, input?.module?.targetFormat ?? input?.targetFormat ?? DEFAULT_TARGET_FORMAT_STRING),
     fileHeading: this.unmarshalStandardField('', input?.fileHeading),
     explicitDeps: this.unmarshalStandardField(false, input?.module?.explicitDeps ?? input?.explicitDeps),
     globMatchers: this.unmarshalOnCreateModuleGlobMatchers(input),
@@ -157,12 +161,26 @@ export class ConfigUmarshaller {
     input?: RecursivePartial<AutoDepConfig.Input.OnCreate>
   ): AutoDepConfig.Output.OnCreate['test'] => ({
     name: this.unmarshalStandardField(DEFAULT_TEST_RULE_NAME, input?.test?.name ?? input?.name),
+    formatTarget: (targetPath) =>
+      this.formatTarget(targetPath, input?.test?.targetFormat ?? input?.targetFormat ?? DEFAULT_TARGET_FORMAT_STRING),
     fileHeading: this.unmarshalStandardField('', input?.fileHeading),
     explicitDeps: this.unmarshalStandardField(false, input?.test?.explicitDeps ?? input?.explicitDeps),
     omitEmptyFields: this.unmarshalStandardField(false, input?.test?.omitEmptyFields ?? input?.omitEmptyFields),
     globMatchers: this.unmarshalOnCreateTestGlobMatchers(input),
     subinclude: this.unmarshalNullableField(input?.test?.subinclude ?? input?.subinclude),
   });
+
+  formatTarget = (targetPath: string, formatString: string) => {
+    const baseName = path.basename(targetPath);
+    const fileName = path.parse(baseName).name;
+    const firstName = fileName.split('.')[0];
+
+    return formatString
+      .replace(/<path>/g, targetPath)
+      .replace(/<basename>/g, baseName)
+      .replace(/<filename>/g, fileName)
+      .replace(/<firstname>/g, firstName);
+  };
 
   private unmarshalOnUpdate = (
     input?: RecursivePartial<AutoDepConfig.Input.OnUpdate>
@@ -191,7 +209,7 @@ export class ConfigUmarshaller {
     input ?? defaultValue;
 
   private unmarshalOnCreateModuleGlobMatchers = (
-    input?: AutoDepConfig.Input.OnCreate
+    input?: RecursivePartial<AutoDepConfig.Input.OnCreate>
   ): AutoDepConfig.Output.GlobMatchers =>
     input?.module?.globMatchers
       ? {
@@ -206,7 +224,7 @@ export class ConfigUmarshaller {
       : {include: [], exclude: []};
 
   private unmarshalOnCreateTestGlobMatchers = (
-    input?: AutoDepConfig.Input.OnCreate
+    input?: RecursivePartial<AutoDepConfig.Input.OnCreate>
   ): AutoDepConfig.Output.GlobMatchers =>
     input?.test?.globMatchers
       ? {

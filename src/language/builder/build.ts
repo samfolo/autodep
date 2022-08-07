@@ -17,26 +17,24 @@ import {createToken} from '../tokeniser/tokenise';
 
 interface DependencyBuilderOptions {
   config: AutoDepConfig.Output.Schema;
-  rootPath: string;
+  relativeFileName: string;
 }
 
 export class DependencyBuilder extends AutoDepBase {
-  private _fileName: string;
-  private _rootPath: string;
+  private _relativeFileName: string;
   private _ruleType: 'module' | 'test';
 
-  constructor({config, rootPath}: DependencyBuilderOptions) {
+  constructor({config, relativeFileName}: DependencyBuilderOptions) {
     super({config, name: 'DependencyBuilder'});
 
-    this._rootPath = rootPath;
-    this._fileName = path.basename(this._rootPath);
+    this._relativeFileName = relativeFileName;
 
-    if (this._config.match.isTest(this._rootPath)) {
+    if (this._config.match.isTest(this._relativeFileName)) {
       this._ruleType = 'test';
-    } else if (this._config.match.isModule(this._rootPath)) {
+    } else if (this._config.match.isModule(this._relativeFileName)) {
       this._ruleType = 'module';
     } else {
-      throw new AutoDepError(ErrorType.USER, ErrorMessages.user.unsupportedFileType({path: this._rootPath}));
+      throw new AutoDepError(ErrorType.USER, ErrorMessages.user.unsupportedFileType({path: this._relativeFileName}));
     }
   }
 
@@ -80,10 +78,10 @@ export class DependencyBuilder extends AutoDepBase {
         [
           this.buildRuleFieldKwargNode(
             name.value,
-            buildNameNode(path.parse(this._fileName).name, thirdScope),
+            buildNameNode(this.getFormattedBuildRuleName(this._relativeFileName), thirdScope),
             nextScope
           ),
-          this.buildRuleFieldKwargNode(srcs.value, buildSrcsNode(this._fileName, thirdScope), nextScope),
+          this.buildRuleFieldKwargNode(srcs.value, buildSrcsNode(this._relativeFileName, thirdScope), nextScope),
           ...(newDeps.length > 0 || !fileConfig.omitEmptyFields
             ? [this.buildRuleFieldKwargNode(deps.value, buildDepsNode(newDeps, thirdScope), nextScope)]
             : []),
@@ -280,4 +278,7 @@ export class DependencyBuilder extends AutoDepBase {
   };
 
   private toGlobMatcher = (fileName: string) => `**/*${path.extname(fileName)}`;
+
+  private getFormattedBuildRuleName = (relativeFileName: string) =>
+    this._config.onCreate[this._ruleType].formatTarget(relativeFileName);
 }

@@ -37,9 +37,9 @@ export class VisitorBase extends AutoDepBase {
 
     this._builderCls = builderCls;
     this._nodeQualifierCls = nodeQualifierCls;
-    this._builder = new this._builderCls({config: this._config, rootPath});
     this._rootPath = rootPath;
-    this._relativeFileName = path.relative(path.dirname(targetBuildFilePath), rootPath);
+    this._relativeFileName = path.relative(path.dirname(targetBuildFilePath), this._rootPath);
+    this._builder = new this._builderCls({config: this._config, relativeFileName: this._relativeFileName});
     this._nodeQualifier = new this._nodeQualifierCls({
       config: this._config,
       rootPath: this._rootPath,

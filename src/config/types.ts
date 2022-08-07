@@ -43,6 +43,7 @@ export namespace AutoDepConfig {
 
     interface BaseOnCreateFields extends BaseEventFields {
       name?: string;
+      targetFormat?: string;
       explicitDeps?: boolean;
       globMatchers?: GlobMatchers;
     }
@@ -56,6 +57,7 @@ export namespace AutoDepConfig {
     export interface OnCreate extends BaseOnCreateFields, ExtraOnCreateFields {
       fileExtname?: string;
       fileHeading?: string;
+      targetFormat?: string;
       module?: BaseOnCreateFields & ExtraOnCreateFields;
       test?: BaseOnCreateFields;
     }
@@ -111,6 +113,7 @@ export namespace AutoDepConfig {
 
     interface BaseOnCreateFields extends BaseEventFields {
       name: string;
+      formatTarget: (targetPath: string) => string;
       explicitDeps: boolean;
       globMatchers: GlobMatchers;
     }

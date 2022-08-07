@@ -174,6 +174,7 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
       type: 'object',
       properties: {
         name: {type: 'string', nullable: true},
+        targetFormat: {type: 'string', nullable: true},
         explicitDeps: {type: 'boolean', nullable: true},
         globMatchers: {
           type: 'object',
@@ -208,6 +209,7 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
           type: 'object',
           properties: {
             name: {type: 'string', nullable: true},
+            targetFormat: {type: 'string', nullable: true},
             explicitDeps: {type: 'boolean', nullable: true},
             globMatchers: {
               type: 'object',
@@ -243,6 +245,7 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
           type: 'object',
           properties: {
             name: {type: 'string', nullable: true},
+            targetFormat: {type: 'string', nullable: true},
             explicitDeps: {type: 'boolean', nullable: true},
             globMatchers: {
               type: 'object',
