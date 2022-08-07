@@ -143,8 +143,8 @@ export namespace AutoDepConfig {
     export type Log = Set<LogLevel>;
 
     export interface Ignore {
-      paths?: string[];
-      targets?: Set<string>;
+      paths: string[];
+      targets: Set<string>;
     }
 
     export interface Schema {

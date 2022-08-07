@@ -130,6 +130,7 @@ export class AutoDep extends AutoDepBase {
           progress.report({increment: 30, message: 'Collecting new BUILD targets...'});
           const buildRuleTargets = this.collectBuildRuleTargets(targetBuildFilePath, dependencyToBuildFilePathLookup, [
             rootPathBuildTarget,
+            ...this._config.ignore.targets,
           ]);
 
           progress.report({increment: 20, message: 'Writing targets to BUILD file...'});
