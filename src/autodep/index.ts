@@ -90,7 +90,19 @@ export class AutoDep extends AutoDepBase {
           progress.report({increment: 0, message: 'Loading config from workspace...'});
           this.initialise(rootPath);
 
-          progress.report({increment: 10, message: 'Probing target build file...'});
+          progress.report({increment: 5, message: 'Deciding whether to skip update...'});
+          if (this.shouldSkipProcess(rootPath)) {
+            this._logger.info({
+              ctx: 'processUpdate',
+              message:
+                TaskMessages.identified('an ignored path at `<autodepConfig>.ignore.paths`', rootPath) +
+                ' - skipping update.',
+              details: JSON.stringify(this._config.ignore.paths, null, 2),
+            });
+            return Promise.resolve();
+          }
+
+          progress.report({increment: 5, message: 'Probing target build file...'});
           const {
             containsPreExistingBuildRule,
             targetBuildFilePath,
@@ -138,7 +150,10 @@ export class AutoDep extends AutoDepBase {
   };
 
   private loadAutoDepConfig = (rootPath: string) => {
-    this._logger.info({ctx: 'initialise', message: TaskMessages.attempt('load', 'autodep config from workspace...')});
+    this._logger.info({
+      ctx: 'loadAutoDepConfig',
+      message: TaskMessages.attempt('load', 'autodep config from workspace...'),
+    });
     const result = this._configLoader.loadAutoDepConfigFromWorkspace(
       this._depResolver.resolveClosestConfigFilePath(rootPath)
     );
@@ -146,12 +161,12 @@ export class AutoDep extends AutoDepBase {
     switch (result.status) {
       case 'success':
         this._logger.info({
-          ctx: 'initialise',
+          ctx: 'loadAutoDepConfig',
           message: TaskMessages.success('loaded', 'autodep config from workspace'),
           details: result.output.toString(),
         });
         this._logger.debug({
-          ctx: 'initialise',
+          ctx: 'loadAutoDepConfig',
           message: TaskMessages.using('the following autodep config'),
           details: result.output.toString(),
         });
@@ -161,7 +176,7 @@ export class AutoDep extends AutoDepBase {
         break;
       case 'passthrough':
         this._logger.info({
-          ctx: 'initialise',
+          ctx: 'loadAutoDepConfig',
           message: TaskMessages.failure('load', 'autodep config from workspace'),
           details: result.reason,
         });
@@ -176,7 +191,7 @@ export class AutoDep extends AutoDepBase {
 
   private loadTSConfig = (rootPath: string) => {
     this._logger.info({
-      ctx: 'initialise',
+      ctx: 'loadTSConfig',
       message: TaskMessages.attempt('load', 'TypeScript config from workspace...'),
     });
     const result = this._configLoader.loadTsConfigFromWorkspace(rootPath);
@@ -184,19 +199,19 @@ export class AutoDep extends AutoDepBase {
     switch (result.status) {
       case 'success':
         this._logger.info({
-          ctx: 'initialise',
+          ctx: 'loadTSConfig',
           message: TaskMessages.success('loaded', 'typesript config from workspace'),
           details: JSON.stringify(result.output, null, 2),
         });
         this._logger.debug({
-          ctx: 'initialise',
+          ctx: 'loadTSConfig',
           message: TaskMessages.using('the following typesript config'),
           details: JSON.stringify(result.output, null, 2),
         });
         return result.output;
       case 'passthrough':
         this._logger.info({
-          ctx: 'initialise',
+          ctx: 'loadTSConfig',
           message: TaskMessages.failure('load', 'typesript config from workspace'),
           details: result.reason,
         });
@@ -213,6 +228,29 @@ export class AutoDep extends AutoDepBase {
 
     this.loadTSConfig(rootPath);
     this.loadAutoDepConfig(rootPath);
+  };
+
+  private shouldSkipProcess = (rootPath: string) => {
+    const rootDirPath = rootPath.slice(0, rootPath.indexOf(this._config.rootDir) + this._config.rootDir.length);
+    const relativeRootPath = path.relative(rootDirPath, rootPath);
+
+    if (this._config.ignore.paths && this._config.ignore.paths.length > 0) {
+      for (const ignorePathMatcher of this._config.ignore.paths) {
+        this._logger.trace({
+          ctx: 'shouldSkipProcess',
+          message: TaskMessages.attempt('match', `${relativeRootPath} against ${ignorePathMatcher}`),
+        });
+        if (minimatch(relativeRootPath, ignorePathMatcher)) {
+          this._logger.trace({
+            ctx: 'shouldSkipProcess',
+            message: TaskMessages.success('matched', `${relativeRootPath} against ${ignorePathMatcher}`),
+          });
+          return true;
+        }
+      }
+    }
+
+    return false;
   };
 
   /**
@@ -418,11 +456,6 @@ export class AutoDep extends AutoDepBase {
                 null,
                 2
               ),
-            });
-            this._logger.debug({
-              ctx: 'collectBuildRuleTargets',
-              message: TaskMessages.locate.success(`metadata for ${dep}`),
-              details: ruleMetadataVisitorResult.output.node?.toString() ?? '<none>',
             });
             break;
           case 'failed':

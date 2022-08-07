@@ -317,8 +317,16 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
       },
       nullable: true,
     },
+    ignore: {
+      type: 'object',
+      properties: {
+        paths: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
+        targets: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
+      },
+      nullable: true,
+    },
   },
-  required: ['rootDir'],
+  required: [],
 };
 
 export const validateConfigInput = ajv.compile<InputConfig>(AUTODEP_CONFIG_INPUT_SCHEMA);

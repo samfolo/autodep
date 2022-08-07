@@ -16,7 +16,13 @@ manage:
     - test_only
     - labels
     - entry
+    - entry_points
   schema:
+    filegroup:
+      srcs:
+        - srcs
+        - value: srcs
+          as: glob
     create_component_mocha:
       srcs:
         - value: entry
@@ -24,10 +30,10 @@ manage:
     css_library:
       srcs:
         - srcs
-        - value: srcs
-          as: glob
         - value: src
           as: string
+        - value: srcs
+          as: glob
     design_system_jest:
       srcs:
         - value: entry
@@ -69,7 +75,7 @@ manage:
       srcs:
         - outs
 match:
-  module: .*?\.(js|jsx|ts|tsx|scss)$
+  module: .*?\.(js|jsx|ts|tsx|scss|json)$
   test: .*?\.(spec|test)\.(js|jsx|ts|tsx)$
 log:
   - trace
@@ -88,6 +94,7 @@ onCreate:
     And double lines...
   module:
     name: js_library
+    targetFormat: <filename>_module
     explicitDeps: false
     omitEmptyFields: true
     initialVisibility:
@@ -105,6 +112,7 @@ onCreate:
         - '**/*.spec.tsx'
   test:
     name: ops_app_jest
+    targetFormat: <firstname>_test
     subinclude:
       - //vault/admin_app/apps/ops:ops_app_jest
     explicitDeps: false
@@ -128,3 +136,10 @@ onUpdate:
     omitEmptyFields: true
   test:
     omitEmptyFields: true
+ignore:
+  paths:
+    - '**/webpack.{production,test,development}.*'
+    - vault/admin_app/apps/ops/src/myTestFolder/myIgnoredDirectory/*
+  targets:
+    - //vault/admin_app/apps/common/types:query_types
+    - //vault/admin_app/apps/common/types:enum_types

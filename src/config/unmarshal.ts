@@ -36,6 +36,7 @@ export class ConfigUmarshaller {
     enablePropagation: this.unmarshalEnablePropagation(input?.enablePropagation),
     onCreate: this.unmarshalOnCreate(input?.onCreate),
     onUpdate: this.unmarshalOnUpdate(input?.onUpdate),
+    ignore: this.unmarshalIgnore(input?.ignore),
     _tsCompilerOptions: tsCompilerOptions,
     toString: function () {
       return JSON.stringify(
@@ -144,7 +145,7 @@ export class ConfigUmarshaller {
   ): AutoDepConfig.Output.OnCreate['module'] => ({
     name: this.unmarshalStandardField(DEFAULT_MODULE_RULE_NAME, input?.module?.name ?? input?.name),
     formatTarget: (targetPath) =>
-      this.formatTarget(targetPath, input?.module?.targetFormat ?? input?.targetFormat ?? DEFAULT_TARGET_FORMAT_STRING),
+      formatTarget(targetPath, input?.module?.targetFormat ?? input?.targetFormat ?? DEFAULT_TARGET_FORMAT_STRING),
     fileHeading: this.unmarshalStandardField('', input?.fileHeading),
     explicitDeps: this.unmarshalStandardField(false, input?.module?.explicitDeps ?? input?.explicitDeps),
     globMatchers: this.unmarshalOnCreateModuleGlobMatchers(input),
@@ -162,25 +163,13 @@ export class ConfigUmarshaller {
   ): AutoDepConfig.Output.OnCreate['test'] => ({
     name: this.unmarshalStandardField(DEFAULT_TEST_RULE_NAME, input?.test?.name ?? input?.name),
     formatTarget: (targetPath) =>
-      this.formatTarget(targetPath, input?.test?.targetFormat ?? input?.targetFormat ?? DEFAULT_TARGET_FORMAT_STRING),
+      formatTarget(targetPath, input?.test?.targetFormat ?? input?.targetFormat ?? DEFAULT_TARGET_FORMAT_STRING),
     fileHeading: this.unmarshalStandardField('', input?.fileHeading),
     explicitDeps: this.unmarshalStandardField(false, input?.test?.explicitDeps ?? input?.explicitDeps),
     omitEmptyFields: this.unmarshalStandardField(false, input?.test?.omitEmptyFields ?? input?.omitEmptyFields),
     globMatchers: this.unmarshalOnCreateTestGlobMatchers(input),
     subinclude: this.unmarshalNullableField(input?.test?.subinclude ?? input?.subinclude),
   });
-
-  formatTarget = (targetPath: string, formatString: string) => {
-    const baseName = path.basename(targetPath);
-    const fileName = path.parse(baseName).name;
-    const firstName = fileName.split('.')[0];
-
-    return formatString
-      .replace(/<path>/g, targetPath)
-      .replace(/<basename>/g, baseName)
-      .replace(/<filename>/g, fileName)
-      .replace(/<firstname>/g, firstName);
-  };
 
   private unmarshalOnUpdate = (
     input?: RecursivePartial<AutoDepConfig.Input.OnUpdate>
@@ -238,12 +227,29 @@ export class ConfigUmarshaller {
         }
       : {include: [], exclude: []};
 
+  unmarshalIgnore = (input?: RecursivePartial<AutoDepConfig.Input.Ignore>): AutoDepConfig.Output.Ignore => ({
+    paths: input?.paths ?? [],
+    targets: new Set(input?.targets ?? []),
+  });
+
   // Utility:
 
   private unmarshalStandardField = <V extends unknown>(defaultValue: V, input?: V): V => input ?? defaultValue;
 
   private unmarshalNullableField = <V extends unknown>(input?: V): V | null => input ?? null;
 }
+
+const formatTarget = (targetPath: string, formatString: string) => {
+  const baseName = path.basename(targetPath);
+  const fileName = path.parse(baseName).name;
+  const firstName = fileName.split('.')[0];
+
+  return formatString
+    .replace(/<path>/g, targetPath)
+    .replace(/<basename>/g, baseName)
+    .replace(/<filename>/g, fileName)
+    .replace(/<firstname>/g, firstName);
+};
 
 const getManagedSchemaFieldEntry = (
   entry: string | ManagedSchemaFieldEntry,

@@ -70,6 +70,11 @@ export namespace AutoDepConfig {
 
     export type Log = LogLevel[];
 
+    export interface Ignore {
+      paths?: string[];
+      targets?: string[];
+    }
+
     export interface Schema {
       rootDir: string;
       outDir: string;
@@ -81,6 +86,7 @@ export namespace AutoDepConfig {
       enablePropagation?: EnablePropagation;
       onCreate?: OnCreate;
       onUpdate?: OnUpdate;
+      ignore?: Ignore;
     }
   }
 
@@ -136,6 +142,11 @@ export namespace AutoDepConfig {
 
     export type Log = Set<LogLevel>;
 
+    export interface Ignore {
+      paths?: string[];
+      targets?: Set<string>;
+    }
+
     export interface Schema {
       rootDir: string;
       outDir: string;
@@ -147,6 +158,7 @@ export namespace AutoDepConfig {
       enablePropagation: EnablePropagation;
       onCreate: OnCreate;
       onUpdate: OnUpdate;
+      ignore: Ignore;
       _tsCompilerOptions: typescript.CompilerOptions;
       toString: () => string;
     }
