@@ -114,6 +114,15 @@ export class DependencyResolver extends AutoDepBase {
           acc.push(this.transformOutDirPathToRootDirPath(result.output));
           taskSatusClient.nextEffect('success');
           return acc;
+        case 'core-module':
+          this._logger.trace({
+            ctx: 'resolveAbsoluteImportPaths',
+            message: TaskMessages.resolve.success(dep, 'dep'),
+            details: JSON.stringify(result, null, 2),
+          });
+          // Skip collecting core modules; they never need to be in deps as they are bundled with NodeJS
+          taskSatusClient.nextEffect('success');
+          return acc;
         case 'passthrough':
         default:
           break;

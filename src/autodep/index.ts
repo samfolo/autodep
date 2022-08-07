@@ -125,7 +125,6 @@ export class AutoDep extends AutoDepBase {
               : [];
           const newDependencies = Array.from(new Set([...directDependencies, ...persistedDependencies]));
 
-          console.log(newDependencies);
           const dependencyToBuildFilePathLookup = this.getNearestBuildFilePaths(newDependencies);
           setTimeout(() => {
             progress.report({increment: 30, message: 'Collecting new BUILD targets...'});
@@ -281,6 +280,8 @@ export class AutoDep extends AutoDepBase {
         buildFileAST: null,
       };
     } else {
+      const isNearestBuildFileASibling = path.dirname(nearestBuildFilePath) === path.dirname(onCreateBuildFilePath);
+
       const targetBuildFileAST = this.parseBuildFileIfExists(nearestBuildFilePath);
       if (!targetBuildFileAST) {
         // TODO: add more detail here; return a "status-reason-output" object.
@@ -327,7 +328,10 @@ export class AutoDep extends AutoDepBase {
             containsPreExistingBuildRule: false,
             buildFileAST: targetBuildFileAST,
             targetBuildRuleMetadata: ruleMetadataVisitorResult.output,
-            targetBuildFilePath: this._config.enablePropagation ? nearestBuildFilePath : onCreateBuildFilePath,
+            targetBuildFilePath:
+              this._config.enablePropagation || isNearestBuildFileASibling
+                ? nearestBuildFilePath
+                : onCreateBuildFilePath,
           };
         case 'idle':
         case 'passthrough':
@@ -560,13 +564,13 @@ export class AutoDep extends AutoDepBase {
         case TypeError:
           this._logger.error({
             ctx: 'parseBuildFileIfExists',
-            message: TaskMessages.resolve.failure(`\`BUILD\` or \`BUILD.plz\` file at ${targetBuildFilePath}`),
+            message: TaskMessages.resolve.failure(targetBuildFilePath, '`BUILD` or `BUILD.plz` file'),
             details: String(err),
           });
         default:
           this._logger.trace({
             ctx: 'parseBuildFileIfExists',
-            message: TaskMessages.resolve.failure(`\`BUILD\` or \`BUILD.plz\` file at ${targetBuildFilePath}`),
+            message: TaskMessages.resolve.failure(targetBuildFilePath, '`BUILD` or `BUILD.plz` file'),
             details: String(err),
           });
       }
@@ -649,12 +653,20 @@ export class AutoDep extends AutoDepBase {
         );
         const buildFilePath = this._depResolver.findFirstValidPath(pathToFileOrFolder, possibleBuildFileNames);
 
-        // if there is no `BUILD` file in the directory, skip this branch of traversal:
+        // if there is a `BUILD` file in the directory, skip this branch of traversal:
         if (buildFilePath) {
           this._logger.trace({
             ctx: 'collectAllOrphanDescendantFiles',
             message:
               TaskMessages.identified(`the BUILD file for ${fileOrFolderName}`, buildFilePath) + ' - skipping...',
+          });
+          continue;
+        }
+
+        if (fileOrFolderName === 'node_modules') {
+          this._logger.trace({
+            ctx: 'collectAllOrphanDescendantFiles',
+            message: TaskMessages.identified(`a \`node_modules\` directory`, pathToFileOrFolder) + ' - skipping...',
           });
           continue;
         }
