@@ -40,7 +40,7 @@ export class TaskStatusClient {
     'partial-success:failed': 'partial-success',
     'partial-success:idle': 'idle',
     'partial-success:partial-success': 'partial-success',
-    'partial-success:passthrough': 'passthrough',
+    'partial-success:passthrough': 'partial-success',
     'partial-success:processing': 'processing',
     'partial-success:success': 'partial-success',
 
@@ -61,7 +61,7 @@ export class TaskStatusClient {
     'success:failed': 'partial-success',
     'success:idle': 'idle',
     'success:partial-success': 'partial-success',
-    'success:passthrough': 'partial-success',
+    'success:passthrough': 'success',
     'success:processing': 'processing',
     'success:success': 'success',
   };

@@ -79,48 +79,78 @@ export class AutoDep extends AutoDepBase {
    * @param rootPath the path to the target file
    */
   processUpdate = (rootPath: string) => {
-    try {
-      this.initialise(rootPath);
+    vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        cancellable: false,
+        title: 'Autodep',
+      },
+      (progress) => {
+        try {
+          setTimeout(() => {
+            progress.report({increment: 0, message: 'Loading config from workspace...'});
+          }, 1);
+          this.initialise(rootPath);
 
-      const {
-        containsPreExistingBuildRule,
-        targetBuildFilePath,
-        buildFileAST: _buildFileAST,
-        targetBuildRuleMetadata,
-      } = this.probeTargetBuildFile(rootPath);
+          setTimeout(() => {
+            progress.report({increment: 10, message: 'Probing target build file...'});
+          }, 1);
+          const {
+            containsPreExistingBuildRule,
+            targetBuildFilePath,
+            buildFileAST: _buildFileAST,
+            targetBuildRuleMetadata,
+          } = this.probeTargetBuildFile(rootPath);
 
-      // TODO: derive `defaultBuildRuleName` from config settings
-      const baseName = path.basename(rootPath);
-      const defaultBuildRuleName = baseName.slice(0, baseName.indexOf(path.extname(baseName)));
-      const targetBuildRuleName = targetBuildRuleMetadata.name?.value ?? defaultBuildRuleName;
+          // TODO: derive `defaultBuildRuleName` from config settings
+          const baseName = path.basename(rootPath);
+          const defaultBuildRuleName = baseName.slice(0, baseName.indexOf(path.extname(baseName)));
+          const targetBuildRuleName = targetBuildRuleMetadata.name?.value ?? defaultBuildRuleName;
 
-      const rootPathBuildTarget = new this._depModelCls({
-        config: this._config,
-        ruleName: targetBuildRuleName,
-        buildFilePath: targetBuildFilePath,
-        rootDirName: path.dirname(rootPath),
-        targetBuildFilePath: targetBuildFilePath,
-      }).toBuildTarget();
+          const rootPathBuildTarget = new this._depModelCls({
+            config: this._config,
+            ruleName: targetBuildRuleName,
+            buildFilePath: targetBuildFilePath,
+            rootDirName: path.dirname(rootPath),
+            targetBuildFilePath: targetBuildFilePath,
+          }).toBuildTarget();
 
-      const directDependencies = this.resolveDeps(rootPath);
-      const persistedDependencies =
-        containsPreExistingBuildRule && targetBuildRuleMetadata.srcs
-          ? this.resolvePersistedDeps(targetBuildFilePath, targetBuildRuleMetadata.srcs)
-          : [];
-      const newDependencies = Array.from(new Set([...directDependencies, ...persistedDependencies]));
+          setTimeout(() => {
+            progress.report({increment: 30, message: 'Resolving dependencies...'});
+          }, 1);
+          const directDependencies = this.resolveDeps(rootPath);
+          const persistedDependencies =
+            containsPreExistingBuildRule && targetBuildRuleMetadata.srcs
+              ? this.resolvePersistedDeps(targetBuildFilePath, targetBuildRuleMetadata.srcs)
+              : [];
+          const newDependencies = Array.from(new Set([...directDependencies, ...persistedDependencies]));
 
-      const dependencyToBuildFilePathLookup = this.getNearestBuildFilePaths(newDependencies);
-      const buildRuleTargets = this.collectBuildRuleTargets(targetBuildFilePath, dependencyToBuildFilePathLookup, [
-        rootPathBuildTarget,
-      ]);
-      this.writeUpdatesToFilesystem(rootPath, targetBuildFilePath, buildRuleTargets);
+          console.log(newDependencies);
+          const dependencyToBuildFilePathLookup = this.getNearestBuildFilePaths(newDependencies);
+          setTimeout(() => {
+            progress.report({increment: 30, message: 'Collecting new BUILD targets...'});
+          }, 1);
+          const buildRuleTargets = this.collectBuildRuleTargets(targetBuildFilePath, dependencyToBuildFilePathLookup, [
+            rootPathBuildTarget,
+          ]);
 
-      this.handleSuccess();
-    } catch (error) {
-      this.handleFailure(error);
-    } finally {
-      this.handleCleanup();
-    }
+          setTimeout(() => {
+            progress.report({increment: 20, message: 'Writing targets to BUILD file...'});
+          }, 1);
+          this.writeUpdatesToFilesystem(rootPath, targetBuildFilePath, buildRuleTargets);
+
+          this.handleSuccess();
+        } catch (error) {
+          this.handleFailure(error);
+        } finally {
+          setTimeout(() => {
+            progress.report({increment: 10, message: 'Cleaning up...'});
+          }, 1);
+          this.handleCleanup();
+          return Promise.resolve();
+        }
+      }
+    );
   };
 
   private loadAutoDepConfig = (rootPath: string) => {
@@ -134,12 +164,12 @@ export class AutoDep extends AutoDepBase {
         this._logger.info({
           ctx: 'initialise',
           message: TaskMessages.success('loaded', 'autodep config from workspace'),
-          details: JSON.stringify(result.output, null, 2),
+          details: result.output.toString(),
         });
         this._logger.debug({
           ctx: 'initialise',
           message: TaskMessages.using('the following autodep config'),
-          details: JSON.stringify(result.output, null, 2),
+          details: result.output.toString(),
         });
         this._depResolver.setConfig(result.output);
         this._logger.setConfig(result.output);

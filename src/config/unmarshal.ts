@@ -24,11 +24,8 @@ export class ConfigUmarshaller {
     input?: AutoDepConfig.Input.Schema,
     tsCompilerOptions: CompilerOptions = {}
   ): AutoDepConfig.Output.Schema => ({
-    rootDir: this.unmarshalStandardField('<unknown>', input?.rootDir),
-    outDir: this.unmarshalStandardField(
-      `${input?.rootDir || '<unknown>'}/${DEFAULT_NON_BINARY_OUT_DIR}`,
-      input?.outDir
-    ),
+    rootDir: this.unmarshalStandardField('.', input?.rootDir),
+    outDir: this.unmarshalStandardField(`${input?.rootDir || '.'}/${DEFAULT_NON_BINARY_OUT_DIR}`, input?.outDir),
     manage: this.unmarshalManage(input?.manage),
     match: this.unmarshalMatch(input?.match),
     log: this.unmarshalLogLevels(input?.log),

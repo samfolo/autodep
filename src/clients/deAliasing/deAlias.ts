@@ -1,5 +1,5 @@
 import {readFileSync} from 'fs';
-import {createRequire} from 'node:module';
+import {createRequire, builtinModules} from 'node:module';
 import path from 'path';
 
 import {AutoDepBase} from '../../inheritance/base';
@@ -9,7 +9,13 @@ import {PackageAlias, PackageName, DeAliasingClientOptions} from './types';
 
 interface DeAliasResult {
   output: string;
-  method: 'package-name-cache' | 'known-config-alias' | 'local-module-resolution' | 'third-party' | 'passthrough';
+  method:
+    | 'package-name-cache'
+    | 'known-config-alias'
+    | 'local-module-resolution'
+    | 'third-party'
+    | 'core-module'
+    | 'passthrough';
 }
 
 export class DeAliasingClient extends AutoDepBase {
@@ -43,7 +49,22 @@ export class DeAliasingClient extends AutoDepBase {
 
     const relativeRequire = createRequire(this._filePath);
 
-    if (!this.isRelative(dep)) {
+    if (this.isCoreModule(dep)) {
+      this._logger.trace({
+        ctx: 'deAlias',
+        message: TaskMessages.resolve.attempt(dep, 'core module'),
+      });
+      const resolveAttempt = relativeRequire.resolve(dep);
+      const result: DeAliasResult = {output: resolveAttempt, method: 'core-module'};
+      this._logger.trace({
+        ctx: 'deAlias',
+        message: TaskMessages.resolve.success(dep, 'core module'),
+        details: JSON.stringify(result, null, 2),
+      });
+
+      this.addDeAliasingResultToCache(dep, result);
+      return result;
+    } else if (!this.isRelative(dep)) {
       this._logger.trace({ctx: 'deAlias', message: TaskMessages.identify.failure('a relative path', dep)});
     } else {
       for (const extension of supportedExtensions) {
@@ -185,6 +206,7 @@ export class DeAliasingClient extends AutoDepBase {
   };
 
   private isRelative = (path: string) => ['/', './', '../'].some((start) => path.startsWith(start));
+  private isCoreModule = (path: string) => DeAliasingClient.coreModules.has(path);
 
   /**
    * Returns a boolean indicating whether there is already a cached result for the
@@ -328,6 +350,7 @@ export class DeAliasingClient extends AutoDepBase {
     return result;
   };
 
+  private static coreModules = new Set(builtinModules);
   private static deAliasingCache: Record<string, Record<string, DeAliasResult>> = {};
   private static packageNameMapCache: Record<
     string,
