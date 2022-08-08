@@ -83,19 +83,28 @@ export class RuleInsertionVisitor extends VisitorBase {
 
   private visitRootNode = (node: RootNode) => {
     const onUpdateFileHeading = this._config.onUpdate[this._nodeQualifier.ruleType].fileHeading ?? '';
+    const commentStatement = this._builder.buildFileHeadingCommentStatement(onUpdateFileHeading);
+
+    node.statements = node.statements.map((statement) => this.visitStatementNode(statement));
+
+    // add subinclude if one did not previously exist and subincludes have been specified:
+    const subincludeStatement: ExpressionStatement[] = [];
+    const newSubincludes = this._config.onUpdate[this._nodeQualifier.ruleType].subinclude;
+    if (newSubincludes && !this._didUpdateSubinclude) {
+      subincludeStatement.push(this._builder.buildSubincludeStatement([...newSubincludes]));
+      this._didUpdateSubinclude = true;
+    }
 
     if (this.shouldUpdateCommentHeading(node, onUpdateFileHeading)) {
       const [, ...nonFileHeadingStatements] = node.statements;
 
       node.statements = [
-        this._builder.buildFileHeadingCommentStatement(onUpdateFileHeading),
-        ...nonFileHeadingStatements.map((statement) => this.visitStatementNode(statement)),
+        ...(commentStatement ? [commentStatement] : []),
+        ...subincludeStatement,
+        ...nonFileHeadingStatements,
       ];
     } else {
-      node.statements = [
-        this._builder.buildFileHeadingCommentStatement(onUpdateFileHeading),
-        ...node.statements.map((statement) => this.visitStatementNode(statement)),
-      ];
+      node.statements = [...(commentStatement ? [commentStatement] : []), ...subincludeStatement, ...node.statements];
     }
 
     node.statements.push(this._builder.buildNewRule(this._newDeps));
@@ -122,6 +131,14 @@ export class RuleInsertionVisitor extends VisitorBase {
     }
   };
 
+  private visitExpressionStatementNode = (node: ExpressionStatement) => {
+    if (node.token.type === 'IDENT' && node.expression?.kind === 'CallExpression') {
+      node.expression = this.visitCallExpressionNode(node.expression);
+    }
+
+    return node;
+  };
+
   private visitExpressionNode = (node: Expression): Expression => {
     switch (node.kind) {
       case 'CallExpression':
@@ -131,45 +148,43 @@ export class RuleInsertionVisitor extends VisitorBase {
     }
   };
 
-  private visitExpressionStatementNode = (node: ExpressionStatement) => {
-    if (node.token.type === 'IDENT' && node.expression?.kind === 'CallExpression') {
-      node.expression = this.visitCallExpressionNode(node.expression);
+  private visitCallExpressionNode = (node: CallExpression) => {
+    const isFirstSubinclude =
+      !this._didUpdateSubinclude &&
+      node.functionName?.getTokenLiteral() === SUPPORTED_MANAGED_BUILTINS_LOOKUP.subinclude;
+
+    if (isFirstSubinclude) {
+      this.visitFirstSubinclude(node);
     }
 
     return node;
   };
 
-  private visitCallExpressionNode = (node: CallExpression) => {
-    if (
-      !this._didUpdateSubinclude &&
-      node.functionName?.getTokenLiteral() === SUPPORTED_MANAGED_BUILTINS_LOOKUP.subinclude
-    ) {
-      const newSubincludes = this._config.onUpdate[this._nodeQualifier.ruleType].subinclude;
+  private visitFirstSubinclude = (node: CallExpression) => {
+    const newSubincludes = this._config.onUpdate[this._nodeQualifier.ruleType].subinclude;
 
-      if (node.args?.elements && node.args.elements.length > 0 && Array.isArray(newSubincludes)) {
-        const seen = new Set();
-        const uniqueSubincludes: Expression[] = [];
+    if (node.args?.elements && node.args.elements.length > 0 && Array.isArray(newSubincludes)) {
+      const seen = new Set();
+      const uniqueSubincludes: Expression[] = [];
 
-        for (const originalSubinclude of node.args.elements) {
-          if (originalSubinclude.kind === 'StringLiteral' && !seen.has(originalSubinclude.value)) {
-            seen.add(originalSubinclude.value);
-          }
-          uniqueSubincludes.push(originalSubinclude);
+      for (const originalSubinclude of node.args.elements) {
+        if (originalSubinclude.kind === 'StringLiteral' && !seen.has(originalSubinclude.value)) {
+          seen.add(originalSubinclude.value);
         }
-
-        for (const newSubinclude of newSubincludes) {
-          if (!seen.has(newSubinclude)) {
-            uniqueSubincludes.push(this._builder.buildStringLiteralNode(newSubinclude, node.args.token.scope ?? 0));
-            seen.add(newSubinclude);
-          }
-        }
-
-        node.args.elements = uniqueSubincludes;
+        uniqueSubincludes.push(originalSubinclude);
       }
 
-      this._didUpdateSubinclude = true;
+      for (const newSubinclude of newSubincludes) {
+        if (!seen.has(newSubinclude)) {
+          uniqueSubincludes.push(this._builder.buildStringLiteralNode(newSubinclude, node.args.token.scope ?? 0));
+          seen.add(newSubinclude);
+        }
+      }
+
+      node.args.elements = uniqueSubincludes;
     }
 
+    this._didUpdateSubinclude = true;
     return node;
   };
 

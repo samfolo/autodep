@@ -1,4 +1,8 @@
-import {SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES, WHITESPACE_SIZE} from '../common/const';
+import {
+  SUPPORTED_MANAGED_BUILTINS_LOOKUP,
+  SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES,
+  WHITESPACE_SIZE,
+} from '../common/const';
 import {AutoDepConfig} from '../config/types';
 import {AutoDepError, ErrorType} from '../errors/error';
 import * as ast from '../language/ast/utils';
@@ -30,6 +34,7 @@ interface DependencyUpdateVisitorOptions {
 
 export class DependencyUpdateVisitor extends VisitorBase {
   private _newDeps: string[];
+  private _didUpdateSubinclude: boolean;
 
   constructor(
     {config, rootPath, newDeps, targetBuildFilePath}: DependencyUpdateVisitorOptions,
@@ -46,6 +51,7 @@ export class DependencyUpdateVisitor extends VisitorBase {
       taskStatusClientCls
     );
     this._newDeps = newDeps;
+    this._didUpdateSubinclude = false;
   }
 
   updateDeps = (node: ASTNode) => {
@@ -86,19 +92,28 @@ export class DependencyUpdateVisitor extends VisitorBase {
 
   private visitRootNode = (node: RootNode) => {
     const onUpdateFileHeading = this._config.onUpdate[this._nodeQualifier.ruleType].fileHeading ?? '';
+    const commentStatement = this._builder.buildFileHeadingCommentStatement(onUpdateFileHeading);
+
+    node.statements = node.statements.map((statement) => this.visitStatementNode(statement));
+
+    // add subinclude if one did not previously exist and subincludes have been specified:
+    const subincludeStatement: ExpressionStatement[] = [];
+    const newSubincludes = this._config.onUpdate[this._nodeQualifier.ruleType].subinclude;
+    if (newSubincludes && !this._didUpdateSubinclude) {
+      subincludeStatement.push(this._builder.buildSubincludeStatement([...newSubincludes]));
+      this._didUpdateSubinclude = true;
+    }
 
     if (this.shouldUpdateCommentHeading(node, onUpdateFileHeading)) {
       const [, ...nonFileHeadingStatements] = node.statements;
 
       node.statements = [
-        this._builder.buildFileHeadingCommentStatement(onUpdateFileHeading),
-        ...nonFileHeadingStatements.map((statement) => this.visitStatementNode(statement)),
+        ...(commentStatement ? [commentStatement] : []),
+        ...subincludeStatement,
+        ...nonFileHeadingStatements,
       ];
     } else {
-      node.statements = [
-        this._builder.buildFileHeadingCommentStatement(onUpdateFileHeading),
-        ...node.statements.map((statement) => this.visitStatementNode(statement)),
-      ];
+      node.statements = [...(commentStatement ? [commentStatement] : []), ...subincludeStatement, ...node.statements];
     }
 
     return node;
@@ -144,6 +159,15 @@ export class DependencyUpdateVisitor extends VisitorBase {
     const functionName = String(node.functionName?.getTokenLiteral() ?? '');
 
     if (!this._nodeQualifier.isManagedNode(node)) {
+      return node;
+    }
+
+    const isFirstSubinclude =
+      !this._didUpdateSubinclude &&
+      node.functionName?.getTokenLiteral() === SUPPORTED_MANAGED_BUILTINS_LOOKUP.subinclude;
+
+    if (isFirstSubinclude) {
+      this.visitFirstSubinclude(node);
       return node;
     }
 
@@ -242,6 +266,34 @@ export class DependencyUpdateVisitor extends VisitorBase {
         `malformed \`ArrayLiteral\` node has no \`ExpressionList\`: ${node.toString()}`
       );
     }
+    return node;
+  };
+
+  private visitFirstSubinclude = (node: CallExpression) => {
+    const newSubincludes = this._config.onUpdate[this._nodeQualifier.ruleType].subinclude;
+
+    if (node.args?.elements && node.args.elements.length > 0 && Array.isArray(newSubincludes)) {
+      const seen = new Set();
+      const uniqueSubincludes: Expression[] = [];
+
+      for (const originalSubinclude of node.args.elements) {
+        if (originalSubinclude.kind === 'StringLiteral' && !seen.has(originalSubinclude.value)) {
+          seen.add(originalSubinclude.value);
+        }
+        uniqueSubincludes.push(originalSubinclude);
+      }
+
+      for (const newSubinclude of newSubincludes) {
+        if (!seen.has(newSubinclude)) {
+          uniqueSubincludes.push(this._builder.buildStringLiteralNode(newSubinclude, node.args.token.scope ?? 0));
+          seen.add(newSubinclude);
+        }
+      }
+
+      node.args.elements = uniqueSubincludes;
+    }
+
+    this._didUpdateSubinclude = true;
     return node;
   };
 

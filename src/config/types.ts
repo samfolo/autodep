@@ -73,9 +73,15 @@ export namespace AutoDepConfig {
 
     export type Log = LogLevel[];
 
-    export interface Ignore {
+    interface BaseIgnoreFields {
       paths?: string[];
       targets?: string[];
+    }
+
+    export interface Ignore extends BaseIgnoreFields {
+      module?: BaseIgnoreFields;
+      fixture?: BaseIgnoreFields;
+      test?: BaseIgnoreFields;
     }
 
     export interface Schema {
@@ -149,9 +155,15 @@ export namespace AutoDepConfig {
 
     export type Log = Set<LogLevel>;
 
-    export interface Ignore {
+    interface BaseIgnoreFields {
       paths: string[];
       targets: Set<string>;
+    }
+
+    export interface Ignore {
+      module: BaseIgnoreFields;
+      fixture: BaseIgnoreFields;
+      test: BaseIgnoreFields;
     }
 
     export interface Schema {

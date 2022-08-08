@@ -76,6 +76,7 @@ manage:
         - outs
 match:
   module: .*?\.(js|jsx|ts|tsx|scss|json)$
+  fixture: .*?\.(mockData)\.(js|jsx|ts|tsx)$
   test: .*?\.(spec|test)\.(js|jsx|ts|tsx)$
 log:
   - trace
@@ -106,10 +107,16 @@ onCreate:
         - '**/*.jsx'
         - '**/*.tsx'
       exclude:
-        - '**/*.spec.js'
-        - '**/*.spec.ts'
-        - '**/*.spec.jsx'
-        - '**/*.spec.tsx'
+        - '**/*.spec.*'
+        - '**/*.mockData.*'
+  fixture:
+    name: js_library
+    targetFormat: <firstname>_fixture
+    explicitDeps: true
+    omitEmptyFields: false
+    initialVisibility:
+      - PUBLIC
+    testOnly: true
   test:
     name: ops_app_jest
     targetFormat: <firstname>_test
@@ -124,22 +131,33 @@ onCreate:
         - '**/*.spec.jsx'
         - '**/*.spec.tsx'
       exclude:
-        - '**/some/excludeable/file.spec.js'
-        - '**/some/excludeable/file.spec.ts'
-        - '**/some/excludeable/file.spec.jsx'
-        - '**/some/excludeable/file.spec.tsx'
+        - '**/some/excludeable/file.spec.*'
 onUpdate:
   fileHeading: |-
     This is an onUpdate module file heading
     It even handles multiple lines!
   module:
     omitEmptyFields: true
+  fixture:
+    omitEmptyFields: true
   test:
     omitEmptyFields: true
+    subinclude:
+      - //vault/admin_app/apps/ops:ops_app_jest
 ignore:
   paths:
     - '**/webpack.{production,test,development}.*'
     - vault/admin_app/apps/ops/src/myTestFolder/myIgnoredDirectory/*
-  targets:
-    - //vault/admin_app/apps/common/types:query_types
-    - //vault/admin_app/apps/common/types:enum_types
+  module:
+    paths:
+      - '**/webpack.{production,test,development}.*'
+      - vault/admin_app/apps/ops/src/myTestFolder/myIgnoredDirectory/*
+      - vault/admin_app/apps/ops/src/myTestFolder/myOnlyIgnoreModuleDirectory/*
+    targets:
+      - //vault/admin_app/apps/common/types:query_types
+  fixture:
+    targets:
+      - //vault/admin_app/apps/common/types:enum_types
+  test:
+    targets:
+      - //vault/admin_app/apps/common/types:enum_types

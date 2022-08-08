@@ -277,8 +277,18 @@ export class ConfigUmarshaller {
       : {include: [], exclude: []};
 
   unmarshalIgnore = (input?: RecursivePartial<AutoDepConfig.Input.Ignore>): AutoDepConfig.Output.Ignore => ({
-    paths: input?.paths ?? [],
-    targets: new Set(input?.targets ?? []),
+    module: {
+      paths: input?.module?.paths ?? input?.paths ?? [],
+      targets: new Set(input?.module?.targets ?? input?.targets ?? []),
+    },
+    fixture: {
+      paths: input?.fixture?.paths ?? input?.paths ?? [],
+      targets: new Set(input?.fixture?.targets ?? input?.targets ?? []),
+    },
+    test: {
+      paths: input?.test?.paths ?? input?.paths ?? [],
+      targets: new Set(input?.test?.targets ?? input?.targets ?? []),
+    },
   });
 
   // Utility:

@@ -51,7 +51,11 @@ export class DependencyBuilder extends AutoDepBase {
     const fileConfig = this._config.onCreate[this._ruleType];
 
     if (fileConfig.fileHeading) {
-      root.statements.push(this.buildFileHeadingCommentStatement(fileConfig.fileHeading));
+      const commentStatement = this.buildFileHeadingCommentStatement(fileConfig.fileHeading);
+
+      if (commentStatement) {
+        root.statements.push(commentStatement);
+      }
     }
 
     if (fileConfig.subinclude && fileConfig.subinclude.length > 0) {
@@ -67,11 +71,13 @@ export class DependencyBuilder extends AutoDepBase {
     const fileConfig = this._config.onCreate[this._ruleType];
 
     const {name, srcs, deps, visibility, testOnly} = this.getRuleFieldSchema(
+      fileConfig.explicitDeps,
       this._config.manage.schema[fileConfig.name]
     );
 
     const buildNameNode = this.schemaBuilderMap[name.as];
-    const buildSrcsNode = fileConfig.explicitDeps ? this.schemaBuilderMap[srcs.as] : this.schemaBuilderMap.glob;
+    const buildSrcsNode =
+      fileConfig.explicitDeps || srcs.as !== 'glob' ? this.schemaBuilderMap[srcs.as] : this.schemaBuilderMap.glob;
     const buildDepsNode = this.schemaBuilderMap[deps.as];
     const buildVisibilityNode = this.schemaBuilderMap[visibility.as];
     const buildTestOnlyNode = this.schemaBuilderMap[testOnly.as];
@@ -118,6 +124,10 @@ export class DependencyBuilder extends AutoDepBase {
   };
 
   readonly buildFileHeadingCommentStatement = (fileHeading: string) => {
+    if (!fileHeading) {
+      return null;
+    }
+
     const commentLines = fileHeading.split('\n').map((line) => '# ' + line);
     const commentStatementToken = createToken('COMMENT', commentLines[0], 0);
     return ast.createCommentStatementNode({
@@ -218,9 +228,15 @@ export class DependencyBuilder extends AutoDepBase {
 
   // Utils:
 
-  private getRuleFieldSchema = (schema: Partial<Record<ManagedSchemaFieldName, Set<ManagedSchemaFieldEntry>>>) => {
+  private getRuleFieldSchema = (
+    shouldUseExplicitDeps: boolean,
+    schema: Partial<Record<ManagedSchemaFieldName, Set<ManagedSchemaFieldEntry>>>
+  ) => {
+    const globSrcsField = [...(schema.srcs ?? [])].find((entry) => entry.as === 'glob');
+    const shouldUseGlobSrcsField = !shouldUseExplicitDeps && Boolean(globSrcsField);
+
     const [configName] = schema.name || [];
-    const [configSrcs] = schema.srcs || [];
+    const [configSrcs] = (shouldUseGlobSrcsField ? [globSrcsField] : schema.srcs) || [];
     const [configDeps] = schema.deps || [];
     const [configVisibility] = schema.visibility || [];
     const [configTestOnly] = schema.testOnly || [];

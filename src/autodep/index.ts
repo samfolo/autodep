@@ -15,7 +15,7 @@ import {BuildFile} from '../models/buildFile';
 import {Dependency} from '../models/dependency';
 import {DependencyResolver} from '../resolver/resolve';
 import {RuleMetadataVisitor} from '../visitor/ruleMetadata';
-import {NameFieldLiteral, SrcsFieldLiteral} from '../visitor/qualify';
+import {NameFieldLiteral, NodeQualifier, SrcsFieldLiteral} from '../visitor/qualify';
 import {Writer} from '../writer/write';
 import {Logger} from '../logger/log';
 import {TaskStatusClient} from '../clients/taskStatus/task';
@@ -25,6 +25,7 @@ export class AutoDep extends AutoDepBase {
   protected _configLoaderCls: typeof ConfigurationLoader;
   protected _depResolverCls: typeof DependencyResolver;
   protected _depModelCls: typeof Dependency;
+  protected _nodeQualifierCls: typeof NodeQualifier;
   protected _ruleMetadataVisitorCls: typeof RuleMetadataVisitor;
   protected _unmarshallerCls: typeof ConfigUmarshaller;
   protected _writerCls: typeof Writer;
@@ -40,6 +41,7 @@ export class AutoDep extends AutoDepBase {
     depResolverCls: typeof DependencyResolver = DependencyResolver,
     depModelCls: typeof Dependency = Dependency,
     loggerCls: typeof Logger = Logger,
+    nodeQualifierCls: typeof NodeQualifier = NodeQualifier,
     ruleMetadataVisitorCls: typeof RuleMetadataVisitor = RuleMetadataVisitor,
     taskStatusClientCls: typeof TaskStatusClient = TaskStatusClient,
     unmarshallerCls: typeof ConfigUmarshaller = ConfigUmarshaller,
@@ -54,6 +56,7 @@ export class AutoDep extends AutoDepBase {
     this._configLoaderCls = configLoaderCls;
     this._depModelCls = depModelCls;
     this._depResolverCls = depResolverCls;
+    this._nodeQualifierCls = nodeQualifierCls;
     this._ruleMetadataVisitorCls = ruleMetadataVisitorCls;
     this._unmarshallerCls = unmarshallerCls;
     this._writerCls = writerCls;
@@ -90,19 +93,20 @@ export class AutoDep extends AutoDepBase {
           progress.report({increment: 0, message: 'Loading config from workspace...'});
           this.initialise(rootPath);
 
-          progress.report({increment: 5, message: 'Deciding whether to skip update...'});
-          if (this.shouldSkipProcess(rootPath)) {
+          progress.report({increment: 10, message: 'Deciding whether to skip update...'});
+          const {shouldSkipProcess, ignore} = this.probeTargetModule(rootPath);
+          if (shouldSkipProcess) {
             this._logger.info({
               ctx: 'processUpdate',
               message:
                 TaskMessages.identified('an ignored path at `<autodepConfig>.ignore.paths`', rootPath) +
                 ' - skipping update.',
-              details: JSON.stringify(this._config.ignore.paths, null, 2),
+              details: JSON.stringify(ignore.paths, null, 2),
             });
             return Promise.resolve();
           }
 
-          progress.report({increment: 5, message: 'Probing target build file...'});
+          progress.report({increment: 10, message: 'Probing target build file...'});
           const {
             containsPreExistingBuildRule,
             targetBuildFilePath,
@@ -118,7 +122,7 @@ export class AutoDep extends AutoDepBase {
             targetBuildFilePath: targetBuildFilePath,
           }).toBuildTarget();
 
-          progress.report({increment: 30, message: 'Resolving dependencies...'});
+          progress.report({increment: 10, message: 'Resolving dependencies...'});
           const directDependencies = this.resolveDeps(rootPath);
           const persistedDependencies =
             containsPreExistingBuildRule && targetBuildRuleMetadata.srcs
@@ -126,23 +130,20 @@ export class AutoDep extends AutoDepBase {
               : [];
           const newDependencies = Array.from(new Set([...directDependencies, ...persistedDependencies]));
 
+          progress.report({increment: 20, message: 'Collecting new BUILD targets...'});
           const dependencyToBuildFilePathLookup = this.getNearestBuildFilePaths(newDependencies);
-          progress.report({increment: 30, message: 'Collecting new BUILD targets...'});
           const buildRuleTargets = this.collectBuildRuleTargets(targetBuildFilePath, dependencyToBuildFilePathLookup, [
             rootPathBuildTarget,
-            ...this._config.ignore.targets,
+            ...ignore.targets,
           ]);
 
-          progress.report({increment: 20, message: 'Writing targets to BUILD file...'});
+          progress.report({increment: 40, message: 'Writing targets to BUILD file...'});
           this.writeUpdatesToFilesystem(rootPath, targetBuildFilePath, buildRuleTargets);
-
           this.handleSuccess();
         } catch (error) {
           this.handleFailure(error);
         } finally {
-          setTimeout(() => {
-            progress.report({increment: 10, message: 'Cleaning up...'});
-          }, 1);
+          progress.report({increment: 10, message: 'Cleaning up...'});
           this.handleCleanup();
           return Promise.resolve();
         }
@@ -231,27 +232,33 @@ export class AutoDep extends AutoDepBase {
     this.loadAutoDepConfig(rootPath);
   };
 
-  private shouldSkipProcess = (rootPath: string) => {
+  private probeTargetModule = (rootPath: string) => {
     const rootDirPath = rootPath.slice(0, rootPath.indexOf(this._config.rootDir) + this._config.rootDir.length);
     const relativeRootPath = path.relative(rootDirPath, rootPath);
+    const nodeQualifier = new this._nodeQualifierCls({
+      config: this._config,
+      rootPath,
+      relativeFileName: relativeRootPath,
+    });
+    const ignore = this._config.ignore[nodeQualifier.ruleType];
 
-    if (this._config.ignore.paths && this._config.ignore.paths.length > 0) {
-      for (const ignorePathMatcher of this._config.ignore.paths) {
+    if (this._config.ignore[nodeQualifier.ruleType].paths.length > 0) {
+      for (const ignorePath of ignore.paths) {
         this._logger.trace({
-          ctx: 'shouldSkipProcess',
-          message: TaskMessages.attempt('match', `${relativeRootPath} against ${ignorePathMatcher}`),
+          ctx: 'probeTargetModule',
+          message: TaskMessages.attempt('match', `${relativeRootPath} against ${ignorePath}`),
         });
-        if (minimatch(relativeRootPath, ignorePathMatcher)) {
+        if (minimatch(relativeRootPath, ignorePath)) {
           this._logger.trace({
-            ctx: 'shouldSkipProcess',
-            message: TaskMessages.success('matched', `${relativeRootPath} against ${ignorePathMatcher}`),
+            ctx: 'probeTargetModule',
+            message: TaskMessages.success('matched', `${relativeRootPath} against ${ignorePath}`),
           });
-          return true;
+          return {ignore, shouldSkipProcess: true};
         }
       }
     }
 
-    return false;
+    return {ignore, shouldSkipProcess: false};
   };
 
   /**

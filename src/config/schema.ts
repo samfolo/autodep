@@ -8,6 +8,7 @@ const ajv = new AnotherJsonSchemaValidator({allowUnionTypes: true, allErrors: tr
 
 const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
   type: 'object',
+  minProperties: 1,
   properties: {
     rootDir: {type: 'string', not: {enum: ['', '<unknown>']}},
     outDir: {type: 'string', not: {enum: ['', '<unknown>']}},
@@ -178,12 +179,14 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
     excludeNodeModules: {type: 'boolean', nullable: true},
     onCreate: {
       type: 'object',
+      minProperties: 1,
       properties: {
         name: {type: 'string', nullable: true},
         targetFormat: {type: 'string', nullable: true},
         explicitDeps: {type: 'boolean', nullable: true},
         globMatchers: {
           type: 'object',
+          minProperties: 1,
           properties: {
             include: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
             exclude: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
@@ -213,12 +216,14 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
         testOnly: {type: 'boolean', nullable: true},
         module: {
           type: 'object',
+          minProperties: 1,
           properties: {
             name: {type: 'string', nullable: true},
             targetFormat: {type: 'string', nullable: true},
             explicitDeps: {type: 'boolean', nullable: true},
             globMatchers: {
               type: 'object',
+              minProperties: 1,
               properties: {
                 include: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
                 exclude: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
@@ -249,12 +254,14 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
         },
         fixture: {
           type: 'object',
+          minProperties: 1,
           properties: {
             name: {type: 'string', nullable: true},
             targetFormat: {type: 'string', nullable: true},
             explicitDeps: {type: 'boolean', nullable: true},
             globMatchers: {
               type: 'object',
+              minProperties: 1,
               properties: {
                 include: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
                 exclude: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
@@ -285,12 +292,14 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
         },
         test: {
           type: 'object',
+          minProperties: 1,
           properties: {
             name: {type: 'string', nullable: true},
             targetFormat: {type: 'string', nullable: true},
             explicitDeps: {type: 'boolean', nullable: true},
             globMatchers: {
               type: 'object',
+              minProperties: 1,
               properties: {
                 include: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
                 exclude: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
@@ -315,6 +324,7 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
     },
     onUpdate: {
       type: 'object',
+      minProperties: 1,
       properties: {
         fileHeading: {type: 'string', nullable: true},
         omitEmptyFields: {type: 'boolean', nullable: true},
@@ -328,6 +338,7 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
         },
         module: {
           type: 'object',
+          minProperties: 1,
           properties: {
             omitEmptyFields: {type: 'boolean', nullable: true},
             subinclude: {
@@ -343,6 +354,7 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
         },
         fixture: {
           type: 'object',
+          minProperties: 1,
           properties: {
             omitEmptyFields: {type: 'boolean', nullable: true},
             subinclude: {
@@ -358,6 +370,7 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
         },
         test: {
           type: 'object',
+          minProperties: 1,
           properties: {
             omitEmptyFields: {type: 'boolean', nullable: true},
             subinclude: {
@@ -376,9 +389,37 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
     },
     ignore: {
       type: 'object',
+      minProperties: 1,
       properties: {
         paths: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
         targets: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
+        module: {
+          type: 'object',
+          minProperties: 1,
+          properties: {
+            paths: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
+            targets: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
+          },
+          nullable: true,
+        },
+        fixture: {
+          type: 'object',
+          minProperties: 1,
+          properties: {
+            paths: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
+            targets: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
+          },
+          nullable: true,
+        },
+        test: {
+          type: 'object',
+          minProperties: 1,
+          properties: {
+            paths: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
+            targets: {type: 'array', minItems: 1, items: {type: 'string'}, nullable: true},
+          },
+          nullable: true,
+        },
       },
       nullable: true,
     },

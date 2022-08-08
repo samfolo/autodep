@@ -173,7 +173,7 @@ export class DependencyResolver extends AutoDepBase {
         this.getExactSubPathMatcher(this._config.outDir),
         this._config.rootDir
       );
-      this._logger.info({
+      this._logger.trace({
         ctx: 'transformOutDirPathToRootDirPath',
         message:
           TaskMessages.identified('a generated file', targetPath) +
