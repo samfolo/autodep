@@ -16,6 +16,15 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
       type: 'object',
       minProperties: 1,
       properties: {
+        knownTargets: {
+          type: 'object',
+          minProperties: 1,
+          additionalProperties: {
+            type: 'string',
+          },
+          nullable: true,
+          required: [],
+        },
         rules: {
           minItems: 1,
           type: 'array',

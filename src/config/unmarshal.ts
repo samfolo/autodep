@@ -62,6 +62,7 @@ export class ConfigUmarshaller {
     rules: this.unmarshalManagedRules(input?.rules),
     fields: this.unmarshalManagedFields(input?.fields),
     schema: this.unmarshalManagedSchema(input?.schema),
+    knownTargets: input?.knownTargets ?? {},
   });
 
   private unmarshalManagedRules = (input?: AutoDepConfig.Input.Manage['rules']): AutoDepConfig.Output.Manage['rules'] =>

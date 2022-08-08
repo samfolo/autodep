@@ -24,6 +24,7 @@ export namespace AutoDepConfig {
       rules?: string[];
       fields?: string[];
       schema?: ManagedSchema;
+      knownTargets?: Record<string, string>;
     }
 
     export interface Match {
@@ -106,6 +107,7 @@ export namespace AutoDepConfig {
       rules: Set<string>;
       fields: Set<string>;
       schema: Record<string, Record<ManagedSchemaFieldName, Set<ManagedSchemaFieldEntry>>>;
+      knownTargets: Record<string, string>;
     }
 
     export interface Match {

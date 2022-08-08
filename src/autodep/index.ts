@@ -19,6 +19,7 @@ import {NameFieldLiteral, NodeQualifier, SrcsFieldLiteral} from '../visitor/qual
 import {Writer} from '../writer/write';
 import {Logger} from '../logger/log';
 import {TaskStatusClient} from '../clients/taskStatus/task';
+import {DeAliasingClient} from '../clients/deAliasing/deAlias';
 
 export class AutoDep extends AutoDepBase {
   protected _buildFileModelCls: typeof BuildFile;
@@ -768,6 +769,10 @@ export class AutoDep extends AutoDepBase {
   private handleCleanup = () => {
     this._logger.trace({ctx: 'handleCleanup', message: 'Flushing AST cache...'});
     this._buildFileModelCls.flushASTCache();
+    this._logger.trace({ctx: 'handleCleanup', message: 'Flushing de-aliasing cache...'});
+    DeAliasingClient.flushDeAliasingCache();
+    this._logger.trace({ctx: 'handleCleanup', message: 'Flushing package name cache...'});
+    DeAliasingClient.flushPackageNameMapCache();
   };
 
   // Utility:

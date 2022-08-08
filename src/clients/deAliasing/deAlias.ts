@@ -356,4 +356,12 @@ export class DeAliasingClient extends AutoDepBase {
     string,
     {map: Record<PackageAlias, PackageName>; aliases: Set<PackageAlias>}
   > = {};
+
+  static readonly flushDeAliasingCache = () => {
+    DeAliasingClient.deAliasingCache = {};
+  };
+
+  static readonly flushPackageNameMapCache = () => {
+    DeAliasingClient.packageNameMapCache = {};
+  };
 }

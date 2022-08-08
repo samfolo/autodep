@@ -74,6 +74,8 @@ manage:
     genrule:
       srcs:
         - outs
+  knownTargets:
+    'instances/feature_flags/ops_dashboard.js': //instances/feature_flags/ops_dashboard
 match:
   module: .*?\.(js|jsx|ts|tsx|scss|json)$
   fixture: .*?\.(mockData)\.(js|jsx|ts|tsx)$
