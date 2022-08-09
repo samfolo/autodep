@@ -166,7 +166,6 @@ export class AutoDep extends AutoDepBase {
         this._logger.info({
           ctx: 'loadAutoDepConfig',
           message: TaskMessages.success('loaded', 'autodep config from workspace'),
-          details: result.output.toString(),
         });
         this._logger.debug({
           ctx: 'loadAutoDepConfig',
@@ -204,7 +203,6 @@ export class AutoDep extends AutoDepBase {
         this._logger.info({
           ctx: 'loadTSConfig',
           message: TaskMessages.success('loaded', 'typesript config from workspace'),
-          details: JSON.stringify(result.output, null, 2),
         });
         this._logger.debug({
           ctx: 'loadTSConfig',
@@ -234,12 +232,11 @@ export class AutoDep extends AutoDepBase {
   };
 
   private probeTargetModule = (rootPath: string) => {
-    const rootDirPath = rootPath.slice(0, rootPath.indexOf(this._config.rootDir) + this._config.rootDir.length);
-    const relativeRootPath = path.relative(rootDirPath, rootPath);
+    const rootRelativePath = this.toRootRelativePath(rootPath);
     const nodeQualifier = new this._nodeQualifierCls({
       config: this._config,
       rootPath,
-      relativeFileName: relativeRootPath,
+      relativeFileName: rootRelativePath,
     });
     const ignore = this._config.ignore[nodeQualifier.ruleType];
 
@@ -247,12 +244,12 @@ export class AutoDep extends AutoDepBase {
       for (const ignorePath of ignore.paths) {
         this._logger.trace({
           ctx: 'probeTargetModule',
-          message: TaskMessages.attempt('match', `${relativeRootPath} against ${ignorePath}`),
+          message: TaskMessages.attempt('match', `${rootRelativePath} against ${ignorePath}`),
         });
-        if (minimatch(relativeRootPath, ignorePath)) {
+        if (minimatch(rootRelativePath, ignorePath)) {
           this._logger.trace({
             ctx: 'probeTargetModule',
-            message: TaskMessages.success('matched', `${relativeRootPath} against ${ignorePath}`),
+            message: TaskMessages.success('matched', `${rootRelativePath} against ${ignorePath}`),
           });
           return {ignore, shouldSkipProcess: true};
         }
@@ -444,6 +441,12 @@ export class AutoDep extends AutoDepBase {
     const uniqueBuildTargets = new Set<string>();
 
     for (const dep in depToBuildFilePathMap) {
+      const knownTarget = this._config.manage.knownTargets[this.toRootRelativePath(dep)];
+      if (knownTarget && !targetsToExclude.includes(knownTarget)) {
+        uniqueBuildTargets.add(knownTarget);
+        continue;
+      }
+
       const buildFilePath = depToBuildFilePathMap[dep];
       const buildFileAST = this.parseBuildFileIfExists(buildFilePath);
       if (buildFileAST) {
@@ -776,6 +779,11 @@ export class AutoDep extends AutoDepBase {
   };
 
   // Utility:
+
+  private toRootRelativePath = (targetPath: string) => {
+    const rootDirPath = targetPath.slice(0, targetPath.indexOf(this._config.rootDir) + this._config.rootDir.length);
+    return path.relative(rootDirPath, targetPath);
+  };
 
   private getOnCreateBuildFileName = () =>
     `BUILD${this._config.onCreate.fileExtname ? `.${this._config.onCreate.fileExtname}` : ''}`;

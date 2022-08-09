@@ -69,8 +69,10 @@ manage:
       srcs:
         - value: entry
           as: string
-        - value: srcs
-          as: glob
+    ops_app_mocha:
+      srcs:
+        - value: entry
+          as: string
     genrule:
       srcs:
         - outs
