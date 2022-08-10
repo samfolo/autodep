@@ -1,27 +1,19 @@
 # Autodep for VSCode
 
-Autodep for VSCode is an extension which automatically manages BUILD files in [Node.js](https://nodejs.org/en/) projects which use build systems.
+Autodep for VSCode is an extension which automatically manages `BUILD` and `BUILD.plz` files in build-system-dependent [Node.js](https://nodejs.org/en/) projects.
 
 ## Features
 
-Upon saving a supported file:
+Autodep is primarily configured to run upon the saving a supported file within VSCode. On save, it CAN:
 
-- Automatically works out exactly which build targets need to exist within a relevant build rule, and writes them to the appropriate location
-- Is able to create and write build rules based on a user-defined schema
+- Work out exactly which build targets need to exist within a file's corresponding build rule, and write them to the appropriate location.
+- Create and write build rules based on a user-defined schema, if a pre-existing rule or `BUILD` file does not exist.
 
-Users are able to control the exact type and contents of the new rule to insert via an Autodep configuration file. Definitions can be made for the following three types of Node module:
+Users are able to control the exact type and contents of the new rule to insert via an Autodep configuration file. Definitions can be made for the following three types of file:
 
-- `module` - a standard Node module, core to the functionality of the program
+- `module` - a standard Node file, core to the functionality of the program
 - `fixture` - a module which does not contain a test but is not core to the functionality of the program, often containing testing assets (mock data, commonised testing utilities, etc.)
-- `test` - a file module containing a test
-
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- `test` - a file containing a test
 
 ## Requirements
 
@@ -31,9 +23,9 @@ The extension currently only handles Node files at the moment, and will only lis
 
 ## Configuration
 
-Autodep provides a high level of customisation, allowing a user to fine tune its behaviour and increase resilience against even the most esoteric cases one might find in a large, language-agnostic, build-system-dependent repository.
+Autodep allows a high level of customisation, allowing a user to fine tune its behaviour and increase resilience against even the most esoteric cases one might find in a large, language-agnostic, build-system-dependent repository.
 
-A configuration file can be inserted anywhere within the project, so long as it exists within the specified root directory. It is recommended to place the main configuration file at the root of the directory.
+A configuration file can be inserted anywhere within the project, so long as it exists within the specified root directory. It is recommended to place the main configuration file at the root of the directory. Subsequent files with tighter scope can be added further down the file tree, then linked via an `extends` field, similar to a `tsconfig.json` file.
 
 To create a configuration file, just create an `.autodep.yaml` file. The configuration is strongly typed, and a helpful error will be shown within VSCode if configuration has been written incorrectly. Fields are not allowed to be empty, but no fields are mandatory, so feel free to remove them entirely if they are not useful.
 
@@ -112,7 +104,7 @@ To create a configuration file, just create an `.autodep.yaml` file. The configu
           - outs
   ```
 
-- `knownTargets` - This field allows you to specify a set of paths (relative to the `rootDir`) and map them directly to targets. Sometimes, it is difficult to define a schema entry for a particular type of rule, and this field is an escape hatch for those situations. This may come in handy for managing the importing of generated files with names not explicitly set by the user, or defined within the implementation of a custom build rule, and thus not discoverable by looking at a BUILD file directly.
+- `knownTargets` - This field allows you to specify a set of paths (relative to the `rootDir`) and map them directly to targets. Sometimes, it is difficult to define a schema entry for a particular type of rule, and this field is an escape hatch for those situations. This may come in handy for managing the importing of generated files with names not explicitly set by the user, or defined within the implementation of a custom build rule, and thus not discoverable by looking at a `BUILD` file directly.
 
   This field should be used as a last resort.
 
@@ -157,49 +149,187 @@ To create a configuration file, just create an `.autodep.yaml` file. The configu
     - error
   ```
 
+- `excludeNodeModules` - this field allows you to specify whether `node_module` dependencies should be included within the resolved set of dependencies. If you handle the compilation and inclusion of third-party dependencies with different tooling to your first-party dependencies, you can leave this off. Defaults to `false`.
+
+  ```yaml
+  excludeNodeModules: true
+  ```
+
+- `excludeNodeModules` - By default, Autodep will expect the `BUILD` file for a particular Node file to be a direct sibling. This is the optimal location for a `BUILD` file when using a build system, as you should only be building the dependencies to absolutely need. For existing projects who may have single `BUILD` files responsible for several separate targets, or even several separate directories, you may instead want Autodep to update an existing `BUILD` file which resides further up the file tree. This field allows you to opt in to that behaviour.
+
+  Note that if this is turned on, Autodep will walk the entire filesystem until it finds a `BUILD` file, then update that file. It is recommended not to opt in to this behaviour if you are not willing to stay on top of the scoping and location of BUILD targets; this is especially true when paired with wildcard `glob` matchers in `srcs` fields.
+
+  ```yaml
+  enablePropagation: false
+  ```
+
+- `onCreate` - This section is where you can specify how Autodep should handle the absence of a pre-existing `BUILD` file, or build rule. This situation occurs often, primarily when creating new files in the project.
+
+  - `fileExtname` - the extension of the `BUILD` file. Defaults to an empty string, so a newly created file will be named `BUILD`. Setting it to `plz`, for instance, would mean a newly created file would be named `BUILD.plz`. Value is completely arbitrary.
+  - `fileHeading` - An optional comment which can be left at the top of a newly created file upon creation. If a value is set here and in the `onUpdate` section, it will be overwritten on the next update. This is defined as a standard multiline string, and is converted into a comment by the extension. useful for `"DO NOT EDIT"`-style comments.
+
+  <br>The following fields can be specified either at the top-level of `onCreate`, or with more specificity under the `onCreate.module`, `onCreate.fixture` and `onCreate.test` sub-fields:
+
+  - `name` - the name of the rule you wish to be created. Should correspond to a key in `manage.schema`
+  - `targetFormat` - a format string for the value which should be passed to the `name` field of the new build rule. The typing of the field will be the first entry in its corresponding schema field entry at `manage.schema[key].name`.
+    There are a few magic tokens available to help format the target, derived from the relative path of the target Node.js file:
+    - `<basename>` - the name of the file, complete with file extension
+    - `<filename>` - the name of the file, without file extension
+    - `<firstname>` - the first part of the filename, before the first `.`, if there are several in the basename, e.g. `firstname.other.parts.ts`
+    - `<path>` - the full path to the dependency, relative to the `BUILD` file. For sibling files, this will be identical to the `<basename>`.
+      These will be interpolated appropriately at runtime.
+  - `explicitDeps` - Whether the new rule should be created with the `srcs` explicitly listed, or whether it should be created using the specified `globMatcher` configuration. Defaults to `true`, as this is the optimal setting for build-system-dependent projects.
+  - `omitEmptyFields` - Whether the new rule should omit the keyword argument if its value is empty. For `array` types, this would be an array of length `0`; for `string` types, this would be a string of length `0`.
+    - Currently unimplemented as of August 2022.
+  - `globMatchers` - if `explicitDeps` is set to true, a user is able to specify the values of the `exclude` and `include` fields in a [glob declaration](https://please.build/lexicon.html#please-builtins). These use the familiar `glob` matcher syntax. `glob` fields validate potential files by:
+    - checking whether `include` field has a length greater than `1`,
+    - checking at least one entry matches the candidate file,
+    - checking whether the `exclude` field either has a lengthh of `0`, OR than every entry fails to match the candidate file.
+  - `subinclude` - For specifying imports needed for the newly created build rule to work within the project. If the import already exists in the `BUILD` file within a `subinclude` statement, then it will be skipped, else the specified imports will be added to the `BUILD` file, either by creating a new `subinclude`, or merging the imports into any existing `subinclude`.
+
+  <br>The following fields can be specified either at the top-level of `onCreate` or with more specificity, under the `onCreate.module` and `onCreate.fixture` sub-fields. They don't make much sense in the context of a `test` rule:
+
+  - `initialVisibility` - the value which should be passed to the `visibility` field of the new build rule. The typing of the field will be the first entry in its corresponding schema field entry at `manage.schema[key].visibility`.
+  - `testOnly` - the value which should be passed to the `testOnly` field of the new build rule. The typing of the field will be the first entry in its corresponding schema field entry at `manage.schema[key].testOnly`.
+
+  ```yaml
+  onCreate:
+    fileExtname: plz
+    fileHeading: |-
+      My multiline onCreate file heading
+      DO NOT EDIT
+    module:
+      name: my_custom_module_rule
+      targetFormat: <filename>_custom_target
+      explicitDeps: true # will now ignore `globMatchers`
+      omitEmptyFields: true
+      initialVisibility:
+        - PUBLIC
+      globMatchers:
+        include:
+          - '**/*.ts'
+          - '**/*.tsx'
+        exclude:
+          - '**/*.spec.*'
+    fixture:
+      name: filegroup
+      targetFormat: <firstname>_fixture
+      testOnly: true
+    test:
+      name: my_test_rule
+      targetFormat: <firstname>_test
+      subinclude:
+        - //path/to/build_defs:my_test_rule
+      explicitDeps: false
+      omitEmptyFields: true
+      globMatchers:
+        include:
+          - '**/*.spec.*'
+        exclude:
+          - '**/some/excludeable/file.spec.*'
+  ```
+
+- `onUpdate` - This section is where you can specify how Autodep should handle the updating of a pre-existing `BUILD` file, or build rule. This situation occurs often, primarily when saving a file with a pre-existing rule.
+
+  - `fileHeading` - An optional comment which can be left at the top of a newly created file upon creation. If a value is set here and in the `onCreate` section, any pre-existing `onCreate` comment will be overwritten on the next update. This is defined as a standard multiline string, and is converted into a comment by the extension. useful for `"DO NOT EDIT"`-style comments.
+
+  <br>The following fields can be specified either at the top-level of `onUpdate` or with more specificity, under the `onUpdate.module`, `onUpdate.fixture` and `onUpdate.test` sub-fields:
+
+  - `omitEmptyFields` - Whether the new rule should omit the keyword argument if its value is empty. For `array` types, this would be an array of length `0`; for `string` types, this would be a string of length `0`.
+    - Currently unimplemented as of August 2022.
+  - `subinclude` - For specifying imports needed for the newly created build rule to work within the project. If the import already exists in the `BUILD` file within a `subinclude` statement, then it will be skipped, else the specified imports will be added to the `BUILD` file, either by creating a new `subinclude`, or merging the imports into any existing `subinclude`.
+
+    For `onUpdate`, this field is useful to persist important build rule imports, if you tend to allow developers to manually tamper with `BUILD` files.
+
+  ```yaml
+  onUpdate:
+    fileHeading: |-
+      My multiline onUpdate file heading
+      DO NOT EDIT
+    module:
+      omitEmptyFields: true
+    fixture:
+      omitEmptyFields: false
+    test:
+      omitEmptyFields: true
+      subinclude:
+        - //stop/removing/my/build_defs:my_test_rule
+  ```
+
+- `ignore` - This section is useful for selectively turning off Autodep functionality for particular files and directories, as well as ignoring particular targets in dependency resolution, for whatever reason. Entries can be specified as `glob` matchers for brevity.
+
+  - `paths` - Particular paths Autodep should not attempt to run for. This can be specified at the top-level of `ignore`, or with more specificity under the `ignore.module`, `ignore.test` and `ignore.fixture` sub-fields.
+  - `targets` - Particular targets Autodep should not include when calculating which dependencies to write to the target build rule's `deps` field. This can be specified at the top-level of `ignore`, or with more specificity under the `ignore.module`, `ignore.test` and `ignore.fixture` sub-fields.
+
+  ```yaml
+  ignore:
+    paths:
+      - '**/webpack.{production,test,development}.*'
+      - path/to/myIgnoredDirectory/*
+    module:
+      paths:
+        - '**/webpack.{production,test,development}.*'
+        - path/to/myOnlyIgnoreModuleDirectory/*
+      targets:
+        - //dont/include/this/awkward/dep
+    fixture:
+      targets:
+        - //dont/include/this/awkward/dep
+        - //dont/include/this/awkward/dep:only_for_fixtures
+    test:
+      targets:
+        - //dont/include/this/awkward/dep
+        - //dont/include/this/awkward/dep:only_for_tests
+  ```
+
 ## Extension Settings
 
 TBA
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+Autodep does not currently support anything but explicit files in `srcs` fields. There are plans to be able to support build targets in `srcs` fields in the future.
+
+Autodep plans to support the cleanup of old BUILD targets in the future; for now, deleting a file, will leave an orphaned build rule in the corresponsing `BUILD` file
+
+Autodep does not currently support lambdas and list comprehensions in `BUILD` files. The internal parser will be completed in future, but only the most common syntax is covered at the moments. The same is true for complex type-hints.
+
+Autodep will not "correct" visibility issues with pre-existing build targets. For instance, if a dependency `BUILD` file is structured like this:
+
+```python
+my_rule(
+  name = "my_package",
+  srcs = ["index.ts"],
+  deps = [":a", ":b"],
+  visibility = ["PUBLIC"]
+)
+
+my_rule(
+  name = "a",
+  srcs = ["a.ts"],
+  visibility = ["only/this/directory/..."]
+)
+
+my_rule(
+  name = "b",
+  srcs = ["b.ts"],
+  visibility = ["only/this/directory/..."]
+)
+```
+
+And the dependency is imported like this:
+
+```typescript
+import {thing} from 'path/to/myPackage/b';
+```
+
+It will still try to include `//path/to/my_package:b` - as it should. To correct the build, either:
+
+- Correct the visibility of the dependency
+- Import from `path/to/myPackage` instead, as `path/to/myPackage/index.ts` is the visible file, not `path/to/myPackage/b.ts`.
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
-
 ### 1.0.0
 
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-- [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-**Note:** You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-- Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux)
-- Toggle preview (`Shift+CMD+V` on macOS or `Shift+Ctrl+V` on Windows and Linux)
-- Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets
-
-### For more information
-
-- [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-- [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Initial release of Autodep, with core functionality covered

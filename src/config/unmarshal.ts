@@ -145,7 +145,7 @@ export class ConfigUmarshaller {
     formatTarget: (targetPath) =>
       formatTarget(targetPath, input?.module?.targetFormat ?? input?.targetFormat ?? DEFAULT_TARGET_FORMAT_STRING),
     fileHeading: this.unmarshalStandardField('', input?.fileHeading),
-    explicitDeps: this.unmarshalStandardField(false, input?.module?.explicitDeps ?? input?.explicitDeps),
+    explicitDeps: this.unmarshalStandardField(true, input?.module?.explicitDeps ?? input?.explicitDeps),
     globMatchers: this.unmarshalOnCreateModuleGlobMatchers(input),
     omitEmptyFields: this.unmarshalStandardField(false, input?.module?.omitEmptyFields ?? input?.omitEmptyFields),
     subinclude: this.unmarshalNullableField(input?.module?.subinclude ?? input?.subinclude),
@@ -163,7 +163,7 @@ export class ConfigUmarshaller {
     formatTarget: (targetPath) =>
       formatTarget(targetPath, input?.fixture?.targetFormat ?? input?.targetFormat ?? DEFAULT_TARGET_FORMAT_STRING),
     fileHeading: this.unmarshalStandardField('', input?.fileHeading),
-    explicitDeps: this.unmarshalStandardField(false, input?.fixture?.explicitDeps ?? input?.explicitDeps),
+    explicitDeps: this.unmarshalStandardField(true, input?.fixture?.explicitDeps ?? input?.explicitDeps),
     globMatchers: this.unmarshalOnCreateFixtureGlobMatchers(input),
     omitEmptyFields: this.unmarshalStandardField(false, input?.fixture?.omitEmptyFields ?? input?.omitEmptyFields),
     subinclude: this.unmarshalNullableField(input?.fixture?.subinclude ?? input?.subinclude),
@@ -181,7 +181,7 @@ export class ConfigUmarshaller {
     formatTarget: (targetPath) =>
       formatTarget(targetPath, input?.test?.targetFormat ?? input?.targetFormat ?? DEFAULT_TARGET_FORMAT_STRING),
     fileHeading: this.unmarshalStandardField('', input?.fileHeading),
-    explicitDeps: this.unmarshalStandardField(false, input?.test?.explicitDeps ?? input?.explicitDeps),
+    explicitDeps: this.unmarshalStandardField(true, input?.test?.explicitDeps ?? input?.explicitDeps),
     omitEmptyFields: this.unmarshalStandardField(false, input?.test?.omitEmptyFields ?? input?.omitEmptyFields),
     globMatchers: this.unmarshalOnCreateTestGlobMatchers(input),
     subinclude: this.unmarshalNullableField(input?.test?.subinclude ?? input?.subinclude),

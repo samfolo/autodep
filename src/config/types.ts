@@ -63,7 +63,7 @@ export namespace AutoDepConfig {
       test?: BaseOnCreateFields;
     }
 
-    export interface OnUpdate extends BaseEventFields {
+    export interface OnUpdate extends BaseOnUpdateFields {
       fileHeading?: string;
       module?: BaseOnUpdateFields;
       fixture?: BaseOnUpdateFields;
