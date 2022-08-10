@@ -21,6 +21,7 @@ export namespace AutoDepConfig {
     export type ManagedSchema = Record<string, Partial<ManagedSchemaField>>;
 
     export interface Manage {
+      rules?: string[];
       schema?: ManagedSchema;
       knownTargets?: Record<string, string>;
     }
@@ -102,6 +103,7 @@ export namespace AutoDepConfig {
     export type ManagedSchema = Record<string, Record<ManagedSchemaFieldName, Set<ManagedSchemaFieldEntry>>>;
 
     export interface Manage {
+      rules: Set<string>;
       schema: Record<string, Record<ManagedSchemaFieldName, Set<ManagedSchemaFieldEntry>>>;
       knownTargets: Record<string, string>;
     }

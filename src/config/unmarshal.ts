@@ -59,8 +59,12 @@ export class ConfigUmarshaller {
 
   private unmarshalManage = (input?: RecursivePartial<AutoDepConfig.Input.Manage>): AutoDepConfig.Output.Manage => ({
     schema: this.unmarshalManagedSchema(input?.schema),
+    rules: this.unmarshalManagedRules(input?.rules),
     knownTargets: input?.knownTargets ?? {},
   });
+
+  private unmarshalManagedRules = (input?: AutoDepConfig.Input.Manage['rules']): AutoDepConfig.Output.Manage['rules'] =>
+    new Set(['filegroup', 'genrule', ...(input || [])]);
 
   private unmarshalManagedSchema = (
     input?: RecursivePartial<AutoDepConfig.Input.Manage['schema']>

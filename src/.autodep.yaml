@@ -1,6 +1,12 @@
 rootDir: core3
 outDir: core3/plz-out/gen
 manage:
+  rules:
+    - js_library
+    - ops_app_mocha
+    - ops_app_jest
+    - yarn_script
+    - css_library
   schema:
     filegroup:
       srcs:

@@ -7,9 +7,9 @@ Autodep for VSCode is an extension which automatically manages `BUILD` and `BUIL
 Autodep is primarily configured to run upon the saving a supported file within VSCode. On save, it CAN:
 
 - Work out exactly which build targets need to exist within a file's corresponding build rule, and write them to the appropriate location.
-- Create and write build rules based on a user-defined schema, if a pre-existing rule or `BUILD` file does not exist.
+- Create and insert build rules based on a user-defined schema, if a pre-existing rule or `BUILD` file does not exist.
 
-Users are able to control the exact type and contents of the new rule to insert via an Autodep configuration file. Definitions can be made for the following three types of file:
+Users are able to control the exact type and contents of the new rule to insert via an Autodep configuration file. Behaviour can be defined for the following three types of file:
 
 - `module` - a standard Node file, core to the functionality of the program
 - `fixture` - a module which does not contain a test but is not core to the functionality of the program, often containing testing assets (mock data, commonised testing utilities, etc.)
@@ -17,15 +17,15 @@ Users are able to control the exact type and contents of the new rule to insert 
 
 ## Requirements
 
-This extension can only be used in projects which use a build system. The extension is currently optimised for use with [Please](https://please.build).
+Autodep can only be used in projects which use a build system. The extension is currently optimised for use with [Please](https://please.build).
 
-The extension currently only handles Node files at the moment, and will only listen out for `.ts`, `.js`, `.tsx`, `.jsx` and `.scss` files. It can be used in multi-language full-stack projects, however.
+Autodep currently only handles Node files at the moment, and will only listen out for `.ts`, `.js`, `.tsx`, `.jsx` and `.scss` files, however it can still be used in multi-language, full-stack projects.
 
 ## Configuration
 
-Autodep allows a high level of customisation, allowing a user to fine tune its behaviour and increase resilience against even the most esoteric cases one might find in a large, language-agnostic, build-system-dependent repository.
+Autodep allows a high level of customisation, allowing a user to fine-tune its behaviour and achieve resilience against even the most esoteric cases one might find in a large, language-agnostic, build-system-dependent project.
 
-A configuration file can be inserted anywhere within the project, so long as it exists within the specified root directory. It is recommended to place the main configuration file at the root of the directory. Subsequent files with tighter scope can be added further down the file tree, then linked via an `extends` field, similar to a `tsconfig.json` file.
+A configuration file can be inserted anywhere within the project, so long as it exists within the specified root directory. It is recommended to place the main configuration file at the root of the directory. Subsequent files with tighter scope can be added further down the file tree, then linked via an `extends` field, similar to a `tsconfig.json` file. Extension configuration files will overwrite all clashing parent keys with their new values, except `manage.rules`, which will be concatenated into a (unique) superset of managed rule names.
 
 To create a configuration file, just create an `.autodep.yaml` file. The configuration is strongly typed, and a helpful error will be shown within VSCode if configuration has been written incorrectly. Fields are not allowed to be empty, but no fields are mandatory, so feel free to remove them entirely if they are not useful.
 
@@ -42,16 +42,29 @@ To create a configuration file, just create an `.autodep.yaml` file. The configu
 
 - `manage` - for convenience, users may create their own build rule definitions. By default, autodep will only create `filegroup` rules.
 
+  - `rules` - This field is used to specify all the rules which Autodep should bother to check when walking a `BUILD` file at the relevant points in the update process. Only the name needs to be specified here, as the shape is initially assumed to be:
+
+    ```python
+    managed_rule(
+      name = 'string',
+      srcs = [],
+      deps = [],
+      visibility = [],
+    )
+    ```
+
+    Deviations from this format can be specified in `manage.schema`
+
   - `schema` - Autodep aims to preserve as much formatting and abstraction as possible, and so users are able to specify the names and shapes of custom build rules in the `manage` section. A `manage.schema` entry must be an object against the name of the build rule.
 
-  `manage.schema` entry objects are of type `map[string, array]`. Each `array` can contain a combination of `string` elements, as well as objects with the following shape:
+    `manage.schema` entry objects are of type `map[string, array]`. Each `array` can contain a combination of `string` elements, as well as objects with the following shape:
 
-  ```yaml
-  value: string
-  as: string
-  ```
+    ```yaml
+    value: str
+    as: str
+    ```
 
-  `manage.schema` entry objects are only allowed to contain the following fields (none are mandatory, but at least one must exist to justify the schema entry):
+    `manage.schema` entry objects are only allowed to contain the following fields (none are mandatory, but at least one must exist to justify the schema entry):
 
   - `name` - the identifier of the particular instance of the build rule. This field is limited to the `string` type. All other types will throw an error.
 
@@ -104,9 +117,9 @@ To create a configuration file, just create an `.autodep.yaml` file. The configu
           - outs
   ```
 
-- `knownTargets` - This field allows you to specify a set of paths (relative to the `rootDir`) and map them directly to targets. Sometimes, it is difficult to define a schema entry for a particular type of rule, and this field is an escape hatch for those situations. This may come in handy for managing the importing of generated files with names not explicitly set by the user, or defined within the implementation of a custom build rule, and thus not discoverable by looking at a `BUILD` file directly.
+- `knownTargets` - This field allows you to specify a set of paths (relative to the `rootDir`) and map them directly to targets. Sometimes, it is difficult to define a schema entry for a particular type of rule, and this field is an escape hatch for those situations. This may come in handy for managing the importing of generated files with names not explicitly set by the user, or defined within the implementation of a custom build rule, and therefore not discoverable by looking at a `BUILD` file directly.
 
-  This field should be used as a last resort.
+  This field should be used as a last resort, but it may be necessary.
 
   ```yaml
   manage:
@@ -149,15 +162,15 @@ To create a configuration file, just create an `.autodep.yaml` file. The configu
     - error
   ```
 
-- `excludeNodeModules` - this field allows you to specify whether `node_module` dependencies should be included within the resolved set of dependencies. If you handle the compilation and inclusion of third-party dependencies with different tooling to your first-party dependencies, you can leave this off. Defaults to `false`.
+- `excludeNodeModules` - this field allows you to specify whether `node_modules` dependencies should be included within the resolved set of dependencies. If you handle the compilation and inclusion of third-party dependencies with different tooling to your first-party dependencies, you can leave this off. Defaults to `false`.
 
   ```yaml
   excludeNodeModules: true
   ```
 
-- `excludeNodeModules` - By default, Autodep will expect the `BUILD` file for a particular Node file to be a direct sibling. This is the optimal location for a `BUILD` file when using a build system, as you should only be building the dependencies to absolutely need. For existing projects who may have single `BUILD` files responsible for several separate targets, or even several separate directories, you may instead want Autodep to update an existing `BUILD` file which resides further up the file tree. This field allows you to opt in to that behaviour.
+- `enablePropagation` - By default, Autodep will expect the `BUILD` file for a particular Node file to be a direct sibling. This is the optimal location for a `BUILD` file when using a build system, as you should only be building the dependencies to absolutely need. For existing projects who may have single `BUILD` files responsible for several separate targets, or even several separate directories, you may instead want Autodep to update an existing `BUILD` file which resides further up the file tree. This field allows you to opt in to that behaviour.
 
-  Note that if this is turned on, Autodep will walk the entire filesystem until it finds a `BUILD` file, then update that file. It is recommended not to opt in to this behaviour if you are not willing to stay on top of the scoping and location of BUILD targets; this is especially true when paired with wildcard `glob` matchers in `srcs` fields.
+  Note that if this is turned on, Autodep will walk the entire filesystem until it finds a `BUILD` file, then update that file. It is recommended not to opt in to this behaviour if you are not willing to stay on top of the scoping and location of BUILD targets; this is especially true when paired with wildcard `glob` matchers in `srcs` fields. Defaults to `false`.
 
   ```yaml
   enablePropagation: false
@@ -175,10 +188,10 @@ To create a configuration file, just create an `.autodep.yaml` file. The configu
     There are a few magic tokens available to help format the target, derived from the relative path of the target Node.js file:
     - `<basename>` - the name of the file, complete with file extension
     - `<filename>` - the name of the file, without file extension
-    - `<firstname>` - the first part of the filename, before the first `.`, if there are several in the basename, e.g. `firstname.other.parts.ts`
+    - `<firstname>` - the first part of the filename, before the first `.`, if there are several in the basename, e.g. `FirstName.spec.tsx`
     - `<path>` - the full path to the dependency, relative to the `BUILD` file. For sibling files, this will be identical to the `<basename>`.
       These will be interpolated appropriately at runtime.
-  - `explicitDeps` - Whether the new rule should be created with the `srcs` explicitly listed, or whether it should be created using the specified `globMatcher` configuration. Defaults to `true`, as this is the optimal setting for build-system-dependent projects.
+  - `explicitDeps` - Whether the new rule should be created with the `srcs` explicitly listed, or whether it should be created using the specified `globMatcher` configuration. Defaults to `true`, as this is the optimal setting for build-system-dependent projects. When set to false, the typing of the `srcs` field will be the first entry in its corresponding schema field entry at `manage.schema[key].srcs`.
   - `omitEmptyFields` - Whether the new rule should omit the keyword argument if its value is empty. For `array` types, this would be an array of length `0`; for `string` types, this would be a string of length `0`.
     - Currently unimplemented as of August 2022.
   - `globMatchers` - if `explicitDeps` is set to true, a user is able to specify the values of the `exclude` and `include` fields in a [glob declaration](https://please.build/lexicon.html#please-builtins). These use the familiar `glob` matcher syntax. `glob` fields validate potential files by:
@@ -201,7 +214,7 @@ To create a configuration file, just create an `.autodep.yaml` file. The configu
     module:
       name: my_custom_module_rule
       targetFormat: <filename>_custom_target
-      explicitDeps: true # will now ignore `globMatchers`
+      explicitDeps: true # will now ignore `globMatchers`field
       omitEmptyFields: true
       initialVisibility:
         - PUBLIC
@@ -284,7 +297,7 @@ To create a configuration file, just create an `.autodep.yaml` file. The configu
 
 ## Extension Settings
 
-TBA
+TBD - majority of configuration is handled via the `.autodep.yaml` files.
 
 ## Known Issues
 
