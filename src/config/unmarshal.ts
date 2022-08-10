@@ -2,7 +2,6 @@ import path from 'node:path';
 import {CompilerOptions} from 'typescript';
 import {
   DEFAULT_INITIAL_VISIBILITY,
-  KNOWN_RULE_FIELD_NAMES,
   SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES,
   DEFAULT_MODULE_FILENAME_MATCHER,
   DEFAULT_MODULE_RULE_NAME,
@@ -59,18 +58,9 @@ export class ConfigUmarshaller {
   });
 
   private unmarshalManage = (input?: RecursivePartial<AutoDepConfig.Input.Manage>): AutoDepConfig.Output.Manage => ({
-    rules: this.unmarshalManagedRules(input?.rules),
-    fields: this.unmarshalManagedFields(input?.fields),
     schema: this.unmarshalManagedSchema(input?.schema),
     knownTargets: input?.knownTargets ?? {},
   });
-
-  private unmarshalManagedRules = (input?: AutoDepConfig.Input.Manage['rules']): AutoDepConfig.Output.Manage['rules'] =>
-    new Set(['filegroup', 'genrule', ...(input || [])]);
-
-  private unmarshalManagedFields = (
-    input?: AutoDepConfig.Input.Manage['fields']
-  ): AutoDepConfig.Output.Manage['fields'] => new Set([...KNOWN_RULE_FIELD_NAMES, ...(input || [])]);
 
   private unmarshalManagedSchema = (
     input?: RecursivePartial<AutoDepConfig.Input.Manage['schema']>

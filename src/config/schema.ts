@@ -25,22 +25,6 @@ const AUTODEP_CONFIG_INPUT_SCHEMA: JSONSchemaType<InputConfig> = {
           nullable: true,
           required: [],
         },
-        rules: {
-          minItems: 1,
-          type: 'array',
-          items: {
-            type: 'string',
-          },
-          nullable: true,
-        },
-        fields: {
-          minItems: 1,
-          type: 'array',
-          items: {
-            type: 'string',
-          },
-          nullable: true,
-        },
         schema: {
           type: 'object',
           propertyNames: {

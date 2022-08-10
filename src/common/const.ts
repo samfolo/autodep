@@ -40,42 +40,6 @@ export const SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES: Record<
   TEST_ONLY: {value: 'test_only', as: 'bool'},
 };
 
-export const KNOWN_RULE_FIELD_NAMES = [
-  'name',
-  'tag',
-  'srcs',
-  'src',
-  'deps',
-  'exported_deps',
-  'visibility',
-  'labels',
-  'binary',
-  'output_is_complete',
-  'requires',
-  'provides',
-  'hashes',
-  'test_only',
-  'cmd',
-  'out',
-  'outs',
-  'building_description',
-  'data',
-  'timeout',
-  'sandbox',
-  'needs_transitive_deps',
-  'secrets',
-  'pre_build',
-  'post_build',
-  'tools',
-  'pass_env',
-  'local',
-  'output_dirs',
-  'exit_on_error',
-  'entry_points',
-  'env',
-  'optional_outs',
-] as const;
-
 export const SUPPORTED_MANAGED_BUILTINS = ['subinclude', 'glob'] as const;
 export const SUPPORTED_MANAGED_BUILTINS_LOOKUP = Object.seal(
   SUPPORTED_MANAGED_BUILTINS.reduce<{[K in ManagedBuiltin]: K}>(

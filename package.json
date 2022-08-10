@@ -1,7 +1,7 @@
 {
-  "name": "node-please-build-file-auto-formatter",
-  "displayName": "Node Please BUILD file auto-formatter",
-  "description": "Autoformatting BUILD files for JavaScript/TypeScript-based projects.",
+  "name": "autodep",
+  "displayName": "Autodep",
+  "description": "Automatic management of BUILD files for Node-based projects.",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.69.0"
@@ -10,7 +10,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:node-please-build-file-auto-formatter.main",
+    "onCommand:autodep.main",
     "onLanguage:javascript",
     "onLanguage:javascriptreact",
     "onLanguage:typescript",
@@ -18,12 +18,7 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
-    "commands": [
-      {
-        "command": "node-please-build-file-auto-formatter.main",
-        "title": "Update nearest Node BUILD.plz file"
-      }
-    ]
+    "commands": []
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

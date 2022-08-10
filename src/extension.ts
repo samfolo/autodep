@@ -7,7 +7,7 @@ import {AutoDep} from './autodep';
 export function activate(context: vscode.ExtensionContext) {
   const autodep = new AutoDep();
 
-  const main = vscode.commands.registerCommand('node-please-build-file-auto-formatter.main', () => {
+  const main = vscode.commands.registerCommand('autodep.main', () => {
     // A way to format nearest BUILD file via command palette
     // do this later...
   });
