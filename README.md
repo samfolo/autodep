@@ -4,7 +4,7 @@ Autodep for VSCode is an extension which automatically manages `BUILD` and `BUIL
 
 ## Features
 
-Autodep is primarily configured to run upon the saving a supported file within VSCode. On save, it CAN:
+Autodep is primarily configured to run upon the saving a supported file within VSCode. On save, it can:
 
 - Work out exactly which build targets need to exist within a file's corresponding build rule, and write them to the appropriate location.
 - Create and insert build rules based on a user-defined schema, if a pre-existing rule or `BUILD` file does not exist.
@@ -40,7 +40,7 @@ To create a configuration file, just create an `.autodep.yaml` file. The configu
   outDir: app/dist
   ```
 
-- `manage` - for convenience, users may create their own build rule definitions. By default, autodep will only create `filegroup` rules.
+- `manage` - Users are able outline their own build rule schema definitions in this section. By default, autodep is only aware of `filegroup` and `genrule` rules, will only create `filegroup` rules.
 
   - `rules` - This field is used to specify all the rules which Autodep should bother to check when walking a `BUILD` file at the relevant points in the update process. Only the name needs to be specified here, as the shape is initially assumed to be:
 
@@ -345,4 +345,4 @@ It will still try to include `//path/to/my_package:b` - as it should. To correct
 
 ### 1.0.0
 
-Initial release of Autodep, with core functionality covered
+Initial release of Autodep, core functionality.
