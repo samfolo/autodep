@@ -301,45 +301,47 @@ TBD - majority of configuration is handled via the `.autodep.yaml` files.
 
 ## Known Issues
 
-Autodep does not currently support anything but explicit files in `srcs` fields. There are plans to be able to support build targets in `srcs` fields in the future.
+- Autodep does not currently support anything but explicit files in `srcs` fields. There are plans to be able to support build targets in `srcs` fields in the future.
 
-Autodep plans to support the cleanup of old BUILD targets in the future; for now, deleting a file, will leave an orphaned build rule in the corresponsing `BUILD` file
+- Autodep plans to support the cleanup of old `BUILD` targets in the future; for now, deleting a file, will leave an orphaned build rule in the corresponding `BUILD` file
 
-Autodep does not currently support lambdas and list comprehensions in `BUILD` files. The internal parser will be completed in future, but only the most common syntax is covered at the moments. The same is true for complex type-hints.
+- Autodep does not currently support lambdas and list comprehensions in `BUILD` files. The internal parser will be completed in future, but only the most common syntax is covered at the moment. The same is true for complex type-hints.
 
-Autodep will not "correct" visibility issues with pre-existing build targets. For instance, if a dependency `BUILD` file is structured like this:
+- Autodep will not "correct" visibility issues with pre-existing build targets. For instance, if a dependency `BUILD` file is structured like this:
 
-```python
-my_rule(
-  name = "my_package",
-  srcs = ["index.ts"],
-  deps = [":a", ":b"],
-  visibility = ["PUBLIC"]
-)
+  ```python
+  my_rule(
+    name = "my_package",
+    srcs = ["index.ts"],
+    deps = [":a", ":b"],
+    visibility = ["PUBLIC"]
+  )
 
-my_rule(
-  name = "a",
-  srcs = ["a.ts"],
-  visibility = ["only/this/directory/..."]
-)
+  my_rule(
+    name = "a",
+    srcs = ["a.ts"],
+    visibility = ["only/this/directory/..."]
+  )
 
-my_rule(
-  name = "b",
-  srcs = ["b.ts"],
-  visibility = ["only/this/directory/..."]
-)
-```
+  my_rule(
+    name = "b",
+    srcs = ["b.ts"],
+    visibility = ["only/this/directory/..."]
+  )
+  ```
 
-And the dependency is imported like this:
+  And the dependency is imported like this:
 
-```typescript
-import {thing} from 'path/to/myPackage/b';
-```
+  ```typescript
+  import {thing} from 'path/to/myPackage/b';
+  ```
 
-It will still try to include `//path/to/my_package:b` - as it should. To correct the build, either:
+  It will still try to include `//path/to/my_package:b` - as it should.
 
-- Correct the visibility of the dependency
-- Import from `path/to/myPackage` instead, as `path/to/myPackage/index.ts` is the visible file, not `path/to/myPackage/b.ts`.
+  To correct the build, either:
+
+  - Correct the visibility of the dependency
+  - Import from `path/to/myPackage` instead, as `path/to/myPackage/index.ts` is the visible file, not `path/to/myPackage/b.ts`.
 
 ## Release Notes
 
