@@ -12,14 +12,14 @@ export function activate(context: vscode.ExtensionContext) {
   const autodep = new AutoDep();
 
   const runOnSave = vscode.workspace.onDidSaveTextDocument((textDocument) => {
+    autodepStatusBarItem.text = '$(loading~spin) Autodep';
     const workspaceConfig = vscode.workspace.getConfiguration('autodep');
     const shouldProcessUpdate = ['.js', '.ts', '.jsx', '.tsx', '.scss'].includes(path.extname(textDocument.fileName));
 
     if (workspaceConfig.runOnSave && shouldProcessUpdate) {
-      autodepStatusBarItem.text = '$(loading~spin) Autodep';
       autodep.processUpdate(textDocument.fileName);
-      autodepStatusBarItem.text = '$(pulse) Autodep';
     }
+    autodepStatusBarItem.text = '$(pulse) Autodep';
   });
 
   context.subscriptions.push(runOnSave);
