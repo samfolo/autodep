@@ -42,16 +42,17 @@
       {
         "id": "autodep",
         "filenames": [
-          ".autodep.yaml"
+          ".autodep.yaml",
+          ".autodep"
         ],
         "aliases": [
           "Autodep",
           "autodep"
         ],
-        "configuration": "./language-configuration.json",
+        "configuration": "language-configuration.json",
         "icon": {
-          "light": "./assets/config-icon.png",
-          "dark": "./assets/config-icon.png"
+          "light": "assets/config-icon.svg",
+          "dark": "assets/config-icon.svg"
         }
       }
     ],
@@ -59,7 +60,7 @@
       {
         "language": "autodep",
         "scopeName": "source.yaml",
-        "path": "./syntaxes/yaml.tmLanguage.json"
+        "path": "syntaxes/yaml.tmLanguage.json"
       }
     ]
   },

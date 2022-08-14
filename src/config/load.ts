@@ -1,6 +1,7 @@
 import {readFileSync} from 'fs';
 import merge from 'lodash.merge';
 import mergeWith from 'lodash.mergewith';
+import path from 'path';
 import typescript from 'typescript';
 import {parse} from 'yaml';
 
@@ -10,7 +11,6 @@ import {validateConfigInput} from '../config/schema';
 import {ConfigUmarshaller} from '../config/unmarshal';
 import {AutoDepBase} from '../inheritance/base';
 import {ErrorMessages, TaskMessages} from '../messages';
-import path from 'path';
 import {TaskStatus} from '../common/types';
 
 interface ConfigurationLoaderOptions {
