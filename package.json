@@ -7,7 +7,7 @@
   "bugs": {
     "url": "https://github.com/samfolo/autodep/issues"
   },
-  "icon": "icon.png",
+  "icon": "assets/autodep-icon.png",
   "publisher": "SamFolorunsho",
   "license": "Apache-2.0",
   "displayName": "Autodep",
@@ -37,7 +37,31 @@
           "description": "Allow Autodep to run each time a document is saved."
         }
       }
-    }
+    },
+    "languages": [
+      {
+        "id": "autodep",
+        "filenames": [
+          ".autodep.yaml"
+        ],
+        "aliases": [
+          "Autodep",
+          "autodep"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./assets/config-icon.png",
+          "dark": "./assets/config-icon.png"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "autodep",
+        "scopeName": "source.yaml",
+        "path": "./syntaxes/yaml.tmLanguage.json"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
