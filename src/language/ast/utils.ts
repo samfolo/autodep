@@ -339,7 +339,7 @@ export const createArrayLiteralNode = ({token, elements}: UniqueNodeProperties<A
     },
     toLines: function () {
       const elementsLines = this.elements?.toLines() ?? ['#{illegal}'];
-      return withCommentLines(['[', ...elementsLines, ']'], this.commentMap);
+      return withCommentLines(getListLines('[', elementsLines, ']'), this.commentMap);
     },
     toString: function () {
       return this.toLines().join('\n');
@@ -360,9 +360,8 @@ export const createMapLiteralNode = ({token, map}: UniqueNodeProperties<MapLiter
       return this.token.value;
     },
     toLines: function () {
-      const mapLines = this.map?.toLines() ?? ['#{illegal}'];
-
-      return withCommentLines(['{', ...mapLines, '}'], this.commentMap);
+      const elementsLines = this.map?.toLines() ?? ['#{illegal}'];
+      return withCommentLines(getListLines('{', elementsLines, '}'), this.commentMap);
     },
     toString: function () {
       return this.toLines().join('\n');
@@ -392,9 +391,8 @@ export const createCallExpressionNode = ({
       const lastFunctionNameLine = functionNameLines[functionNameLines.length - 1];
       const otherFunctionNameLines = functionNameLines.slice(0, -1);
       const argsLines = this.args?.toLines() ?? ['#{illegal}'];
-
       return withCommentLines(
-        [...otherFunctionNameLines, lastFunctionNameLine + '(', ...argsLines, ')'],
+        [...otherFunctionNameLines, ...getListLines(lastFunctionNameLine + '(', argsLines, ')')],
         this.commentMap
       );
     },
@@ -673,10 +671,9 @@ export const createFunctionDefinitionNode = ({
       const parameterLines = this.params?.toLines() ?? ['#{illegal}'];
       const functionClosingLine = `)${this.typeHint ? ` -> ${this.typeHint?.toString()}` : ''}:`;
       const blockStatementLines = this.body.toLines();
-      return withCommentLines(
-        [functionOpeningLine, ...parameterLines, functionClosingLine, ...blockStatementLines],
-        this.commentMap
-      );
+
+      const functionHeadingLines = getListLines(functionOpeningLine, parameterLines, functionClosingLine);
+      return withCommentLines([...functionHeadingLines, ...blockStatementLines], this.commentMap);
     },
     toString: function () {
       return this.toLines().join('\n');
@@ -803,3 +800,8 @@ const withCommentLines = (valueLines: string[] = [], commentMap: CommentMap) => 
 
   return result;
 };
+
+const getListLines = (openingLine: string, lines: string[], closingLine: string) =>
+  lines.length < 2 && lines[0] !== '#{illegal}'
+    ? [`${openingLine}${lines[0]?.trimStart().slice(0, -1) ?? ''}${closingLine}`]
+    : [openingLine, ...lines, closingLine];

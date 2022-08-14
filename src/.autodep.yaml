@@ -59,7 +59,7 @@ manage:
       srcs:
         - value: entry
           as: string
-    ops_app_mocha:
+    workspace_mocha:
       srcs:
         - value: entry
           as: string
@@ -69,7 +69,7 @@ manage:
   knownTargets:
     'instances/feature_flags/ops_dashboard.js': //instances/feature_flags/ops_dashboard
 match:
-  module: .*?\.(js|jsx|ts|tsx|scss|json)$
+  module: .*?\.(js|jsx|ts|tsx|css|scss|json)$
   fixture: .*?\.(mockData)\.(js|jsx|ts|tsx)$
   test: .*?\.(spec|test)\.(js|jsx|ts|tsx)$
 log:
@@ -140,10 +140,14 @@ onUpdate:
       - //vault/admin_app/apps/ops:ops_app_jest
 ignore:
   paths:
+    - '**/proto/*'
+    - '**/plz-out/*'
     - '**/webpack.{production,test,development}.*'
     - vault/admin_app/apps/ops/src/myTestFolder/myIgnoredDirectory/*
   module:
     paths:
+      - '**/proto/*'
+      - '**/plz-out/*'
       - '**/webpack.{production,test,development}.*'
       - vault/admin_app/apps/ops/src/myTestFolder/myIgnoredDirectory/*
       - vault/admin_app/apps/ops/src/myTestFolder/myOnlyIgnoreModuleDirectory/*
