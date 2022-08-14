@@ -365,7 +365,7 @@ export class AutoDep extends AutoDepBase {
     });
     const result = this._depResolver.resolveAbsoluteImportPaths({
       filePath: rootPath,
-      rootDir: 'core3',
+      rootDir: this._config.rootDir,
     });
 
     switch (result.status) {

@@ -36,6 +36,7 @@ export type SymbolName =
   | 'BSTRING'
   | 'USTRING'
   | 'MODULO'
+  | 'DOT'
   | 'EOF'
   | 'ILLEGAL';
 export type ReservedTerm =

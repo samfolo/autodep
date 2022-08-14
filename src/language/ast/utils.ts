@@ -29,6 +29,7 @@ import type {
   BStringLiteral,
   RStringLiteral,
   UStringLiteral,
+  DotExpression,
 } from './types';
 
 export const createRootNode = ({statements}: UniqueNodeProperties<RootNode>): RootNode => {
@@ -393,6 +394,38 @@ export const createCallExpressionNode = ({
       const argsLines = this.args?.toLines() ?? ['#{illegal}'];
       return withCommentLines(
         [...otherFunctionNameLines, ...getListLines(lastFunctionNameLine + '(', argsLines, ')')],
+        this.commentMap
+      );
+    },
+    toString: function () {
+      return this.toLines().join('\n');
+    },
+    commentMap,
+  };
+};
+
+export const createDotExpressionNode = ({token, left, right}: UniqueNodeProperties<DotExpression>): DotExpression => {
+  const commentMap: CommentMap = {leading: undefined, trailing: undefined};
+
+  return {
+    type: 'Expression',
+    kind: 'DotExpression',
+    token,
+    left,
+    operator: '.',
+    right,
+    getTokenLiteral: function () {
+      return this.token.value;
+    },
+    toLines: function () {
+      const leftLines = this.left?.toLines() ?? [];
+      const otherLeftLines = leftLines.slice(0, -1);
+      const lastLeftLine = leftLines[leftLines.length - 1] ?? '#{illegal}';
+
+      const [firstRightLine, ...otherRightLines] = this.right?.toLines() ?? ['#{illegal}'];
+
+      return withCommentLines(
+        [...otherLeftLines, `${lastLeftLine}${this.operator}${firstRightLine}`, ...otherRightLines],
         this.commentMap
       );
     },

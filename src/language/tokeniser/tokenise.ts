@@ -265,6 +265,10 @@ export class Tokeniser extends AutoDepBase {
           this.lockScope();
           this.tokens.push(this.createToken('COLON', this.current()));
           break;
+        case SYMBOLS.DOT:
+          this.lockScope();
+          this.tokens.push(this.createToken('DOT', this.current()));
+          break;
         case SYMBOLS.BANG:
           this.lockScope();
           if (this.peek() === SYMBOLS.ASSIGN) {

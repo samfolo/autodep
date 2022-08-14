@@ -206,7 +206,7 @@ export class DeAliasingClient extends AutoDepBase {
   };
 
   private isRelative = (path: string) => ['/', './', '../'].some((start) => path.startsWith(start));
-  private isCoreModule = (path: string) => DeAliasingClient.coreModules.has(path);
+  private isCoreModule = (name: string) => DeAliasingClient.coreModules.has(name);
 
   /**
    * Returns a boolean indicating whether there is already a cached result for the
@@ -350,7 +350,7 @@ export class DeAliasingClient extends AutoDepBase {
     return result;
   };
 
-  private static coreModules = new Set(builtinModules);
+  private static coreModules = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
   private static deAliasingCache: Record<string, Record<string, DeAliasResult>> = {};
   private static packageNameMapCache: Record<
     string,

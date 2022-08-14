@@ -49,6 +49,7 @@ enum Precedence {
   SUM,
   PRODUCT,
   PREFIX,
+  MEMBER,
   CALL,
   INDEX,
 }
@@ -59,6 +60,7 @@ const precedenceMap = {
   [SYMBOLS.MINUS]: Precedence.SUM,
   [SYMBOLS.FORWARD_SLASH]: Precedence.PRODUCT,
   [SYMBOLS.ASTERISK]: Precedence.PRODUCT,
+  [SYMBOLS.DOT]: Precedence.MEMBER,
   [SYMBOLS.OPEN_PAREN]: Precedence.CALL,
   [SYMBOLS.OPEN_BRACKET]: Precedence.INDEX,
 };
@@ -102,6 +104,7 @@ export class Parser extends AutoDepBase {
       ASTERISK: this.parseInfixExpression,
       OPEN_PAREN: this.parseCallExpression,
       OPEN_BRACKET: this.parseIndexExpression,
+      DOT: this.parseDotExpression,
     };
 
     this.prefixParseFunctions = {
@@ -362,7 +365,10 @@ export class Parser extends AutoDepBase {
 
   @traceEvents()
   parseBooleanLiteral() {
-    return ast.createBooleanLiteralNode({token: this.getCurrentToken(), value: Boolean(this.getCurrentToken().value)});
+    return ast.createBooleanLiteralNode({
+      token: this.getCurrentToken(),
+      value: this.getCurrentToken().value === 'True',
+    });
   }
 
   @traceEvents()
@@ -452,7 +458,11 @@ export class Parser extends AutoDepBase {
         return;
       }
 
-      if (!this.getNextTokenOfTypeOrFail([endToken, 'COMMA', 'COMMENT'])) {
+      if (this.peekNextTokenIs([endToken])) {
+        break;
+      }
+
+      if (!this.getNextTokenOfTypeOrFail(['COMMA', 'COMMENT'])) {
         return;
       }
     }
@@ -680,6 +690,35 @@ export class Parser extends AutoDepBase {
   }
 
   @traceEvents()
+  parseDotExpression(leftExpression: Expression | undefined) {
+    this._eventTracer.event({
+      ctx: 'parseDotExpression',
+      token: this.getCurrentToken(),
+      message: `left: ${leftExpression?.token.type} :: ${leftExpression?.token.value}`,
+    });
+    const dotToken = this.getCurrentToken();
+    const dotPrecedence = this.getTokenPrecedence('current');
+
+    let dotLeadingComment: Comment | undefined;
+    if (this.peekNextTokenIs(['COMMENT'])) {
+      this.getNextToken();
+      dotLeadingComment = this.parseLeadingComment();
+    }
+
+    if (!this.getNextTokenOfTypeOrFail(['IDENT'])) {
+      return;
+    }
+
+    const dotExpression = ast.createDotExpressionNode({
+      token: dotToken,
+      left: leftExpression,
+      operator: String(dotToken.value),
+      right: this.parseExpression(dotPrecedence, dotLeadingComment),
+    });
+    return dotExpression;
+  }
+
+  @traceEvents()
   parseCallExpression(functionName: Expression | undefined) {
     const callExpression = ast.createCallExpressionNode({
       token: this.getCurrentToken(),
@@ -715,6 +754,14 @@ export class Parser extends AutoDepBase {
       if (this.peekNextTokenIs(['ASSIGN'])) {
         this.getNextToken();
         expressionList.elements.push(this.parseInfixExpression(firstEl));
+      } else if (this.peekNextTokenIs(['DOT'])) {
+        this.getNextToken();
+        const dotExpression = this.parseDotExpression(firstEl);
+        if (dotExpression) {
+          expressionList.elements.push(dotExpression);
+        } else {
+          expressionList.elements.push(firstEl);
+        }
       } else {
         expressionList.elements.push(firstEl);
       }
@@ -743,6 +790,14 @@ export class Parser extends AutoDepBase {
         if (this.peekNextTokenIs(['ASSIGN'])) {
           this.getNextToken();
           expressionList.elements.push(this.parseInfixExpression(nextEl));
+        } else if (this.peekNextTokenIs(['DOT'])) {
+          this.getNextToken();
+          const dotExpression = this.parseDotExpression(nextEl);
+          if (dotExpression) {
+            expressionList.elements.push(dotExpression);
+          } else {
+            expressionList.elements.push(nextEl);
+          }
         } else {
           expressionList.elements.push(nextEl);
         }

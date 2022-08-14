@@ -43,6 +43,7 @@ export const SYMBOLS: Record<SymbolName, TokenValue> = {
   BSTRING: 'b',
   USTRING: 'u',
   MODULO: '%',
+  DOT: '.',
   EOF: 0,
   ILLEGAL: 0,
 } as const;

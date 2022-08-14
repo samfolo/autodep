@@ -89,6 +89,14 @@ export interface CallExpression extends BaseExpression {
   args: ExpressionList | undefined;
 }
 
+export interface DotExpression extends BaseExpression {
+  token: Token;
+  kind: 'DotExpression';
+  left: Expression | undefined;
+  operator: string;
+  right: Expression | undefined;
+}
+
 export interface StringLiteral extends BaseExpression {
   token: Token;
   kind: 'StringLiteral';
@@ -195,6 +203,7 @@ export type Expression =
   | IntegerLiteral
   | PrefixExpression
   | InfixExpression
+  | DotExpression
   | BooleanLiteral
   | CallExpression
   | StringLiteral

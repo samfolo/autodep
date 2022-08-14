@@ -106,7 +106,7 @@ onCreate:
   fixture:
     name: js_library
     targetFormat: <firstname>_fixture
-    explicitDeps: false
+    explicitDeps: true
     omitEmptyFields: false
     initialVisibility:
       - PUBLIC
@@ -140,15 +140,18 @@ onUpdate:
       - //vault/admin_app/apps/ops:ops_app_jest
 ignore:
   paths:
-    - '**/proto/*'
-    - '**/plz-out/*'
+    - '**/{proto,plz-out,node_modules}/*'
     - '**/webpack.{production,test,development}.*'
+    - '**/graphQLQueryTypes.ts'
+    - '**/graphQLEnumTypes.ts'
     - vault/admin_app/apps/ops/src/myTestFolder/myIgnoredDirectory/*
   module:
     paths:
-      - '**/proto/*'
-      - '**/plz-out/*'
+      - 'config.js'
+      - '**/{proto,plz-out,node_modules}/*'
       - '**/webpack.{production,test,development}.*'
+      - '**/graphQLQueryTypes.ts'
+      - '**/graphQLEnumTypes.ts'
       - vault/admin_app/apps/ops/src/myTestFolder/myIgnoredDirectory/*
       - vault/admin_app/apps/ops/src/myTestFolder/myOnlyIgnoreModuleDirectory/*
     targets:
