@@ -106,7 +106,7 @@ onCreate:
   fixture:
     name: js_library
     targetFormat: <firstname>_fixture
-    explicitDeps: true
+    explicitDeps: false
     omitEmptyFields: false
     initialVisibility:
       - PUBLIC

@@ -41,7 +41,7 @@ export const SUPPORTED_MANAGED_BUILTINS_LOOKUP = Object.seal(
   )
 );
 
-export const DEFAULT_MODULE_FILENAME_MATCHER = new RegExp('.*?\\.(js|jsx|ts|tsx)$');
+export const DEFAULT_MODULE_FILENAME_MATCHER = new RegExp('.*?\\.(js|jsx|ts|tsx|css|scss|json)$');
 export const DEFAULT_FIXTURE_FILENAME_MATCHER = new RegExp('[]');
 export const DEFAULT_TEST_FILENAME_MATCHER = new RegExp('.*?\\.(spec|test)\\.(js|jsx|ts|tsx)$');
 export const DEFAULT_MODULE_RULE_NAME = 'filegroup';

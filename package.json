@@ -21,10 +21,7 @@
     "Formatters"
   ],
   "activationEvents": [
-    "onLanguage:javascript",
-    "onLanguage:javascriptreact",
-    "onLanguage:typescript",
-    "onLanguage:typescriptreact"
+    "workspaceContains:.autodep.yaml"
   ],
   "main": "./dist/extension.js",
   "contributes": {
