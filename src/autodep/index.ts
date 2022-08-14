@@ -83,73 +83,64 @@ export class AutoDep extends AutoDepBase {
    * @param rootPath the path to the target file
    */
   processUpdate = (rootPath: string) => {
-    vscode.window.withProgress(
-      {
-        location: vscode.ProgressLocation.Notification,
-        cancellable: false,
-        title: 'Autodep',
-      },
-      (progress) => {
-        try {
-          progress.report({increment: 0, message: 'Loading config from workspace...'});
-          this.initialise(rootPath);
+    try {
+      this.initialise(rootPath);
 
-          progress.report({increment: 10, message: 'Deciding whether to skip update...'});
-          const {shouldSkipProcess, ignore} = this.probeTargetModule(rootPath);
-          if (shouldSkipProcess) {
-            this._logger.info({
-              ctx: 'processUpdate',
-              message:
-                TaskMessages.identified('an ignored path at `<autodepConfig>.ignore.paths`', rootPath) +
-                ' - skipping update.',
-              details: JSON.stringify(ignore.paths, null, 2),
-            });
-            return Promise.resolve();
-          }
+      const {shouldSkipProcess, ignore} = this.probeTargetModule(rootPath);
+      if (shouldSkipProcess) {
+        this._logger.info({
+          ctx: 'processUpdate',
+          message:
+            TaskMessages.identified('an ignored path at `<autodepConfig>.ignore.paths`', rootPath) +
+            ' - skipping update.',
+          details: JSON.stringify(ignore.paths, null, 2),
+        });
+      } else {
+        const {
+          containsPreExistingBuildRule,
+          targetBuildFilePath,
+          buildFileAST: _buildFileAST,
+          targetBuildRuleMetadata,
+        } = this.probeTargetBuildFile(rootPath);
 
-          progress.report({increment: 10, message: 'Probing target build file...'});
-          const {
-            containsPreExistingBuildRule,
-            targetBuildFilePath,
-            buildFileAST: _buildFileAST,
-            targetBuildRuleMetadata,
-          } = this.probeTargetBuildFile(rootPath);
+        const rootPathBuildTarget = new this._depModelCls({
+          config: this._config,
+          ruleName: targetBuildRuleMetadata.name?.value ?? '',
+          buildFilePath: targetBuildFilePath,
+          rootDirName: path.dirname(rootPath),
+          targetBuildFilePath: targetBuildFilePath,
+        }).toBuildTarget();
 
-          const rootPathBuildTarget = new this._depModelCls({
-            config: this._config,
-            ruleName: targetBuildRuleMetadata.name?.value ?? '',
-            buildFilePath: targetBuildFilePath,
-            rootDirName: path.dirname(rootPath),
-            targetBuildFilePath: targetBuildFilePath,
-          }).toBuildTarget();
+        const directDependencies = this.resolveDeps(rootPath);
+        const persistedDependencies =
+          containsPreExistingBuildRule && targetBuildRuleMetadata.srcs
+            ? this.resolvePersistedDeps(targetBuildFilePath, targetBuildRuleMetadata.srcs)
+            : [];
+        const newDependencies = Array.from(new Set([...directDependencies, ...persistedDependencies]));
 
-          progress.report({increment: 10, message: 'Resolving dependencies...'});
-          const directDependencies = this.resolveDeps(rootPath);
-          const persistedDependencies =
-            containsPreExistingBuildRule && targetBuildRuleMetadata.srcs
-              ? this.resolvePersistedDeps(targetBuildFilePath, targetBuildRuleMetadata.srcs)
-              : [];
-          const newDependencies = Array.from(new Set([...directDependencies, ...persistedDependencies]));
+        const dependencyToBuildFilePathLookup = this.getNearestBuildFilePaths(newDependencies);
+        const buildRuleTargets = this.collectBuildRuleTargets(targetBuildFilePath, dependencyToBuildFilePathLookup, [
+          rootPathBuildTarget,
+          ...ignore.targets,
+        ]);
 
-          progress.report({increment: 20, message: 'Collecting new BUILD targets...'});
-          const dependencyToBuildFilePathLookup = this.getNearestBuildFilePaths(newDependencies);
-          const buildRuleTargets = this.collectBuildRuleTargets(targetBuildFilePath, dependencyToBuildFilePathLookup, [
-            rootPathBuildTarget,
-            ...ignore.targets,
-          ]);
-
-          progress.report({increment: 40, message: 'Writing targets to BUILD file...'});
-          this.writeUpdatesToFilesystem(rootPath, targetBuildFilePath, buildRuleTargets);
-          this.handleSuccess();
-        } catch (error) {
-          this.handleFailure(error);
-        } finally {
-          progress.report({increment: 10, message: 'Cleaning up...'});
-          this.handleCleanup();
-          return Promise.resolve();
-        }
+        this.writeUpdatesToFilesystem(rootPath, targetBuildFilePath, buildRuleTargets);
+        this.handleSuccess();
       }
-    );
+    } catch (error) {
+      this.handleFailure(error);
+    } finally {
+      this.handleCleanup();
+      return Promise.resolve();
+    }
+  };
+
+  private initialise = (rootPath: string) => {
+    this._logger.info({ctx: 'initialise', message: 'beginning update...'});
+    this._startTime = performance.now();
+
+    this.loadTSConfig(rootPath);
+    this.loadAutoDepConfig(rootPath);
   };
 
   private loadAutoDepConfig = (rootPath: string) => {
@@ -221,14 +212,6 @@ export class AutoDep extends AutoDepBase {
       default:
         throw new AutoDepError(ErrorType.FAILED_PRECONDITION, result.reason);
     }
-  };
-
-  private initialise = (rootPath: string) => {
-    this._logger.info({ctx: 'initialise', message: 'beginning update...'});
-    this._startTime = performance.now();
-
-    this.loadTSConfig(rootPath);
-    this.loadAutoDepConfig(rootPath);
   };
 
   private probeTargetModule = (rootPath: string) => {
@@ -583,11 +566,24 @@ export class AutoDep extends AutoDepBase {
     try {
       targetBuildFile = readFileSync(targetBuildFilePath, {encoding: 'utf-8', flag: 'r'});
 
-      return new this._buildFileModelCls({
+      const result = new this._buildFileModelCls({
         path: targetBuildFilePath,
         file: targetBuildFile,
         config: this._config,
       }).toAST();
+
+      switch (result.status) {
+        case 'success':
+          return result.output;
+        case 'failure':
+        default:
+          this._logger.error({
+            ctx: 'parseBuildFileIfExists',
+            message: TaskMessages.resolve.failure(targetBuildFilePath, '`BUILD` or `BUILD.plz` file'),
+            details: result.reason,
+          });
+          return null;
+      }
     } catch (error) {
       const err = error as Error;
       switch (err.constructor) {

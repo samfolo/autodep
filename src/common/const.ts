@@ -20,13 +20,6 @@ export const SUPPORTED_MODULE_EXTENSIONS = [
   '/.md',
 ];
 
-export const SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRY_TYPES: readonly ManagedSchemaFieldType[] = [
-  'string',
-  'array',
-  'bool',
-  'number',
-] as const;
-
 type SupportedManagedSchemaFieldEntryKey = 'NAME' | 'SRCS' | 'DEPS' | 'VISIBILITY' | 'TEST_ONLY';
 
 export const SUPPORTED_MANAGED_SCHEMA_FIELD_ENTRIES: Record<

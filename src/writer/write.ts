@@ -78,26 +78,33 @@ export class Writer extends AutoDepBase {
       return true;
     }
 
-    const ast = new this._buildFileModelCls({
+    const result = new this._buildFileModelCls({
       path: this._targetBuildFilePath,
       file: targetBuildFile,
       config: this._config,
     }).toAST();
 
-    const existingRuleUpdated = this.updateExistingRule(ast);
-    if (existingRuleUpdated) {
-      return true;
-    }
+    switch (result.status) {
+      case 'success': {
+        const existingRuleUpdated = this.updateExistingRule(result.output);
+        if (existingRuleUpdated) {
+          return true;
+        }
 
-    this._logger.info({
-      ctx: 'processUpdate',
-      message: TaskMessages.locate.failure(`updatable rule at ${this._targetBuildFilePath}`),
-    });
-    this._logger.info({ctx: 'processUpdate', message: TaskMessages.attempt('append', 'a new rule to file')});
+        this._logger.info({
+          ctx: 'processUpdate',
+          message: TaskMessages.locate.failure(`updatable rule at ${this._targetBuildFilePath}`),
+        });
+        this._logger.info({ctx: 'processUpdate', message: TaskMessages.attempt('append', 'a new rule to file')});
 
-    const newRuleInserted = this.appendNewRule(ast);
-    if (newRuleInserted) {
-      return true;
+        const newRuleInserted = this.appendNewRule(result.output);
+        if (newRuleInserted) {
+          return true;
+        }
+      }
+      case 'failure':
+      default:
+        break;
     }
 
     this._logger.error({

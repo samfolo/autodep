@@ -5,21 +5,25 @@ import {AutoDep} from './autodep';
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+  const autodepStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+  autodepStatusBarItem.text = '$(pulse) Autodep';
+  autodepStatusBarItem.show();
+
   const autodep = new AutoDep();
 
-  const main = vscode.commands.registerCommand('autodep.main', () => {
-    // A way to format nearest BUILD file via command palette
-    // do this later...
-  });
+  const runOnSave = vscode.workspace.onDidSaveTextDocument((textDocument) => {
+    const workspaceConfig = vscode.workspace.getConfiguration('autodep');
+    const shouldProcessUpdate = ['.js', '.ts', '.jsx', '.tsx', '.scss'].includes(path.extname(textDocument.fileName));
 
-  const formatOnSave = vscode.workspace.onDidSaveTextDocument((textDocument) => {
-    if (['.js', '.ts', '.jsx', '.tsx', '.scss'].includes(path.extname(textDocument.fileName))) {
+    if (workspaceConfig.runOnSave && shouldProcessUpdate) {
+      autodepStatusBarItem.text = '$(loading~spin) Autodep';
       autodep.processUpdate(textDocument.fileName);
+      autodepStatusBarItem.text = '$(pulse) Autodep';
     }
   });
 
-  context.subscriptions.push(main);
-  context.subscriptions.push(formatOnSave);
+  context.subscriptions.push(runOnSave);
+  context.subscriptions.push(autodepStatusBarItem);
 }
 
 // this method is called when your extension is deactivated (leaving empty for now)

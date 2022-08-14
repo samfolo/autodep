@@ -13,6 +13,20 @@ interface BuildFileOptions {
   config: AutoDepConfig.Output.Schema;
 }
 
+interface SuccessResult {
+  status: 'success';
+  reason: string;
+  output: RootNode;
+}
+
+interface FailureResult {
+  status: 'failure';
+  reason: string;
+  output: null;
+}
+
+type Result = SuccessResult | FailureResult;
+
 export class BuildFile extends AutoDepBase {
   private _tokeniserCls: typeof Tokeniser;
   private _parserCls: typeof Parser;
@@ -50,10 +64,15 @@ export class BuildFile extends AutoDepBase {
 
   private static ASTCache: Record<string, RootNode> = {};
 
-  readonly toAST = () => {
+  readonly toAST = (): Result => {
     if (BuildFile.ASTCache[this._path]) {
       this._logger.trace({ctx: 'toAST', message: TaskMessages.using(`cached AST for ${this._path}`)});
-      return BuildFile.ASTCache[this._path];
+
+      return {
+        status: 'success',
+        reason: 'cached result',
+        output: BuildFile.ASTCache[this._path],
+      };
     }
 
     const tokeniser = new this._tokeniserCls({input: this._file, config: this._config});
@@ -61,7 +80,19 @@ export class BuildFile extends AutoDepBase {
     const parser = new this._parserCls({tokens, config: this._config});
     const ast = parser.parse();
 
+    if (parser.errors.length > 0) {
+      return {
+        status: 'failure',
+        reason: parser.errors.join('\n'),
+        output: null,
+      };
+    }
+
     BuildFile.ASTCache[this._path] = ast;
-    return ast;
+    return {
+      status: 'success',
+      reason: 'successfully parsed file',
+      output: ast,
+    };
   };
 }
