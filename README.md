@@ -200,10 +200,10 @@ To create a configuration file, just create an `.autodep.yaml` file. The configu
 
     <br>These will be interpolated appropriately at runtime.
 
-  - `explicitDeps` - Whether the new rule should be created with the `srcs` explicitly listed, or whether it should be created using the specified `onCreate.globMatchers` configuration. Defaults to `true`, as granularity is the optimal approach for build-system-dependent projects. When set to false, the typing of the `srcs` field will be the first item in `manage.schema[key].srcs`, or the default.
+  - `explicitSrcs` - Whether the new rule should be created with the `srcs` explicitly listed, or whether it should be created using the specified `onCreate.globMatchers` configuration. Defaults to `true`, as granularity is the optimal approach for build-system-dependent projects. When set to false, the typing of the `srcs` field will be the first item in `manage.schema[key].srcs`, or the default.
   - `omitEmptyFields` - Whether the new rule should omit the keyword argument if its value is empty. For `array` types, this would be an array of length `0`; for `string` types, this would be a string of length `0`.
     - Currently unimplemented as of August 2022.
-  - `globMatchers` - if `explicitDeps` is set to true, a user is able to specify the values of the `exclude` and `include` fields in a [glob declaration](https://please.build/lexicon.html#please-builtins). These use the familiar `glob` matcher syntax. `glob` fields validate potential files by:
+  - `globMatchers` - if `explicitSrcs` is set to true, a user is able to specify the values of the `exclude` and `include` fields in a [glob declaration](https://please.build/lexicon.html#please-builtins). These use the familiar `glob` matcher syntax. `glob` fields validate potential files by:
     - checking whether `include` field has a length greater than `1`,
     - checking at least one entry matches the candidate filename,
     - checking whether the `exclude` field either has a length of `0`, OR that every entry fails to match the candidate filename.
@@ -223,7 +223,7 @@ To create a configuration file, just create an `.autodep.yaml` file. The configu
     module:
       name: my_custom_module_rule
       targetFormat: <filename>_custom_target
-      explicitDeps: true # will now ignore `globMatchers`field
+      explicitSrcs: true # will now ignore `globMatchers`field
       omitEmptyFields: true
       initialVisibility:
         - PUBLIC
@@ -242,7 +242,7 @@ To create a configuration file, just create an `.autodep.yaml` file. The configu
       targetFormat: <firstname>_test
       subinclude:
         - //path/to/build_defs:my_test_rule
-      explicitDeps: false
+      explicitSrcs: false
       omitEmptyFields: true
       globMatchers:
         include:

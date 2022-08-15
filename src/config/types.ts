@@ -45,7 +45,7 @@ export namespace AutoDepConfig {
     interface BaseOnCreateFields extends BaseEventFields {
       name?: string;
       targetFormat?: string;
-      explicitDeps?: boolean;
+      explicitSrcs?: boolean;
       globMatchers?: GlobMatchers;
     }
     interface BaseOnUpdateFields extends BaseEventFields {}
@@ -131,7 +131,7 @@ export namespace AutoDepConfig {
     interface BaseOnCreateFields extends BaseEventFields {
       name: string;
       formatTarget: (targetPath: string) => string;
-      explicitDeps: boolean;
+      explicitSrcs: boolean;
       globMatchers: GlobMatchers;
     }
     interface BaseOnUpdateFields extends BaseEventFields {}

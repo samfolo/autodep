@@ -1,5 +1,5 @@
-rootDir: core3
-outDir: core3/plz-out/gen
+rootDir: autodep
+outDir: autodep/dist
 manage:
   rules:
     - js_library
@@ -86,11 +86,11 @@ onCreate:
     This is an onCreate file heading
     It even handles multiple lines!
 
-    And double lines...
+    And double newlines!
   module:
     name: js_library
     targetFormat: <filename>_module
-    explicitDeps: false
+    explicitSrcs: true
     omitEmptyFields: true
     initialVisibility:
       - PUBLIC
@@ -106,7 +106,7 @@ onCreate:
   fixture:
     name: js_library
     targetFormat: <firstname>_fixture
-    explicitDeps: true
+    explicitSrcs: true
     omitEmptyFields: false
     initialVisibility:
       - PUBLIC
@@ -116,7 +116,7 @@ onCreate:
     targetFormat: <firstname>_test
     subinclude:
       - //vault/admin_app/apps/ops:ops_app_jest
-    explicitDeps: false
+    explicitSrcs: true
     omitEmptyFields: true
     globMatchers:
       include:

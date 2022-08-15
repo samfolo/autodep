@@ -71,13 +71,13 @@ export class DependencyBuilder extends AutoDepBase {
     const fileConfig = this._config.onCreate[this._ruleType];
 
     const {name, srcs, deps, visibility, testOnly} = this.getRuleFieldSchema(
-      fileConfig.explicitDeps,
+      fileConfig.explicitSrcs,
       this._config.manage.schema[fileConfig.name]
     );
 
     const buildNameNode = this.schemaBuilderMap[name.as];
     const buildSrcsNode =
-      fileConfig.explicitDeps || srcs.as !== 'glob' ? this.schemaBuilderMap[srcs.as] : this.schemaBuilderMap.glob;
+      fileConfig.explicitSrcs && srcs.as !== 'glob' ? this.schemaBuilderMap[srcs.as] : this.schemaBuilderMap.glob;
     const buildDepsNode = this.schemaBuilderMap[deps.as];
     const buildVisibilityNode = this.schemaBuilderMap[visibility.as];
     const buildTestOnlyNode = this.schemaBuilderMap[testOnly.as];
