@@ -347,9 +347,3 @@ To create a configuration file, just create an `.autodep.yaml` file. The configu
 
   - Correct the visibility of the dependency
   - Import from `path/to/myPackage` instead, as `path/to/myPackage/index.ts` is the visible file, not `path/to/myPackage/b.ts`.
-
-## Release Notes
-
-### 1.0.0
-
-Initial release of _Autodep_, core functionality.
